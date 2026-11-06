@@ -1,0 +1,11 @@
+extends layout
+block content
+  .container.section
+    .panel.error-panel
+      .eyebrow CINEPRIME
+      h1 Chưa thể hoàn tất thao tác
+      p= message
+      p.muted Kiểm tra thông tin, tải lại trang và thử lại. Các thao tác đặt vé luôn theo trạng thái tại server.
+      .actions
+        a.button(href="/account") ĐẾN TÀI KHOẢN
+        a.button.secondary(href="/") VỀ TRANG CHỦ

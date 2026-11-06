@@ -1,0 +1,34 @@
+extends layout
+block admin
+  .section-heading
+    h1 Lịch vận hành theo ngày
+    a.button(href="/admin/manage/showtimes/edit") + TẠO SUẤT
+  form.filters(method="get")
+    input(type="date" name="date" value=day required aria-label="Ngày chiếu")
+    select(name="cinemaId" aria-label="Rạp")
+      option(value="") Tất cả rạp
+      each c in cinemaOptions
+        option(value=c.id)= c.name
+    button.button.secondary(type="submit") XEM LỊCH
+  .panel.table-wrap
+    table
+      thead
+        tr
+          th Phim
+          th Rạp / Phòng
+          th Bắt đầu
+          th Kết thúc
+          th Trạng thái
+          th Thao tác
+      tbody
+        each s in schedule
+          tr
+            td= s.movieTitle
+            td #{s.cinemaName} · #{s.roomName}
+            td= s.when
+            td= s.ends
+            td= s.status
+            td
+              a(href='/admin/manage/showtimes/edit?id=' + s.id) Sửa suất
+    if schedule.size() == 0
+      .empty Không có lịch trong ngày này.

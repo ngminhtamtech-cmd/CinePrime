@@ -1,0 +1,86 @@
+doctype html
+html(lang="vi")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    meta(name="description" content="CinePrime — Khám phá phim, chọn ghế và đặt vé trực tuyến.")
+    meta(name="csrf-token" content=csrfToken)
+    meta(name="csrf-header" content=csrfHeader)
+    title= title
+    link(rel="icon" href="/images/cineprime-mark.svg" type="image/svg+xml")
+    link(rel="stylesheet" href="/css/app.css")
+    script(src="/js/app.js" defer)
+    block head
+  body
+    a.skip(href="#main") Đi đến nội dung
+    .topbar
+      .container
+        if siteNotices && siteNotices.size() > 0
+          each n in siteNotices
+            a(href='/content/' + n.slug)= n.title
+        else
+          span Một tấm vé. Ngàn cảm xúc.
+        a(href="/content/chinh-sach") Thông tin đặt vé · Hỗ trợ
+    header
+      .container.header-row
+        a.brand(href="/" aria-label="CinePrime trang chủ")
+          img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="44" height="44" aria-hidden="true")
+          span Cine
+            strong Prime
+        a.button.ticket-link(href="/showtimes") ✦ MUA VÉ
+        form.header-search(action="/movies" method="get")
+          input(name="q" placeholder="Bạn muốn xem phim gì?" aria-label="Tìm phim")
+          button(type="submit" aria-label="Tìm kiếm") ⌕
+        .header-account
+          if viewer
+            a(href="/account")= viewer.name
+            form(action="/logout" method="post")
+              input(type="hidden" name=csrfName value=csrfToken)
+              button.text-button(type="submit") Đăng xuất
+          else
+            a(href="/login") Đăng nhập
+        button.menu-toggle(type="button" aria-expanded="false" aria-controls="navigation") ☰
+    nav#navigation
+      .container.nav-row
+        a(href="/showtimes") Mua vé
+        a(href="/movies") Phim
+        a(href="/showtimes") Lịch chiếu
+        a(href="/offers") Khuyến mãi
+        a(href="/articles") Góc điện ảnh
+        a(href="/cinemas") Rạp / Giá vé
+        if viewer
+          a(href="/account") Vé của tôi
+          if viewer.role == 'ADMIN'
+            a(href="/admin") Quản trị
+          if viewer.role == 'STAFF'
+            a(href="/staff") Soát vé
+          form.mobile-logout(action="/logout" method="post")
+            input(type="hidden" name=csrfName value=csrfToken)
+            button.text-button(type="submit") Đăng xuất
+    main#main
+      block content
+    footer
+      .container.footer-grid
+        div
+          a.brand(href="/" aria-label="CinePrime trang chủ")
+            img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="44" height="44" aria-hidden="true")
+            span Cine
+              strong Prime
+          p Hơn cả một buổi xem phim.
+          p.muted Đồ án · Dữ liệu minh họa · Thanh toán sandbox
+        div
+          h3 CinePrime
+          a(href="/content/gioi-thieu") Về chúng tôi
+          a(href="/cinemas") Hệ thống rạp
+          a(href="/articles") Góc điện ảnh
+        div
+          h3 Hỗ trợ
+          a(href="/content/chinh-sach") Chính sách đặt vé
+          a(href="/content/lien-he") Liên hệ
+          a(href="/account") Tài khoản & vé
+        div
+          h3 Cuộc hẹn điện ảnh
+          p Chọn phim yêu thích, chọn chỗ ngồi và tận hưởng câu chuyện của riêng bạn.
+          a.button(href="/showtimes") Đặt vé ngay →
+      .container.copyright © 2026 CinePrime · Đồ án hệ thống đặt vé trực tuyến
+    #toast(role="status" aria-live="polite")

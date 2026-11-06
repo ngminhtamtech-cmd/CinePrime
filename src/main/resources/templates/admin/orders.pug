@@ -1,0 +1,18 @@
+extends layout
+block admin
+  h1 Đơn hàng & Thanh toán
+  form.filters(method="get")
+    input(name="q" value=q placeholder="Mã đơn, email, ngày hoặc trạng thái" aria-label="Tìm đơn")
+    button.button(type="submit") TÌM KIẾM
+    a.button.secondary(href="/admin/transactions.csv") XUẤT CSV ↓
+  .panel
+    each o in orders
+      a.order-row(href='/admin/orders/' + o.id)
+        div
+          strong #{o.code} · #{o.movieTitle}
+          p #{o.cinemaName} · #{o.when}
+        div
+          span.badge= o.status
+          p= o.totalText
+    if orders.size() == 0
+      .empty Không có đơn phù hợp.

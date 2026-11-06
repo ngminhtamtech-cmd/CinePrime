@@ -1,0 +1,34 @@
+extends layout
+include mixins
+block content
+  section.cinema-heading
+    .container
+      .eyebrow= cinema.city
+      h1= cinema.name
+      p= cinema.address
+      p Hotline: #{cinema.phone}
+  section.container.section
+    h2 LỊCH CHIẾU TẠI RẠP
+    +dateStrip()
+    +showList(shows)
+  section.container.section
+    h2 GIÁ VÉ
+    p.muted Giá theo một ghế vật lý. Ghế đôi bắt buộc mua cả cặp; tổng giá cặp bằng giá hai ghế. Phụ thu riêng của suất hiển thị khi chọn ghế.
+    .table-wrap
+      table
+        thead
+          tr
+            th Loại ghế
+            th Ngày
+            th Khung giờ
+            th Giá vé / ghế
+        tbody
+          each p in prices
+            tr
+              td= p.seatType
+              td= p.dayType == 'WEEKEND' ? 'Thứ Bảy / Chủ nhật' : 'Thứ Hai – Thứ Sáu'
+              td= p.time
+              td= p.amountText
+  section.container.section
+    h2 THÔNG TIN RẠP
+    p.prose= cinema.description

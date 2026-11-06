@@ -1,0 +1,100 @@
+extends layout
+include mixins
+block content
+  .container.section
+    .booking-steps
+      span 01 · Chọn suất
+      span 02 · Chọn ghế
+      strong 03 · Combo & Thanh toán
+      span 04 · Nhận vé
+    .section-heading
+      h1 Đơn #{order.code}
+      span.badge= order.status
+    #order-status(data-order-id=order.id data-status=order.status)
+    if order.status == 'PENDING_PAYMENT' && !order.expired
+      .hold-clock(role="status") Thời gian giữ ghế còn lại 
+        strong#countdown(data-deadline=order.deadline) --:--
+        span · Không gia hạn khi tải lại trang hoặc chuyển sang MoMo.
+    .booking-grid
+      div
+        .panel
+          h2= order.movieTitle
+          p #{order.cinemaName} · #{order.roomName}
+          p= order.when
+          each l in seatLines
+            .line
+              span Ghế #{l.label} · #{l.seatType}
+              strong= l.priceText
+        if order.status == 'PENDING_PAYMENT' && !order.expired && !order.frozen
+          form.panel(action='/orders/' + order.id + '/cart' method="post")
+            +csrf()
+            h2 Thêm vị ngon cho buổi phim
+            each p in products
+              .product-line
+                if p.image
+                  img(src=p.image alt=p.name)
+                div
+                  strong= p.name
+                  p= p.description
+                  span= p.priceText
+                label Số lượng
+                  input(type="number" name='product_' + p.id min="0" max="20" value=p.quantity)
+            label Mã ưu đãi (một mã/đơn)
+              input(name="voucher" value=voucherCode placeholder="Nhập mã ưu đãi")
+            button.button.secondary(type="submit") CẬP NHẬT ĐƠN HÀNG
+        if order.frozen && order.status == 'PENDING_PAYMENT'
+          .notice Đơn đã gửi sang thanh toán. Nội dung được giữ nguyên để đối chiếu. Hãy kiểm tra trạng thái nếu bạn đã thanh toán.
+        if order.status == 'PAID'
+          .success-banner Đặt vé thành công! Vé của bạn đã sẵn sàng.
+          .ticket-grid
+            each t in tickets
+              article.panel.e-ticket
+                .eyebrow CINEPRIME E-TICKET
+                h2 Ghế #{t.seat}
+                img.qr(src='/tickets/' + t.id + '/qr.png' alt='QR vé ' + t.code)
+                strong= t.code
+                p= t.status
+                a.button.secondary(href='/tickets/' + t.id + '/download') TẢI VÉ PDF ↓
+        each p in payments
+          .panel
+            h3 Giao dịch #{p.externalOrderId}
+            p #{p.provider} · Trạng thái: #{p.status}
+            if p.reconciliation
+              p.notice Thanh toán đã ghi nhận nhưng đơn không thể phát vé. Cần quản trị viên đối soát; chưa xác nhận hoàn tiền.
+        if order.status == 'EXPIRED' || order.status == 'CANCELLED'
+          .notice Đơn đã hết hiệu lực. Nếu bạn đã thanh toán, hãy dùng chức năng Kiểm tra thanh toán và liên hệ quản trị viên để đối soát.
+      aside.panel.summary
+        h2 Chi tiết hóa đơn
+        each p in productLines
+          .line
+            span #{p.quantity} × #{p.name}
+            strong= p.priceText
+        .line
+          span Tạm tính
+          strong= order.subtotalText
+        .line
+          span Giảm giá
+          strong= order.discountText
+        .total
+          span Tổng thanh toán
+          strong= order.totalText
+        p.muted Giá đã lưu tại thời điểm đặt. Đơn vị VND.
+        if order.status == 'PENDING_PAYMENT' && !order.expired
+          if order.total == 0
+            form(action='/orders/' + order.id + '/pay' method="post")
+              +csrf()
+              button.button.full(type="submit") XÁC NHẬN VÉ MIỄN PHÍ
+          else if momoConfigured
+            form(action='/orders/' + order.id + '/pay' method="post")
+              +csrf()
+              button.button.full(type="submit") THANH TOÁN MOMO SANDBOX
+          else
+            p.notice MoMo sandbox chưa được cấu hình. Không phát sinh thanh toán và không tự phát vé.
+          form(action='/orders/' + order.id + '/cancel' method="post")
+            +csrf()
+            button.text-button(type="submit" data-confirm="Hủy đơn và giải phóng ghế?") Hủy đơn chưa thanh toán
+        if canVerify
+          form(action='/orders/' + order.id + '/verify' method="post")
+            +csrf()
+            button.button.secondary.full(type="submit") KIỂM TRA THANH TOÁN
+        a.back(href="/account") ← Vé và lịch sử của tôi

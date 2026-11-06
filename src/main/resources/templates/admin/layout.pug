@@ -1,0 +1,16 @@
+extends ../layout
+include ../mixins
+block content
+  .admin-shell
+    aside.admin-sidebar
+      .eyebrow ĐIỀU HÀNH CINEPRIME
+      a(href="/admin") Tổng quan & Báo cáo
+      a(href="/admin/orders") Đơn & Thanh toán
+      a(href="/admin/schedule") Lịch vận hành theo ngày
+      each item in adminMenu
+        a(href='/admin/manage/' + item.key)= item.label
+      a(href="/admin/upload") Upload hình / Trailer
+      a(href="/admin/audit") Nhật ký hoạt động
+      a(href="/admin/transactions.csv") Xuất giao dịch CSV ↓
+    .admin-main
+      block admin

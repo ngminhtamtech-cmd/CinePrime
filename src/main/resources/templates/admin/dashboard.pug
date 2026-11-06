@@ -1,0 +1,74 @@
+extends layout
+block admin
+  .eyebrow ADMIN DASHBOARD
+  h1 Tổng quan kinh doanh
+  form.filters(method="get")
+    select(name="period" aria-label="Khoảng báo cáo")
+      option(value="day" selected=period == 'day') Ngày
+      option(value="week" selected=period == 'week') Tuần
+      option(value="month" selected=period == 'month') Tháng
+      option(value="year" selected=period == 'year') Năm
+    input(type="date" name="date" value=reportDate aria-label="Ngày báo cáo")
+    button.button(type="submit") XEM BÁO CÁO
+  p.muted Khoảng báo cáo: #{range} · Doanh thu tính theo thời điểm thanh toán thành công, không tính giao dịch cần đối soát.
+  .stats-grid
+    .stat-card
+      span Doanh thu
+      strong= revenue
+    .stat-card
+      span Vé đã bán
+      strong= ticketCount
+    .stat-card
+      span Đơn thanh toán
+      strong= orderCount
+    .stat-card
+      span Khách hàng
+      strong= customerCount
+    .stat-card
+      span Phim đang chiếu
+      strong= nowCount
+    .stat-card
+      span Phim sắp chiếu
+      strong= comingCount
+  .panel
+    h2 Doanh thu theo ngày
+    each point in chart
+      .chart-line
+        span= point.label
+        meter(min="0" max="100" value=point.width)= point.amount
+        strong= point.amount
+    if chart.size() == 0
+      .empty Chưa có doanh thu trong khoảng thời gian này.
+  .panel
+    h2 Phim có doanh thu cao nhất
+    each movie in topMovies
+      .line
+        strong= movie.title
+        span= movie.amount
+    if topMovies.size() == 0
+      p.muted Chưa có dữ liệu.
+  .panel
+    h2 Tỷ lệ lấp đầy theo suất
+    .table-wrap
+      table
+        thead
+          tr
+            th Phim
+            th Rạp / Phòng
+            th Suất
+            th Đã bán / Sức chứa
+        tbody
+          each s in occupancy
+            tr
+              td= s.movieTitle
+              td #{s.cinemaName} · #{s.roomName}
+              td= s.when
+              td= s.occupancy
+  .panel
+    h2 Giao dịch cần đối soát
+    each p in reconciliation
+      .line
+        span #{p.externalOrderId} · #{p.status}
+        a(href='/admin/orders/' + p.orderId) Xem đơn →
+    if reconciliation.size() == 0
+      p.muted Chưa có giao dịch cần đối soát.

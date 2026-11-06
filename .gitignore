@@ -1,0 +1,7 @@
+/target/
+/uploads/
+/.idea/
+*.iml
+.env
+*.log
+application-local.*

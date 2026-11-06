@@ -1,0 +1,105 @@
+extends layout
+include mixins
+block content
+  section#hero-carousel.hero
+    .hero-art
+    .container.hero-content
+      .eyebrow CINEPRIME PRESENTS
+      h1 Những câu chuyện lớn.
+        br
+        span Những cảm xúc thật.
+      p Tạm gác nhịp sống. Bước vào thế giới điện ảnh và tìm một cuộc hẹn dành riêng cho bạn.
+      .hero-actions
+        a.button(href="/showtimes") ✦ ĐẶT VÉ NGAY
+        a.button.outline-light(href="/movies") Khám phá phim →
+      .hero-caption MÀN ẢNH LỚN · TRẢI NGHIỆM TRỌN VẸN
+    each m in featured
+      .container.hero-content.hero-slide(hidden)
+        .eyebrow CINEPRIME · #{m.statusLabel}
+        h1= m.title
+        p #{m.genres} · #{m.duration} phút · #{m.ageRating}
+        p Một câu chuyện mới đang chờ bạn trên màn ảnh lớn. Chọn suất phù hợp và tận hưởng khoảnh khắc điện ảnh.
+        .hero-actions
+          a.button(href='/movies/' + m.slug) KHÁM PHÁ PHIM →
+          a.button.outline-light(href="/showtimes") Lịch chiếu
+    if featured.size() > 0
+      .hero-controls
+        button#hero-prev(type="button" aria-label="Banner trước") ←
+        span#hero-position(aria-live="polite") 01
+        button#hero-next(type="button" aria-label="Banner tiếp theo") →
+  .container
+    form#quick-book.quick-book(action="/showtimes" method="get")
+      strong MUA VÉ NHANH
+      select(name="movieId" required aria-label="Chọn phim")
+        option(value="") 1. Chọn phim
+        each m in movies
+          option(value=m.id)= m.title
+      select(name="cinemaId" required aria-label="Chọn rạp")
+        option(value="") 2. Chọn rạp
+        each c in cinemaOptions
+          option(value=c.id)= c.name
+      input(type="date" name="date" aria-label="Chọn ngày" required)
+      select(name="showtimeId" aria-label="Chọn suất" hidden)
+        option(value="") 4. Chọn suất
+      button.button(type="submit") MUA VÉ →
+  section.container.section
+    .section-heading
+      h2 PHIM TẠI CINEPRIME
+      .tabs
+        button.tab.active(type="button" data-movie-tab="showing") Đang chiếu
+        button.tab(type="button" data-movie-tab="coming") Sắp chiếu
+      a.more(href="/movies") Tất cả phim →
+    #showing.movie-grid
+      each m in movies
+        +movieCard(m)
+      if movies.size() == 0
+        .empty Chưa có phim đang chiếu.
+    #coming.movie-grid(hidden)
+      each m in coming
+        +movieCard(m)
+    .center
+      a.button.secondary(href="/movies") XEM THÊM PHIM →
+  section.soft.section
+    .container
+      .section-heading
+        h2 LỊCH CHIẾU
+        a.more(href="/showtimes") Xem lịch chiếu →
+      +dateStrip()
+      .show-list
+        +showList(shows)
+  section.container.section
+    .section-heading
+      h2 ƯU ĐÃI CHO BẠN
+      a.more(href="/offers") Khám phá ưu đãi →
+    .content-grid
+      each c in offers
+        a.content-card(href='/content/' + c.slug)
+          .offer-art
+            span CINEPRIME EXCLUSIVES
+            strong= c.title
+            span Khám phá ngay ↗
+          h3= c.title
+  section.membership
+    .container.membership-inner
+      div
+        .eyebrow THÀNH VIÊN CINEPRIME
+        h2 Mỗi cuộc hẹn, thêm điều đặc biệt.
+        p Tích điểm sau mỗi giao dịch. Lưu phim yêu thích và quản lý vé ở một nơi.
+      a.button(href="/account") KHÁM PHÁ TÀI KHOẢN →
+  section.container.section
+    .section-heading
+      h2 GÓC ĐIỆN ẢNH
+      a.more(href="/articles") Tất cả bài viết →
+    .content-grid
+      each c in articles
+        a.content-card(href='/content/' + c.slug)
+          img(src=c.image alt="Minh họa điện ảnh" loading="lazy")
+          h3= c.title
+          span.book-link ĐỌC THÊM →
+  if banners.size() > 0
+    section.container.section
+      each b in banners
+        a.custom-banner(href=b.link)
+          if b.image
+            img(src=b.image alt=b.title)
+          h3= b.title

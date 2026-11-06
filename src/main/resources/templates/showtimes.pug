@@ -1,0 +1,19 @@
+extends layout
+include mixins
+block content
+  section.container.section
+    .eyebrow LÊN LỊCH CHO CUỘC HẸN CỦA BẠN
+    h1 Lịch chiếu phim
+    form.filters(method="get")
+      select(name="movieId" aria-label="Phim")
+        option(value="") Tất cả phim
+        each m in movieOptions
+          option(value=m.id selected=selectedMovie == m.id)= m.title
+      select(name="cinemaId" aria-label="Rạp")
+        option(value="") Tất cả rạp / khu vực
+        each c in cinemaOptions
+          option(value=c.id selected=selectedCinema == c.id)= c.city + ' · ' + c.name
+      input(type="date" name="date" value=selectedDate aria-label="Ngày chiếu")
+      button.button(type="submit") TÌM SUẤT CHIẾU
+    +dateStrip()
+    +showList(shows)

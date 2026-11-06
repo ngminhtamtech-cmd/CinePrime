@@ -1,0 +1,39 @@
+package vn.cineprime.domain;
+
+import java.time.*;
+import java.util.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import static vn.cineprime.domain.Domain.*;
+
+@Component
+public class DemoData implements ApplicationRunner {
+    private final Store db;private final PasswordEncoder encoder;private final Clock clock;
+    @Value("${cineprime.seed}") boolean enabled;@Value("${cineprime.demo-password}")String password;
+    public DemoData(Store db,PasswordEncoder encoder,Clock clock){this.db=db;this.encoder=encoder;this.clock=clock;}
+    @Override @Transactional public void run(ApplicationArguments args){
+        if(!enabled||!db.list(User.class,"").isEmpty())return;
+        if(password.length()<10||password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72)throw new IllegalArgumentException("DEMO_PASSWORD cần ít nhất 10 ký tự, tối đa 72 byte.");
+        Cinema first=null;List<Room> rooms=new ArrayList<>();
+        for(int c=0;c<2;c++){Cinema cinema=new Cinema();cinema.name=c==0?"CinePrime Riverside":"CinePrime Central";cinema.city=c==0?"TP. Hồ Chí Minh":"Hà Nội";cinema.address=c==0?"88 Đại lộ Ánh Sáng · Địa chỉ minh họa":"12 Phố Điện Ảnh · Địa chỉ minh họa";cinema.phone="1900 0000";cinema.description="Không gian điện ảnh hiện đại với ghế ngồi thoải mái, màn hình lớn và trải nghiệm âm thanh sống động. Dữ liệu rạp được tạo riêng cho đồ án CinePrime.";db.save(cinema);if(first==null)first=cinema;
+            for(String type:List.of("STANDARD","VIP","COUPLE"))for(String day:List.of("WEEKDAY","WEEKEND"))for(int time=0;time<2;time++){Price p=new Price();p.cinemaId=cinema.id;p.seatType=type;p.dayType=day;p.fromMinute=time==0?0:1020;p.toMinute=time==0?1020:1440;p.amount=(type.equals("VIP")?105000:type.equals("COUPLE")?95000:85000)+(day.equals("WEEKEND")?10000:0)+(time==1?5000:0);db.save(p);}
+            for(int n=1;n<=2;n++){Room room=new Room();room.cinemaId=cinema.id;room.name="Phòng "+n;db.save(room);rooms.add(room);for(int row=0;row<6;row++)for(int col=1;col<=10;col++){Seat s=new Seat();s.roomId=room.id;s.rowLabel=""+(char)('A'+row);s.position=col;s.label=s.rowLabel+col;s.type=row>=2&&row<5?"VIP":"STANDARD";if(row==5){s.type="COUPLE";s.coupleGroup="F-"+((col+1)/2);}db.save(s);}}
+        }
+        for(String role:List.of("ADMIN","STAFF","CUSTOMER")){User u=new User();u.email=role.toLowerCase(Locale.ROOT)+"@cineprime.local";u.name=switch(role){case "ADMIN"->"Quản trị CinePrime";case "STAFF"->"Nhân viên Riverside";default->"Khách hàng CinePrime";};u.passwordHash=encoder.encode(password);u.role=role;if(role.equals("STAFF"))u.cinemaId=first.id;db.save(u);}
+        List<Genre> genres=new ArrayList<>();for(String name:List.of("Phiêu lưu","Tình cảm","Hoạt hình","Khoa học viễn tưởng")){Genre g=new Genre();g.name=name;db.save(g);genres.add(g);}
+        Person director=new Person();director.name="Minh An";director.biography="Nhân vật sáng tạo cho dữ liệu đồ án.";db.save(director);Person actor=new Person();actor.name="Hạ Vy";db.save(actor);
+        String[] titles={"Chạm tới những vì sao","Mùa hè phía chân trời","Thành phố sau cơn mưa","Hành trình của Mây","Bên kia đại dương","Khu vườn ánh trăng","Ngày mai ta gặp lại","Bí mật hành tinh xanh"};String[] slugs={"cham-toi-nhung-vi-sao","mua-he-phia-chan-troi","thanh-pho-sau-con-mua","hanh-trinh-cua-may","ben-kia-dai-duong","khu-vuon-anh-trang","ngay-mai-ta-gap-lai","bi-mat-hanh-tinh-xanh"};
+        LocalDate today=LocalDate.now(clock.withZone(ZoneId.of("Asia/Ho_Chi_Minh")));List<Movie> movies=new ArrayList<>();
+        for(int i=0;i<titles.length;i++){Movie m=new Movie();m.title=titles[i];m.slug=slugs[i];m.description="Một câu chuyện về những cuộc gặp gỡ, lòng dũng cảm và hành trình khám phá điều kỳ diệu quanh ta. Khi bước ra khỏi vùng an toàn, các nhân vật nhận ra rằng mỗi lựa chọn đều mở ra một chân trời mới. Phim và hình minh họa hư cấu được tạo cho đồ án CinePrime.";m.duration=100+i*3;m.ageRating=i%3==0?"T13":"P";m.releaseDate=today.plusDays(i>=6?10:-7);m.status=i>=6?"COMING_SOON":"NOW_SHOWING";m.featured=i<3;m.poster="/images/poster-"+(i+1)+".svg";m.banner=m.poster;db.save(m);movies.add(m);MovieGenre mg=new MovieGenre();mg.movieId=m.id;mg.genreId=genres.get(i%genres.size()).id;db.save(mg);Credit credit=new Credit();credit.movieId=m.id;credit.personId=director.id;credit.kind="DIRECTOR";db.save(credit);Credit cast=new Credit();cast.movieId=m.id;cast.personId=actor.id;db.save(cast);}
+        for(int day=0;day<7;day++)for(int r=0;r<rooms.size();r++)for(int hour:List.of(10,13,16,19,22)){Instant start=today.plusDays(day).atTime(hour,0).atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();if(start.isBefore(clock.instant().plusSeconds(1200)))continue;Room room=rooms.get(r);Movie movie=movies.get((day+r+hour)%6);Showtime s=new Showtime();s.movieId=movie.id;s.roomId=room.id;s.startsAt=start;s.endsAt=start.plusSeconds(movie.duration*60L);s.status="OPEN";db.save(s);for(Seat seat:db.list(Seat.class,"where e.roomId=?1",room.id)){Inventory inv=new Inventory();inv.showtimeId=s.id;inv.seatId=seat.id;db.save(inv);}}
+        for(int i=0;i<3;i++){Product p=new Product();p.name=List.of("Combo Một Mình Chill","Combo Đôi Vui Vẻ","Nước mát ngày phim").get(i);p.description=List.of("1 bắp lớn + 1 nước","1 bắp lớn + 2 nước","1 nước ngọt cỡ lớn").get(i);p.price=List.of(79000L,119000L,35000L).get(i);p.kind=i==2?"DRINK":"COMBO";p.image="/images/combo.svg";db.save(p);}
+        Voucher v=new Voucher();v.code="CHAOHE";v.description="Giảm 20.000đ cho đơn từ 100.000đ";v.kind="FIXED";v.value=20000;v.minimum=100000;v.quota=100;v.perUser=2;v.startsAt=clock.instant().minusSeconds(86400);v.endsAt=clock.instant().plusSeconds(86400*30L);db.save(v);
+        Voucher free=new Voucher();free.code="TRAINGHIEM";free.description="Vé ưu đãi miễn phí để trải nghiệm local; không phải giao dịch MoMo";free.kind="PERCENT";free.value=100;free.quota=20;free.perUser=3;free.startsAt=clock.instant().minusSeconds(86400);free.endsAt=clock.instant().plusSeconds(86400*30L);db.save(free);
+        String[][] content={{"OFFER","Một buổi phim, thêm niềm vui","uu-dai-combo","Thêm combo bắp nước để buổi xem phim trọn vẹn. Xem giá tại bước xác nhận đơn."},{"OFFER","Chào bạn đến CinePrime","chao-ban-cineprime","Nhập CHAOHE để giảm 20.000đ cho đơn từ 100.000đ, tối đa 2 lần/tài khoản, trong thời hạn voucher."},{"OFFER","Mỗi trải nghiệm, thêm điểm thưởng","tich-diem","Mỗi 1.000đ thực trả tương ứng 1 điểm. Theo dõi lịch sử tích điểm tại tài khoản."},{"ARTICLE","Chọn ghế cho một trải nghiệm trọn vẹn","chon-ghe","Ghế ở giữa phòng giúp bạn có góc nhìn cân bằng. Hãy đến sớm để chuẩn bị cho suất chiếu."},{"ARTICLE","Điện ảnh là một cuộc hẹn","dien-anh-cuoc-hen","Một tấm vé, một câu chuyện mới. Khám phá những bộ phim đang chiếu và lên lịch cùng người bạn yêu quý."},{"ARTICLE","Câu chuyện phía sau màn ảnh","sau-man-anh","Từ ý tưởng đến hình ảnh, mỗi tác phẩm là sự phối hợp của nhiều người sáng tạo."},{"ABOUT","Về CinePrime","gioi-thieu","CinePrime là đồ án đặt vé xem phim trực tuyến. Toàn bộ phim, rạp và hình minh họa demo là dữ liệu hư cấu."},{"CONTACT","Liên hệ và hỗ trợ","lien-he","Liên hệ quản trị viên của bản demo nếu cần hỗ trợ giao dịch. Không chuyển tiền thật trong môi trường sandbox."},{"POLICY","Chính sách đặt vé","chinh-sach","Ghế được giữ 5 phút. Dừng bán trước giờ chiếu 15 phút. Vé đã thanh toán chưa hỗ trợ hủy/hoàn trong bản đồ án. Mỗi mã QR chỉ được check-in một lần."}};
+        for(int i=0;i<content.length;i++){Content c=new Content();c.kind=content[i][0];c.title=content[i][1];c.slug=content[i][2];c.body=content[i][3];c.image="/images/poster-"+(i%4+1)+".svg";c.link="";c.publishedAt=clock.instant();db.save(c);}
+    }
+}

@@ -1,0 +1,15 @@
+extends layout
+block admin
+  h1 Sơ đồ #{room.name}
+  p Chọn ghế để sửa nhãn, loại, cặp ghế hoặc trạng thái bảo trì. Sức chứa được tính theo số ghế vật lý hoạt động.
+  if busy
+    p.notice Phòng có lịch đang mở bán hoặc suất tương lai. Sơ đồ được khóa để bảo vệ lịch sử và vé.
+  .panel
+    .screen MÀN HÌNH
+    .seat-map
+      each row in seatRows
+        .seat-row
+          span= row.label
+          each s in row.seats
+            a.seat(href='/admin/manage/seats/edit?id=' + s.id class=s.className title=s.label + ' · ' + s.type)= s.label
+  a.button.secondary(href="/admin/manage/rooms") ← DANH SÁCH PHÒNG

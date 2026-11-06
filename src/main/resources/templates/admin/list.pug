@@ -1,0 +1,47 @@
+extends layout
+block admin
+  .section-heading
+    h1= resourceLabel
+    if key != 'reviews'
+      a.button(href='/admin/manage/' + key + '/edit') + THÊM MỚI
+  form.filters(method="get")
+    input(name="q" value=q placeholder="Tìm tên, vai trò, trạng thái hoặc mã…" aria-label="Tìm kiếm")
+    button.button.secondary(type="submit") TÌM KIẾM
+  .panel
+    each row in rows
+      .admin-record
+        div
+          strong ##{row.id}
+          p= row.summary
+        .actions
+          if key == 'rooms'
+            a.button.secondary(href='/admin/layout/' + row.id) SƠ ĐỒ
+          if key == 'users'
+            a.button.secondary(href='/admin/orders?q=' + row.email) LỊCH SỬ
+          if key == 'vouchers'
+            a.button.secondary(href='/admin/voucher-usage/' + row.id) LƯỢT DÙNG
+          a.button.secondary(href='/admin/manage/' + key + '/edit?id=' + row.id) SỬA
+          if key != 'users'
+            form(action='/admin/manage/' + key + '/' + row.id + '/disable' method="post")
+              +csrf()
+              button.text-button(type="submit" data-confirm="Ngừng hoạt động/ẩn dữ liệu này?")= key == 'prices' ? 'Xóa giá' : 'Ngừng / Ẩn'
+    if rows.size() == 0
+      .empty Chưa có dữ liệu phù hợp.
+  .actions
+    if page > 0
+      a.button.secondary(href='?q=' + q + '&page=' + (page - 1)) ← Trang trước
+    if hasMore
+      a.button.secondary(href='?q=' + q + '&page=' + (page + 1)) Trang sau →
+  if key == 'rooms' || key == 'seats'
+    .panel
+      h2 Tạo sơ đồ ghế cho phòng mới
+      p.muted Chỉ dùng khi phòng chưa có ghế và chưa tạo lịch. Hàng cuối được tạo ghế đôi; các hàng giữa là VIP.
+      form.inline-form(action="/admin/layout" method="post")
+        +csrf()
+        label Mã phòng
+          input(type="number" name="roomId" required min="1")
+        label Số hàng
+          input(type="number" name="rows" value="6" min="1" max="20" required)
+        label Ghế mỗi hàng
+          input(type="number" name="columns" value="10" min="2" max="30" required)
+        button.button(type="submit") TẠO SƠ ĐỒ

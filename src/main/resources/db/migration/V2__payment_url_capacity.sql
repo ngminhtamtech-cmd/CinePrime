@@ -1,0 +1,1 @@
+ALTER TABLE payments MODIFY pay_url VARCHAR(2048);

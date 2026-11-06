@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>CinePrime — Tấm vé mở ra câu chuyện</title>
+  <!-- A cinema ticket, a C-shaped screen and a forward beam of light. -->
+  <path d="M16 4h32c6.627 0 12 5.373 12 12v9a7 7 0 0 0 0 14v9c0 6.627-5.373 12-12 12H16C9.373 60 4 54.627 4 48v-9a7 7 0 0 0 0-14v-9C4 9.373 9.373 4 16 4Z" fill="#1459A5"/>
+  <path d="M41 20a16 16 0 1 0 0 24" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <path d="M33 24.5c0-1.155 1.25-1.877 2.25-1.299l13 7.5a1.5 1.5 0 0 1 0 2.598l-13 7.5C34.25 41.377 33 40.655 33 39.5v-15Z" fill="#F47B20"/>
+  <path d="M47 10h3M14 54h3" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+</svg>

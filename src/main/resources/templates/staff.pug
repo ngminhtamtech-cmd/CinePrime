@@ -1,0 +1,60 @@
+extends layout
+include mixins
+block head
+  script(src="/js/vendor/zxing-browser.min.js" defer)
+block content
+  .container.section
+    .eyebrow CINEPRIME OPERATIONS
+    h1 Soát vé tại rạp
+    form.filters(method="get")
+      label Ngày vận hành
+        input(type="date" name="date" value=day required)
+      button.button.secondary(type="submit") XEM SUẤT
+    .show-list
+      each s in shows
+        a.show-row(href='/staff?date=' + day + '&showtimeId=' + s.id)
+          div
+            strong= s.movieTitle
+            p #{s.roomName} · #{s.when}
+          span Chọn suất →
+    if shows.size() == 0
+      .empty Không có suất mở bán tại rạp phụ trách trong ngày này.
+    if selectedShow
+      #staff-scanner.panel(data-showtime=selectedShow)
+        h2 Quét vé vào rạp
+        p.muted Chọn đúng suất, kiểm tra thông tin rồi xác nhận. Khung check-in: 60 phút trước đến 30 phút sau giờ bắt đầu.
+        .actions
+          button#start-camera.button(type="button") BẬT CAMERA
+          button#stop-camera.button.secondary(type="button" hidden) TẮT CAMERA
+        video#qr-video(playsinline muted hidden)
+        form#manual-lookup.inline-form
+          label Mã vé / Mã đơn
+            input#ticket-code(required placeholder="T-… hoặc CP-…" autocomplete="off")
+          button.button.secondary(type="submit") TRA CỨU
+        #scan-result(aria-live="polite")
+      .two-columns
+        .stat-card
+          span Đã vào rạp
+          strong= checkedIn
+        .stat-card
+          span Chưa vào rạp
+          strong= notCheckedIn
+      .panel
+        h2 Danh sách khách theo suất
+        .table-wrap
+          table
+            thead
+              tr
+                th Vé
+                th Đơn
+                th Ghế
+                th Trạng thái
+                th Check-in
+            tbody
+              each t in tickets
+                tr
+                  td= t.code
+                  td= t.order.code
+                  td= t.seat
+                  td= t.status
+                  td= t.when

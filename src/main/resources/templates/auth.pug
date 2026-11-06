@@ -1,0 +1,55 @@
+extends layout
+include mixins
+block content
+  .auth-shell.container
+    .auth-art
+      .eyebrow YOUR NEXT STORY STARTS HERE
+      h1 Một tài khoản.
+        br
+        | Ngàn trải nghiệm.
+      p Vé của bạn, phim yêu thích và những cuộc hẹn điện ảnh đều ở đây.
+      .orbit
+    .auth-card
+      .brand
+        img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="44" height="44" aria-hidden="true")
+        span Cine
+          strong Prime
+      h2= title
+      if mode == 'login'
+        p.muted Đăng nhập để đặt vé và lưu những trải nghiệm của bạn.
+        form(action="/login" method="post")
+          +csrf()
+          label Email
+            input(type="email" name="email" required autocomplete="username" maxlength="254")
+          label Mật khẩu
+            input(type="password" name="password" required autocomplete="current-password")
+          a.forgot(href="/forgot-password") Quên mật khẩu?
+          button.button.full(type="submit") ĐĂNG NHẬP
+        p Chưa có tài khoản? 
+          a(href="/register") Đăng ký ngay
+      else if mode == 'register'
+        form(action="/register" method="post")
+          +csrf()
+          label Họ tên
+            input(name="name" required maxlength="100" autocomplete="name")
+          label Email
+            input(type="email" name="email" required maxlength="254" autocomplete="email")
+          label Mật khẩu (ít nhất 10 ký tự)
+            input(type="password" name="password" required minlength="10" autocomplete="new-password")
+          button.button.full(type="submit") TẠO TÀI KHOẢN
+        a(href="/login") Đã có tài khoản? Đăng nhập
+      else if mode == 'forgot-password'
+        p Nhập email tài khoản. Nếu thông tin phù hợp, bạn sẽ nhận liên kết đặt lại mật khẩu.
+        form(action="/forgot-password" method="post")
+          +csrf()
+          label Email
+            input(type="email" name="email" required autocomplete="email")
+          button.button.full(type="submit") GỬI LIÊN KẾT
+        a(href="/login") Quay lại đăng nhập
+      else
+        form(action="/reset-password" method="post")
+          +csrf()
+          input(type="hidden" name="token" value=resetToken)
+          label Mật khẩu mới
+            input(type="password" name="password" required minlength="10" autocomplete="new-password")
+          button.button.full(type="submit") ĐẶT LẠI MẬT KHẨU

@@ -1,0 +1,14 @@
+extends layout
+block content
+  section.container.section
+    .eyebrow CÂU CHUYỆN & TRẢI NGHIỆM
+    h1= title
+    .content-grid
+      each c in contents
+        a.content-card(href='/content/' + c.slug)
+          if c.image
+            img(src=c.image alt=c.title loading="lazy")
+          h2= c.title
+          span.book-link KHÁM PHÁ →
+    if contents.size() == 0
+      .empty Chưa có nội dung mới.

@@ -1,0 +1,29 @@
+extends layout
+block admin
+  h1 Ưu đãi #{voucher.code}
+  .stats-grid
+    .stat-card
+      span Đã sử dụng
+      strong= used
+    .stat-card
+      span Đang giữ hiệu lực
+      strong= reserved
+    .stat-card
+      span Hạn mức tổng
+      strong= voucher.quota
+  .panel.table-wrap
+    table
+      thead
+        tr
+          th Đơn
+          th Khách hàng
+          th Trạng thái
+          th Hạn giữ
+      tbody
+        each u in uses
+          tr
+            td
+              a(href='/admin/orders/' + u.orderId)= u.orderCode
+            td= u.email
+            td= u.status
+            td= u.when

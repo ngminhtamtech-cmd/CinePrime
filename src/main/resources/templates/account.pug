@@ -1,0 +1,93 @@
+extends layout
+include mixins
+block content
+  .container.section
+    .eyebrow TÀI KHOẢN CINEPRIME
+    .section-heading
+      h1 Xin chào, #{viewer.name}
+      span.points #{balance} điểm
+    .account-nav
+      a(href="#orders") Vé của tôi
+      a(href="#profile") Hồ sơ
+      a(href="#favorites") Yêu thích
+      a(href="#notifications") Thông báo
+      a(href="#points") Điểm thưởng
+    section#orders.panel
+      h2 VÉ & LỊCH SỬ ĐẶT VÉ
+      each o in orders
+        a.order-row(href='/orders/' + o.id)
+          div
+            strong= o.movieTitle
+            p #{o.code} · #{o.cinemaName}
+            small= o.when
+          div
+            span.badge= o.status
+            p= o.totalText
+      if orders.size() == 0
+        .empty Bạn chưa có đơn đặt vé.
+          a(href="/movies") Khám phá phim ngay →
+    .two-columns
+      section#profile.panel
+        h2 Hồ sơ của tôi
+        if viewer.avatar
+          img.avatar(src=viewer.avatar alt="Ảnh đại diện")
+        form(action="/account/profile" method="post" enctype="multipart/form-data")
+          +csrf()
+          label Họ tên
+            input(name="name" value=viewer.name required maxlength="100")
+          label Email
+            input(value=viewer.email readonly)
+          label Điện thoại
+            input(name="phone" value=viewer.phone maxlength="30")
+          label Ảnh đại diện (JPEG/PNG tối đa 5 MB)
+            input(type="file" name="avatar" accept="image/jpeg,image/png")
+          button.button(type="submit") LƯU HỒ SƠ
+      section.panel
+        h2 Đổi mật khẩu
+        p.muted Sau khi đổi mật khẩu, bạn cần đăng nhập lại.
+        form(action="/account/password" method="post")
+          +csrf()
+          label Mật khẩu hiện tại
+            input(type="password" name="oldPassword" required autocomplete="current-password")
+          label Mật khẩu mới
+            input(type="password" name="password" required minlength="10" autocomplete="new-password")
+          button.button.secondary(type="submit") CẬP NHẬT MẬT KHẨU
+    section#favorites.section
+      h2 PHIM YÊU THÍCH
+      .movie-grid
+        each m in favorites
+          +movieCard(m)
+      if favorites.size() == 0
+        .empty Bạn chưa lưu phim yêu thích.
+    section.panel
+      h2 Đăng ký nhắc phim
+      each s in subscriptions
+        .line
+          span #{s.title} · #{s.sent ? 'Đã thông báo mở bán' : 'Đang chờ mở bán'} · #{s.email ? 'Có email' : 'Trong tài khoản'}
+          form(action='/account/subscriptions/' + s.movieId method="post")
+            +csrf()
+            button.text-button(type="submit") Hủy nhắc
+      if subscriptions.size() == 0
+        p.muted Chọn “Nhắc tôi” tại trang phim để nhận thông báo mở bán.
+    section#notifications.panel
+      h2 Thông báo của bạn
+      each n in notices
+        article.notification
+          h3= n.subject
+          small= n.when
+          p.prose= n.body
+          if !n.seen
+            form(action='/account/notifications/' + n.id + '/read' method="post")
+              +csrf()
+              button.text-button(type="submit") Đánh dấu đã đọc
+      if notices.size() == 0
+        .empty Chưa có thông báo.
+    section#points.panel
+      h2 Lịch sử tích điểm
+      p.muted 1 điểm cho mỗi 1.000đ thực trả, cộng sau giao dịch thành công. Chưa áp dụng đổi điểm.
+      each p in points
+        .line
+          span Đơn ##{p.orderId} · #{p.when}
+          strong +#{p.points} điểm
+      if points.size() == 0
+        .empty Chưa có giao dịch tích điểm.

@@ -1,0 +1,18 @@
+extends layout
+block admin
+  h1 Nhật ký hoạt động
+  .panel.table-wrap
+    table
+      thead
+        tr
+          th Thời gian
+          th Người thực hiện
+          th Thao tác
+          th Đối tượng
+      tbody
+        each log in logs
+          tr
+            td= log.when
+            td= log.actorId
+            td= log.action
+            td= log.target

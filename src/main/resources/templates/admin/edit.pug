@@ -1,0 +1,32 @@
+extends layout
+block admin
+  a.more(href='/admin/manage/' + key) ← Danh sách
+  h1= resourceLabel
+  .panel
+    form.admin-form(action='/admin/manage/' + key + '/save' method="post")
+      +csrf()
+      if rowId
+        input(type="hidden" name="id" value=rowId)
+      each field in fields
+        if field.type == 'checkbox'
+          label.check
+            input(type="checkbox" name=field.name value="true" checked=field.checked)
+            span= field.label
+        else
+          label= field.label
+            if field.options.size() > 0
+              select(name=field.name)
+                option(value="") — Chọn —
+                each option in field.options
+                  option(value=option.value selected=field.value == option.value)= option.label
+            else if field.type == 'textarea'
+              textarea(name=field.name rows="5")= field.value
+            else
+              input(type=field.type name=field.name value=field.value)
+      if key == 'users' && !rowId
+        label Mật khẩu ban đầu (ít nhất 10 ký tự)
+          input(type="password" name="initialPassword" minlength="10" required autocomplete="new-password")
+      if key == 'prices'
+        p.notice Giá COUPLE được lưu theo một ghế vật lý; giá cặp bằng hai ghế. Khung giờ tính bằng phút từ 00:00, ví dụ 17:00 = 1020.
+      p.muted Hình/trailer dùng đường dẫn tại mục Upload. Thời gian nhập theo giờ Việt Nam. Các thay đổi phải đáp ứng ràng buộc lịch sử và giao dịch.
+      button.button(type="submit") LƯU THAY ĐỔI

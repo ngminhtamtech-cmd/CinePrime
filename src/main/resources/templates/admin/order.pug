@@ -1,0 +1,33 @@
+extends layout
+block admin
+  a.more(href="/admin/orders") ← Danh sách đơn
+  h1= order.code
+  .panel
+    h2= order.movieTitle
+    p #{order.cinemaName} · #{order.roomName} · #{order.when}
+    p Khách hàng: #{customer.name} · #{customer.email}
+    a(href='/admin/orders?q=' + customer.email) Xem lịch sử khách hàng →
+    p Trạng thái: #{order.status} · Tổng: #{order.totalText}
+    each l in lines
+      p= l
+    each c in combos
+      p= c
+    if order.status == 'PENDING_PAYMENT'
+      form(action='/admin/orders/' + order.id + '/cancel' method="post")
+        +csrf()
+        button.button.secondary(type="submit" data-confirm="Hủy đơn chưa thanh toán này?") HỦY ĐƠN
+  each p in payments
+    .panel
+      h2= p.externalOrderId
+      p #{p.status} · #{p.amount} VND · Mã phản hồi: #{p.resultCode}
+      if p.reconciliation
+        .notice Cần đối soát: ghi nhận tiền nhưng chưa phát vé; chưa hoàn tiền.
+      p Phương thức: #{p.provider}
+      if p.provider == 'MOMO'
+        form(action='/admin/payments/' + p.id + '/verify' method="post")
+          +csrf()
+          button.button(type="submit") XÁC MINH VỚI MOMO
+  .panel
+    h2 Vé đã phát hành
+    each t in tickets
+      p #{t.code} · Ghế #{t.seat} · #{t.status} · #{t.when}

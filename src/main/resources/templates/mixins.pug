@@ -1,0 +1,32 @@
+mixin csrf()
+  input(type="hidden" name=csrfName value=csrfToken)
+mixin movieCard(m)
+  article.movie-card
+    a.poster(href='/movies/' + m.slug)
+      img(src=m.poster alt=m.title loading="lazy")
+      span.age= m.ageRating
+      span.score ★ #{m.score}
+      span.poster-cta Xem chi tiết →
+    .movie-card-body
+      a(href='/movies/' + m.slug)
+        h3= m.title
+      p #{m.genres} · #{m.duration} phút
+      a.book-link(href='/movies/' + m.slug)= m.status == 'COMING_SOON' ? 'KHÁM PHÁ →' : 'MUA VÉ →'
+mixin showList(shows)
+  if shows.size() == 0
+    .empty Không có suất chiếu phù hợp. Hãy chọn ngày hoặc rạp khác.
+  each s in shows
+    article.show-row
+      div
+        a(href='/movies/' + s.movieSlug)
+          strong= s.movieTitle
+        p #{s.cinemaName} · #{s.roomName} · #{s.city}
+        small #{s.format} · #{s.language}
+      if s.canHold
+        a.show-time(href='/booking/' + s.id)= s.when
+      else
+        span.badge Đã ngừng nhận đặt vé
+mixin dateStrip()
+  .date-strip
+    each d in days
+      a(href=d.href class=d.selected ? 'active' : '')= d.label
