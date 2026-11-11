@@ -20,8 +20,14 @@ class AdminFormsTest {
             model.put("navGroups",List.of(Map.of("id","films","label","Phim","icon","▷","active",true,"items",List.of(Map.of("href","/admin/manage/movies","label","Phim","active",true)))));
             model.put("groups",presentation.groups(key,null,null));model.put("movieGenres",List.of(Map.of("id",1,"name","Phiêu lưu","selected",true,"active",true)));model.put("movieDirectors",List.of(Map.of("id",2,"name","Đạo diễn thử","selected",true,"active",true)));model.put("movieActors",List.of(Map.of("id",3,"name","Diễn viên thử","selected",true,"active",true)));
             model.put("editorMovies",List.of(Map.of("id",1,"title","Phim thử")));model.put("adminCinemas",List.of(Map.of("id",1,"name","Rạp thử")));model.put("editorAllRooms",List.of(Map.of("id",1,"cinemaId",1,"name","Phòng 1")));model.put("cinemaId","1");model.put("roomId","1");model.put("movieId","1");model.put("editorDate","2026-12-01");model.put("editorTime","17:00");model.put("editorStartsAt","2026-12-01T17:00");
-            String html=pug.renderTemplate(pug.getTemplate("admin/edit"),model);assertTrue(html.contains("name=\"_csrf\""),key);assertTrue(html.contains("data-admin-form=\""+key+"\""),key);assertTrue(html.contains("/js/admin-forms.js"),key);
-            if(key.equals("movies")){Files.createDirectories(Path.of("target/form-fixtures"));Files.writeString(Path.of("target/form-fixtures/movies.html"),html);assertTrue(html.contains("name=\"creditsPresent\""),"credits marker");assertTrue(html.contains("name=\"directorIds\""),"director payload");assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(html).contains("Đạo diễn thử"),"director name");assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(html).contains("Diễn viên thử"),"actor name");}
+            String html;
+            if(key.equals("movies")){
+                model.put("mv",presentation.values(key,null,null));model.put("movieToday","2026-12-01");model.put("movieShows",Map.of("count",0,"first","","last","","upcoming",0L));
+                html=pug.renderTemplate(pug.getTemplate("admin/movie-form"),model);String text=org.springframework.web.util.HtmlUtils.htmlUnescape(html);
+                assertTrue(html.contains("name=\"_csrf\""));assertTrue(html.contains("/js/admin-movie.js"));assertTrue(html.contains("name=\"creditsPresent\""),"credits marker");assertTrue(html.contains("name=\"directorIds\""),"director payload");assertTrue(text.contains("Đạo diễn thử"),"director name");assertTrue(text.contains("Diễn viên thử"),"actor name");
+                for(String name:List.of("title","slug","description","poster","banner","trailer","ageRating","duration","releaseDate","endDate","active","featured","genreIds"))assertTrue(html.contains("name=\""+name+"\""),name);
+                assertTrue(text.contains("Ngày kết thúc chiếu"));assertTrue(html.contains("value=\"P\" checked"),"default age rating");
+            }else{html=pug.renderTemplate(pug.getTemplate("admin/edit"),model);assertTrue(html.contains("name=\"_csrf\""),key);assertTrue(html.contains("data-admin-form=\""+key+"\""),key);assertTrue(html.contains("/js/admin-forms.js"),key);}
             Files.createDirectories(Path.of("target/form-fixtures"));Files.writeString(Path.of("target/form-fixtures/"+key+".html"),html);
         }
     }

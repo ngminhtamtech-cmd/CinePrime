@@ -64,6 +64,13 @@ public class AdminPresentation {
         }catch(ReflectiveOperationException e){throw new IllegalStateException(e);}}
         return groups.entrySet().stream().map(e->Map.<String,Object>of("label",e.getKey(),"fields",e.getValue())).toList();
     }
+    /** Flat field values for hand-built forms: submitted text after an error, otherwise the stored record. */
+    @SuppressWarnings("unchecked")
+    public Map<String,Object> values(String key,Long id,Map<String,String> submitted){
+        Map<String,Object> values=new LinkedHashMap<>();
+        for(var group:groups(key,id,submitted))for(var field:(List<Map<String,Object>>)group.get("fields"))values.put((String)field.get("name"),"checkbox".equals(field.get("type"))?field.get("checked"):field.get("value"));
+        return values;
+    }
     public List<Map<String,Object>> options(String key,String name){
         Class<? extends Row> ref=switch(name){case "movieId"->Movie.class;case "cinemaId"->Cinema.class;case "roomId"->Room.class;case "genreId"->Genre.class;case "personId"->Person.class;default->null;};
         if(ref!=null){Map<Long,String> cinemas=new HashMap<>();if(ref==Room.class)db.list(Cinema.class,"").forEach(c->cinemas.put(c.id,c.name));return db.list(ref,"order by e.id").stream().map(row->{var view=db.view(row);return Map.<String,Object>of("value",row.id.toString(),"label",Objects.toString(view.getOrDefault("title",view.getOrDefault("name","")))+(row instanceof Room r?" · "+cinemas.get(r.cinemaId):"")+" · #"+row.id);}).toList();}

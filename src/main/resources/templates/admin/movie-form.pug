@@ -1,0 +1,215 @@
+extends layout
+block admin
+  form#movie-form.ops-edit-form.movie-form(action="/admin/manage/movies/save" method="post" novalidate data-movie-form="true" data-dirty-form data-editing=rowId ? 'true' : 'false' data-error-fields=errorFields data-today=movieToday data-show-first=movieShows.first data-show-last=movieShows.last data-show-count=movieShows.count)
+    +csrf()
+    input(type="hidden" name="returnTo" value=returnTo)
+    if rowId
+      input(type="hidden" name="id" value=rowId)
+    input(type="hidden" name="genresPresent" value="true")
+    input(type="hidden" name="creditsPresent" value="true")
+
+    header.mf-header
+      a.mf-back(href=returnTo aria-label="Quay lại danh sách phim")
+        svg(viewBox="0 0 24 24" width="20" height="20" aria-hidden="true")
+          path(d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round")
+      div
+        h1= rowId ? 'Chỉnh sửa phim' : 'Thêm phim mới'
+        p.muted= rowId ? 'Thay đổi chỉ được áp dụng khi bấm Lưu phim.' : 'Điền 4 phần bên dưới. Khung bên phải cho bạn thấy phim sẽ hiển thị thế nào với khách.'
+      span#mf-status.mf-pill(data-status="") —
+
+    if formError
+      .form-error.mf-error(role="alert" tabindex="-1")
+        strong Chưa lưu được phim
+        p= formError
+
+    .mf-layout
+      .mf-main
+        //- 1. Basic information
+        section.mf-card#mf-basic(aria-labelledby="mf-basic-title")
+          .mf-card-head
+            span.mf-step 1
+            div
+              h2#mf-basic-title Thông tin cơ bản
+              p Tên phim, độ tuổi, thời lượng và thể loại.
+          .mf-field(data-field="title")
+            label(for="field-title") Tên phim
+              span.mf-req *
+            input#field-title.mf-input-lg(type="text" name="title" value=mv.title maxlength="255" required autocomplete="off" placeholder="Ví dụ: Hành trình kỳ diệu")
+            details.mf-advanced(data-field="slug")
+              summary Đường dẫn trên website
+              label(for="field-slug") Đường dẫn phim
+              .mf-prefix
+                span /movies/
+                input#field-slug(type="text" name="slug" value=mv.slug maxlength="255" pattern="[a-z0-9-]+" autocomplete="off")
+              small Tự tạo từ tên phim. Chỉ dùng chữ thường không dấu, số và dấu gạch ngang.
+          .mf-row
+            fieldset.mf-field(data-field="ageRating")
+              legend Phân loại độ tuổi
+              .mf-segment
+                each age in ['P', 'K', 'T13', 'T16', 'T18']
+                  label.mf-seg-option
+                    input(type="radio" name="ageRating" value=age checked=mv.ageRating == age)
+                    span
+                      strong= age
+                      small= age == 'P' ? 'Mọi lứa tuổi' : age == 'K' ? 'Dưới 13, có người lớn' : age == 'T13' ? 'Từ 13 tuổi' : age == 'T16' ? 'Từ 16 tuổi' : 'Từ 18 tuổi'
+            .mf-field.mf-narrow(data-field="duration")
+              label(for="field-duration") Thời lượng
+              .mf-suffix
+                input#field-duration(type="number" name="duration" value=mv.duration min="1" max="600" step="1" inputmode="numeric" required)
+                span phút
+              small#mf-duration-text.muted
+          fieldset.mf-field(data-field="genreIds")
+            legend Thể loại
+              span.mf-req *
+            #movie-genre-chips.mf-chips
+              each g in movieGenres
+                label.mf-chip(class=g.active ? '' : 'is-inactive')
+                  input(type="checkbox" name="genreIds" value=g.id checked=g.selected disabled=!g.active && !g.selected data-active=g.active ? 'true' : 'false')
+                  span #{g.name}#{g.active ? '' : ' · đã ngừng'}
+              if movieGenres.size() == 0
+                p.muted Chưa có thể loại nào.
+            small
+              | Chọn ít nhất 1 thể loại để phim hiển thị được.
+              a(href="/admin/manage/genres/edit" target="_blank" rel="noopener")  + Thêm thể loại mới ↗
+
+        //- 2. Release window
+        section.mf-card#mf-release(aria-labelledby="mf-release-title")
+          .mf-card-head
+            span.mf-step 2
+            div
+              h2#mf-release-title Lịch phát hành
+              p Phim tự chuyển Sắp chiếu → Đang chiếu → Đã kết thúc theo ngày (giờ Việt Nam).
+          .mf-row
+            .mf-field(data-field="releaseDate")
+              label(for="field-releaseDate") Ngày khởi chiếu
+                span.mf-req *
+              input#field-releaseDate(type="date" name="releaseDate" value=mv.releaseDate required)
+            .mf-field(data-field="endDate")
+              label(for="field-endDate") Ngày kết thúc chiếu
+                span.mf-req *
+              input#field-endDate(type="date" name="endDate" value=mv.endDate required)
+              .mf-quick(role="group" aria-label="Chọn nhanh thời gian chiếu")
+                span Chiếu trong:
+                button.mf-quick-btn(type="button" data-weeks="2") 2 tuần
+                button.mf-quick-btn(type="button" data-weeks="4") 4 tuần
+                button.mf-quick-btn(type="button" data-weeks="6") 6 tuần
+                button.mf-quick-btn(type="button" data-weeks="8") 8 tuần
+          .mf-timeline(aria-hidden="true")
+            .mf-tl-seg.coming
+              span Sắp chiếu
+            .mf-tl-seg.showing
+              span Đang chiếu
+            .mf-tl-seg.ended
+              span Đã kết thúc
+            i#mf-tl-today.mf-tl-today
+          p#mf-window-summary.mf-summary(role="status")
+          if movieShows.count > 0
+            p.mf-hint
+              | Phim đang có #{movieShows.count} suất chiếu (#{movieShows.upcoming} suất sắp tới). Khoảng ngày phải bao gồm các suất này; muốn rút ngắn, hãy hủy hoặc dời suất trước.
+          p.mf-hint Khách đặt vé trước được ngay khi bạn mở bán suất chiếu, kể cả khi phim còn Sắp chiếu. Sau ngày kết thúc, phim hiện mờ 7 ngày rồi tự ẩn.
+
+        //- 3. Content and crew
+        section.mf-card#mf-content(aria-labelledby="mf-content-title")
+          .mf-card-head
+            span.mf-step 3
+            div
+              h2#mf-content-title Nội dung và đoàn phim
+              p Mô tả ngắn gọn giúp khách quyết định xem phim.
+          .mf-field(data-field="description")
+            label(for="field-description") Mô tả phim
+            textarea#field-description(name="description" rows="5" maxlength="6000" placeholder="Tóm tắt nội dung, điểm nổi bật của phim…")= mv.description
+            small#mf-desc-count.mf-counter.muted
+          each role in ['director', 'actor']
+            .mf-field.mf-people(data-field=role + 'Ids' data-picker="people" data-picker-name=role + 'Ids' data-people-picker)
+              label(for='mf-search-' + role)= role == 'director' ? 'Đạo diễn' : 'Diễn viên'
+              .mf-chips.mf-selected(data-selected)
+                each person in role == 'director' ? movieDirectors : movieActors
+                  span.mf-chip.is-selected(data-id=person.id)
+                    input(type="hidden" name=role + 'Ids' value=person.id)
+                    span= person.name
+                    button.mf-chip-remove(type="button" aria-label='Bỏ ' + person.name) ×
+              .mf-combo
+                input.mf-search(id='mf-search-' + role type="search" autocomplete="off" placeholder=role == 'director' ? 'Gõ tên đạo diễn để tìm…' : 'Gõ tên diễn viên để tìm…' aria-autocomplete="list" aria-expanded="false" aria-controls='mf-results-' + role)
+                ul.mf-results(id='mf-results-' + role role="listbox" hidden)
+              small
+                a(href="/admin/manage/people/edit" target="_blank" rel="noopener") + Thêm người mới ↗
+
+        //- 4. Media
+        section.mf-card#mf-media(aria-labelledby="mf-media-title")
+          .mf-card-head
+            span.mf-step 4
+            div
+              h2#mf-media-title Hình ảnh và trailer
+              p Ảnh JPG, PNG, WEBP tối đa 5 MB. Poster dọc 2:3, banner ngang 16:9.
+          .mf-media-grid
+            each kind in ['poster', 'banner']
+              .mf-field(data-field=kind)
+                span.mf-label= kind == 'poster' ? 'Poster (dọc)' : 'Banner trang chủ (ngang)'
+                input(id='field-' + kind type="hidden" name=kind value=mv[kind])
+                .media-field.mf-drop(class=kind == 'poster' ? 'is-poster' : 'is-banner' data-target='field-' + kind data-kind=kind data-video="false")
+                  label.mf-drop-zone
+                    input(type="file" accept="image/jpeg,image/png,image/webp")
+                    span.mf-drop-text
+                      strong Kéo thả ảnh vào đây
+                      | hoặc bấm để chọn
+                  .upload-actions
+                    button.text-button(type="button" data-upload-retry hidden) Thử lại
+                    button.text-button(type="button" data-upload-cancel hidden) Hoàn tác
+                  span.upload-status(role="status")
+          .mf-field(data-field="trailer")
+            label(for="field-trailer") Trailer
+            .mf-trailer
+              input#field-trailer(type="text" name="trailer" value=mv.trailer placeholder="Dán link YouTube, ví dụ https://youtu.be/…")
+              button.button.secondary(type="button" data-trailer-preview data-trailer-target="field-trailer") ▶ Xem thử
+            .media-field.mf-video(data-target="field-trailer" data-kind="trailer" data-video="true")
+              label.text-button
+                input(type="file" accept="video/mp4")
+                | Hoặc tải video MP4 (tối đa 100 MB)
+              .upload-actions
+                button.text-button(type="button" data-upload-retry hidden) Thử lại
+                button.text-button(type="button" data-upload-cancel hidden) Hoàn tác
+              span.upload-status(role="status")
+
+      aside.mf-side(aria-label="Xem trước và kiểm tra")
+        .mf-side-inner
+          section.mf-preview
+            h2 Khách sẽ thấy
+            article.mf-card-preview
+              .mf-poster
+                img#mf-preview-poster(src=mv.poster ? mv.poster : '/images/no-poster.svg' alt="")
+                span#mf-preview-age.mf-age= mv.ageRating
+                span#mf-preview-ribbon.mf-ribbon(hidden)
+              strong#mf-preview-title= mv.title ? mv.title : 'Tên phim'
+              small#mf-preview-meta
+          section.mf-checklist
+            h2 Sẵn sàng hiển thị
+            ul#mf-checks
+              li(data-check="title") Có tên phim
+              li(data-check="genre") Có ít nhất 1 thể loại đang dùng
+              li(data-check="dates") Có ngày khởi chiếu và kết thúc hợp lệ
+              li(data-check="poster" data-optional) Có poster
+              li(data-check="description" data-optional) Có mô tả
+            p#mf-ready.mf-ready(role="status")
+          section.mf-visibility
+            h2 Hiển thị
+            label.mf-switch(data-field="active")
+              input(type="checkbox" name="active" value="true" checked=mv.active role="switch")
+              span.mf-switch-track
+              span
+                strong Hiện trên website
+                small Tắt để ẩn phim khỏi khách. Vé đã bán vẫn giữ nguyên.
+            label.mf-switch(data-field="featured")
+              input(type="checkbox" name="featured" value="true" checked=mv.featured role="switch")
+              span.mf-switch-track
+              span
+                strong Nổi bật trên trang chủ
+                small Dùng banner ở đầu trang chủ.
+
+    .mf-savebar
+      span#mf-save-state.muted Chưa có thay đổi
+      .actions
+        a.button.secondary(href=returnTo) Hủy
+        button.button(type="submit")= rowId ? 'Lưu thay đổi' : 'Lưu phim'
+block head
+  link(rel="stylesheet" href="/css/admin-movie.css")
+  script(src="/js/admin-movie.js" defer)

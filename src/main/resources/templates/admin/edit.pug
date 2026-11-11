@@ -32,30 +32,6 @@ block admin
       input(type="hidden" name="id" value=rowId)
     if priceVersion
       input(type="hidden" name="priceVersion" value=priceVersion)
-    if key == 'movies'
-      fieldset.panel.form-group(data-field="genreIds" data-picker="genres" data-picker-name="genreIds")
-        legend Thể loại
-        input(type="hidden" name="genresPresent" value="true")
-        p.muted Chọn một hoặc nhiều thể loại. Phim hiển thị cần ít nhất một thể loại đang hoạt động.
-        p#genre-warning.notice(hidden=!genreWarning) Chưa có thể loại hoạt động được gán. Hãy bổ sung trước khi hiển thị phim.
-        #movie-genre-options.genre-options
-          each g in movieGenres
-            label.check
-              input(type="checkbox" name="genreIds" value=g.id checked=g.selected disabled=!g.active && !g.selected data-active=g.active ? 'true' : 'false')
-              span #{g.name}#{g.active ? '' : ' · Đã ngừng'}
-        a(href="/admin/manage/genres" target="_blank" rel="noopener") Quản lý thể loại ↗
-        button.text-button(type="button" data-refresh-catalog) Làm mới danh mục
-        p.catalog-refresh-status.muted(role="status") Danh mục sẽ cập nhật khi quay lại tab, giữ các lựa chọn đang nhập.
-      input(type="hidden" name="creditsPresent" value="true")
-      each role in ['director', 'actor']
-        fieldset.panel.form-group(data-field=role + 'Ids' data-picker="people" data-picker-name=role + 'Ids')
-          legend= role == 'director' ? 'Đạo diễn' : 'Diễn viên'
-          .genre-options
-            each person in role == 'director' ? movieDirectors : movieActors
-              label.check
-                input(type="checkbox" name=role + 'Ids' value=person.id checked data-active=person.active ? 'true' : 'false')
-                span= person.name
-          a(href="/admin/manage/people" target="_blank" rel="noopener") Quản lý diễn viên / đạo diễn ↗
     if key == 'showtimes'
       fieldset.panel.form-group
         legend Phim / Rạp / Phòng và thời gian
@@ -142,12 +118,6 @@ block admin
                   input(id='field-' + field.name type="hidden" name=field.name value=field.value)
                 else
                   input(id='field-' + field.name type=field.type name=field.name value=field.value readonly=field.locked step=field.type == 'number' ? '1' : field.type == 'datetime-local' ? 'any' : false inputmode=field.type == 'number' ? 'numeric' : false data-money=field.money ? 'true' : 'false')
-                if key == 'movies' && field.name == 'status'
-                  small#movie-lifecycle-note(data-today=field.movieToday data-fallback=field.lifecycle) #{field.lifecycle}#{field.missingDate ? ' · Chưa có ngày khởi chiếu, đang giữ trạng thái cũ. Hãy bổ sung ngày.' : ' · Tự động theo ngày khởi chiếu (giờ Việt Nam).'}
-                if key == 'movies' && field.name == 'slug'
-                  small Tự gợi ý từ tên phim. Có thể chỉnh đường dẫn; nếu trùng, thêm hậu tố riêng.
-                if key == 'movies' && field.name == 'featured'
-                  small Hiện banner phim này trên trang chủ.
                 if field.locked
                   small Đang khóa để bảo vệ lượt giữ/vé đã bán.
                 if field.name == 'fromMinute' || field.name == 'toMinute'

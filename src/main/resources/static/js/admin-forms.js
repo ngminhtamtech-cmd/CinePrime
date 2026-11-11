@@ -7,7 +7,6 @@
   const page=(group,title,fields)=>({group,title,fields});
   // Deliberately explicit. Changing field order cannot silently change the workflow.
   const definitions={
-    movies:[page('Thể loại','Thể loại',['genreIds']),page('Thông tin','Tên và đường dẫn',['title','slug']),page('Thông tin','Phân loại và lịch phát hành',['ageRating','duration','releaseDate']),page('Thông tin','Mô tả phim',['description']),page('Thông tin','Đạo diễn',['directorIds']),page('Thông tin','Diễn viên',['actorIds']),page('Poster/Banner','Poster và banner',['poster','banner']),page('Trailer/Hiển thị','Trailer',['trailer']),page('Trailer/Hiển thị','Trạng thái hiển thị',['status','featured','active'])],
     showtimes:[page('Phim/Rạp/Phòng','Chọn phim, rạp và phòng',['movieId','cinemaId','roomId']),page('Thời gian','Ngày và giờ chiếu',['show-date','show-time']),page('Thời gian','Định dạng và phụ thu',['language','format','surcharge']),page('Kiểm tra','Kiểm tra lịch và mở bán',['status','preview'])],
     vouchers:[page('Ưu đãi','Mã và mức giảm',['code','kind','value']),page('Ưu đãi','Mô tả ưu đãi',['description']),page('Điều kiện','Điều kiện và lượt dùng',['minimum','maximum','quota','perUser']),page('Thời hạn','Thời hạn áp dụng',['startsAt','endsAt','active'])],
     contents:[page('Thông tin','Thông tin và liên kết',['kind','title','slug','link']),page('Nội dung','Nội dung đầy đủ',['body']),page('Xuất bản','Ảnh và xuất bản',['image','publishedAt','active'])],
@@ -63,9 +62,7 @@
     return true;
   }
   function validateAll(){for(const p of pages)if(!validate(p))return false;
-    if(key==='movies'&&one('[name="active"]',form).checked&&one('[name="status"]',form).value!=='STOPPED'&&!pickers.get('genreIds')?.active()){
-      show(0,false);announce('Chọn ít nhất một thể loại đang hoạt động trước khi hiển thị phim.',true);return false;
-    }return true;
+    return true;
   }
   function show(target,focus=true){
     if(busy)return;document.body.classList.remove('form-keyboard');index=Math.max(0,Math.min(pages.length-1,target));reached=Math.max(reached,index);pages.forEach((p,i)=>p.el.hidden=i!==index);
@@ -132,7 +129,7 @@
   const initialSelections=new Map([...pickers].map(([name,p])=>[name,[...p.selected.keys()].sort().join(',')]));
   const related=one('#genre-related',main);if(related){const dialog=node('dialog',undefined,'cine-dialog form-related-dialog'),open=button('Xem phim liên quan',()=>{dialog.showModal();close.focus();}),close=button('Đóng',()=>dialog.close());dialog.append(related,close);document.body.append(dialog);pages[0].el.append(open);dialog.addEventListener('close',()=>open.focus());}
   // Keep essential validation next to the field, including non-wizard short forms.
-  const required={movies:['title','slug','duration','ageRating','status'],cinemas:['name','city'],rooms:['cinemaId','name','format'],genres:['name'],people:['name'],'movie-genres':['movieId','genreId'],credits:['movieId','personId','kind'],prices:['cinemaId','seatType','dayType','fromMinute','toMinute','amount'],products:['name','kind','price'],vouchers:['code','kind','value','minimum','maximum','quota','perUser','startsAt','endsAt'],contents:['kind','title','slug'],users:['email','name','role'],showtimes:['movieId','cinemaId','roomId','show-date','show-time','language','format','status','surcharge']};
+  const required={cinemas:['name','city'],rooms:['cinemaId','name','format'],genres:['name'],people:['name'],'movie-genres':['movieId','genreId'],credits:['movieId','personId','kind'],prices:['cinemaId','seatType','dayType','fromMinute','toMinute','amount'],products:['name','kind','price'],vouchers:['code','kind','value','minimum','maximum','quota','perUser','startsAt','endsAt'],contents:['kind','title','slug'],users:['email','name','role'],showtimes:['movieId','cinemaId','roomId','show-date','show-time','language','format','status','surcharge']};
   for(const f of required[key]||[]){const field=controls.get(f),input=field&&one('input:not([type="hidden"]),select,textarea',field);if(input)input.required=true;}
   const duration=one('[name="duration"]',form);if(duration){duration.min='1';duration.max='600';}all('input[data-money="true"]',form).forEach(el=>el.min='0');
   all('textarea',form).forEach(el=>{el.maxLength=el.name==='body'?20000:['biography'].includes(el.name)?255:['description'].includes(el.name)&&['movies','cinemas'].includes(key)?6000:255;});
@@ -181,11 +178,4 @@
   };
   form.addEventListener('focusin',e=>{if(e.target.matches('input:not([type="hidden"]):not([type="checkbox"]):not([type="file"]),select,textarea')){keyboardControl=e.target;viewport();}});
   viewport();window.visualViewport?.addEventListener('resize',viewport);window.addEventListener('resize',viewport);
-  const lifecycleNote=document.getElementById('movie-lifecycle-note');
-  if(lifecycleNote){
-    const date=form.elements.namedItem('releaseDate'),status=form.elements.namedItem('status');
-    const showLifecycle=()=>{const value=status.value==='STOPPED'?'Ngừng chiếu':date.value?(date.value>lifecycleNote.dataset.today?'Sắp chiếu':'Đang chiếu'):lifecycleNote.dataset.fallback;
-      lifecycleNote.textContent=value+(date.value?' · Tự động theo ngày khởi chiếu (giờ Việt Nam).':' · Chưa có ngày khởi chiếu, đang giữ trạng thái cũ. Hãy bổ sung ngày.');};
-    date.addEventListener('input',showLifecycle);status.addEventListener('change',showLifecycle);showLifecycle();
-  }
 })();
