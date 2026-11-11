@@ -45,7 +45,7 @@
 
 #### 5.1. Nghiệp vụ của Admin
 
-- Quản lý phim: thêm, sửa, ẩn; trạng thái Sắp chiếu / Đang chiếu tự suy ra từ ngày phát hành.
+- Quản lý phim: thêm, sửa, ẩn trên một form một trang có xem trước. Mỗi phim bắt buộc có ngày khởi chiếu và ngày kết thúc; trạng thái Sắp chiếu / Đang chiếu / Đã kết thúc tự suy ra theo ngày Việt Nam. Suất chiếu chỉ được xếp trong khoảng này; không rút ngắn khoảng ngày khi còn suất nằm ngoài.
 - Quản lý rạp, phòng chiếu, sơ đồ ghế, giá theo phòng.
 - Quản lý suất chiếu: xếp lịch theo tuần cho từng phòng, thêm hàng loạt, nhập/xuất Excel, kiểm tra trùng giờ và thời gian dọn phòng.
 - Quản lý combo, voucher, điểm thưởng.
@@ -61,7 +61,7 @@
 
 #### 5.3. Nghiệp vụ của Khách hàng
 
-- Xem danh sách phim, chi tiết phim, lịch chiếu theo rạp và ngày.
+- Xem danh sách phim, chi tiết phim, lịch chiếu theo rạp và ngày. Đặt trước được suất đã mở bán của phim Sắp chiếu; phim Đã kết thúc hiện mờ, không đặt vé và rời danh sách sau 7 ngày.
 - Đăng ký, đăng nhập, quên và đặt lại mật khẩu.
 - Chọn ghế (giữ 5 phút), thêm combo, áp voucher, dùng điểm.
 - Thanh toán qua MoMo; nhận vé có mã QR và vé PDF.
@@ -100,6 +100,14 @@ java -jar target\cineprime-1.0.0.jar
 ```
 
 Maven Wrapper tải Maven/dependency lần đầu. Trên Linux dùng `./mvnw package`. Flyway tự chạy migration; Hibernate chỉ validate, không tự đổi schema. Không sửa migration đã áp dụng; thêm migration mới.
+
+`V4__movie_end_date.sql` (11/11/2026) thêm ngày kết thúc bắt buộc cho phim và tự điền cho phim cũ: ngày kết thúc = muộn hơn giữa (ngày khởi chiếu + 30 ngày) và ngày suất chưa hủy cuối cùng; phim chưa có ngày khởi chiếu lấy ngày suất đầu hoặc ngày chạy migration; phim Ngừng chiếu chuyển thành ẩn. Lệnh DDL trên MySQL không rollback được, nên **sao lưu database trước lần khởi động đầu tiên** với bản có V4:
+
+```powershell
+& 'C:\ProgramData\CinePrime\MySQL\bin\mysqldump.exe' -h 127.0.0.1 -P 3307 -u cineprime -p --single-transaction --no-tablespaces --result-file=cineprime-before-v4.sql cineprime
+```
+
+Sau khi chạy, kiểm tra lại ngày kết thúc của từng phim trong Admin → Phim.
 
 Mở [CinePrime local](http://localhost:8080/). Seed chỉ chạy khi `DEMO_SEED=true` và bảng users trống, không ghi đè người dùng hiện có. Sau lần đầu có thể tắt DEMO_SEED. Password BCrypt yêu cầu ít nhất 10 ký tự, tối đa 72 byte UTF-8.
 
@@ -220,6 +228,8 @@ Kiểm tra JavaScript bằng Node VM với DOM/fetch giả lập cũng qua: form
 Phạm vi test: cạnh tranh ghế/voucher/check-in; atomic hold; TTL biên 300s; không gia hạn; couple; snapshot giá; callback sai tiền/chữ ký/trùng/đảo/thành công muộn; đơn canceled; free voucher; reset token; overlap/đệm/layout; role/ownership/CSRF/khóa phiên; render trang Customer/Admin/Staff; PDF tiếng Việt và QR decode. Không dùng H2.
 
 Các ca mới bảo vệ tổng doanh thu = tổng biểu đồ/nhóm phim/CSV; tiền combo và voucher; vé miễn phí; giao dịch thử lại/thành công muộn; biên nửa đêm Việt Nam và mốc chốt không bao gồm; snapshot không đổi khi có thanh toán mới, khác session, hết hạn và tab thứ ba; so sánh tháng ngắn/năm nhuận; thống kê loại vé VOID không làm giảm tiền PAID; biên giờ check-in, đọc lại sau xác nhận, CSRF/phạm vi rạp/phiên hết hạn; form giữ VND, HH:mm/24:00 và giây của suất đã khóa; tìm/lọc/phân trang và upload runtime. Luồng Staff trên trình duyệt JAR đã thử mã sai, Enter chỉ tra cứu, xác nhận thủ công, giữ kết quả, cập nhật thống kê và tra lại vé USED không còn nút xác nhận. Không coi các ca này là thử camera vật lý hoặc giao dịch MoMo thực.
+
+Nghiệm thu vòng đời phim và UX Admin ngày 11/11/2026: **124 tests, 0 failures/errors/skipped** (96 MySQL/HTTP). V4 đã chạy thử trên bản sao dữ liệu `cineprime` khôi phục vào `cineprime_test` (kèm 5 phim trường hợp khó): ngày điền đúng dự tính, không suất nào nằm ngoài khoảng chiếu, app khởi động và trang công khai trả 200. Trên JAR/`cineprime_test` cổng 8081 (1440×900, 375×812) đã thử form phim mới (thêm, sửa, lỗi server tại ô), Tổng quan, sidebar thu gọn, danh sách phim và menu "⋯". Chưa thử upload ảnh thật qua form mới và chưa migrate `cineprime`. Chi tiết trong Plan.md mục 8.
 
 Nghiệm thu đợt Admin gọn ngày 06/11/2026: 0/1/5/6/11 dòng, bộ lọc trước phân trang, ba role, cursor có đơn mới chen vào, giờ qua ngày từ endsAt đã lưu, session/snapshot/CSV và số query đều đã kiểm tra trên MySQL riêng. Trên executable JAR/schema test, đã thử chuyển trang độc lập; thêm đơn mới khi đang ở trang 2 vẫn giữ dòng/focus, báo Có cập nhật mới và giữ nguyên KPI/mã CSV. Sidebar giữ nhóm/vị trí cuộn qua nhiều chức năng, hai Admin có tùy chọn riêng; mobile Escape trả focus về nút menu. Phòng/ghế/giá/lịch đúng rạp, lọc phim và đường quay về trang sửa hoạt động. Màn Phim có 5 dòng cùng phân trang trong viewport 1366×768; 390×844 và breakpoint 620/850/1090 không tràn ngang trang trong các lượt đã xem. Staff và Customer kiểm tra lại không nhận CSS/JS Admin. Ảnh QA trong target/admin-compact-*.jpg (dữ liệu kiểm thử, không commit).
 

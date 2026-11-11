@@ -12,7 +12,7 @@ Ba tài liệu gốc: Plan.md (đặc tả và nghiệm thu), README.MD (cách c
 
 ### Customer
 - Tài khoản: đăng ký/đăng nhập/đăng xuất, quên/reset password qua email, hồ sơ/avatar/đổi password.
-- Phim: đang/sắp chiếu, tìm theo tên, lọc thể loại/ngày/tuổi; poster/banner/trailer, thời lượng, diễn viên/đạo diễn, điểm/bình luận.
+- Phim: đang/sắp chiếu/vừa kết thúc, tìm theo tên, lọc thể loại/ngày/tuổi; poster/banner/trailer, thời lượng, diễn viên/đạo diễn, điểm/bình luận. Đặt trước suất đã mở bán của phim sắp chiếu; phim đã kết thúc hiện mờ, khóa đặt vé 7 ngày rồi rời danh sách.
 - Lịch theo phim/rạp/khu vực/ngày; sơ đồ ghế thường/VIP/đôi, trống/giữ/bán/bảo trì; giữ 5 phút.
 - Combo, voucher, hóa đơn; MoMo sandbox; trạng thái đang xác minh/thành công/thất bại/hết hạn.
 - Một QR/ghế, email xác nhận, lịch sử đơn/thanh toán, PDF vé.
@@ -21,7 +21,7 @@ Ba tài liệu gốc: Plan.md (đặc tả và nghiệm thu), README.MD (cách c
 
 ### Admin
 - Dashboard ngày/tuần/tháng/năm: doanh thu, vé, đơn, khách, phim đang/sắp chiếu, biểu đồ, top phim, lấp đầy.
-- CRUD phim/thể loại/người tham gia; phim nổi bật/trạng thái; upload poster/banner/trailer MP4 và URL trailer.
+- CRUD phim/thể loại/người tham gia; phim nổi bật/ẩn hiện; ngày khởi chiếu và ngày kết thúc bắt buộc; upload poster/banner/trailer MP4 và URL trailer.
 - Rạp/địa chỉ/phòng/sơ đồ ghế/ghế đôi/bảo trì; lịch dạng bảng theo ngày; chặn trùng phòng và tự tính kết thúc.
 - Giá theo rạp/ghế/ngày/khung giờ, phụ thu suất; snapshot giá.
 - Tra cứu đơn/thanh toán, query MoMo, danh sách đối soát; xuất CSV giao dịch.
@@ -74,6 +74,7 @@ HTML render server; JSON chỉ cho sơ đồ/giữ ghế, thay combo/voucher, pa
 | Hold | 5 phút khi Tiếp tục sau ghế; không gia hạn do reload/combo/voucher/payment; poll 5 giây |
 | Ghế đôi | Hai ghế vật lý, bán nguyên cặp, hai QR, giá cặp rõ |
 | Lịch | Đệm 15 phút; dừng bán trước 15 phút; chỉ hold khi còn đủ 5 phút |
+| Vòng đời phim | Khoảng chiếu [ngày khởi chiếu, ngày kết thúc] bắt buộc, theo ngày Việt Nam, tính lúc đọc: trước khoảng = Sắp chiếu, trong khoảng = Đang chiếu, sau khoảng = Đã kết thúc. Suất (nháp hoặc mở bán) chỉ được bắt đầu trong khoảng; sửa phim không được bỏ suất chưa hủy ra ngoài khoảng; khóa thời lượng khi còn suất chưa hủy sắp tới. Suất mở bán của phim Sắp chiếu đặt trước được. Phim Đã kết thúc hiện mờ, không đặt vé, 7 ngày sau rời danh sách công khai; trang chi tiết vẫn mở khi phim chưa ẩn. Gỡ khẩn cấp dùng Ẩn (`active=false`), không còn trạng thái Ngừng chiếu |
 | Check-in | Staff một rạp; từ -60 đến +30 phút so với bắt đầu; một lần/QR |
 | Hủy | Chỉ đơn chưa thanh toán; chưa hoàn tiền |
 | Đánh giá | Vé đã check-in, suất kết thúc; một/người/phim, sửa được; chỉ tính điểm của review hiển thị |
@@ -116,6 +117,8 @@ Demo đủ phim tự tạo/rạp/ghế/suất/combo/voucher/3 role. JAR + MySQL 
 ## 8. Kết quả triển khai và cập nhật đã thống nhất
 
 ### Form Admin từng bước — được duyệt 07/11/2026
+
+> Cập nhật 11/11/2026: form **phim** không còn đi theo các bước dưới đây; đã thay bằng form một trang (xem mục "Vòng đời phim có ngày kết thúc và làm lại UX Admin"). Các form khác vẫn dùng cấu trúc bước.
 
 - [x] Form dài thêm/sửa dùng một form DOM, thanh tiến trình, từng trang con và footer cố định; tạo mới đi tuần tự, chỉnh sửa chuyển nhóm trực tiếp, chỉ trang Xác nhận có nút ghi dữ liệu. Form ngắn Lưu trực tiếp. Không lưu nháp vào storage hoặc database.
 - [x] Phim giữ bốn nhóm Thể loại → Thông tin → Poster/Banner → Trailer/Hiển thị; Thông tin có trang con tên/đường dẫn, tuổi/thời lượng/ngày, mô tả, đạo diễn và diễn viên. Bộ chọn tìm kiếm/năm mục mỗi trang giữ lựa chọn khi làm mới; chỉ ô văn bản dài cuộn riêng.
@@ -457,3 +460,25 @@ Kết quả kiểm chứng ngày 11/11/2026:
 
 - Kiểm chứng: **122 tests, 0 failures/errors/skipped**, log `target/week-table-full.log`, BUILD SUCCESS 11/11/2026 lúc 08:29. Trên JAR/`cineprime_test` cổng 8081, 1366×768: chọn Phòng 2, "+ Thêm" mở hộp với Phòng 2 điền sẵn, Nhiều suất nối tiếp 09:00–15:00 lặp hai ngày báo trước 6 và vào bảng đúng 6; nút phòng ghi "6 suất · 6 mới"; Phòng 1 vẫn trống; hộp xác nhận tóm tắt đúng Phòng 2 và tạo được 6 suất. 1090×768 đủ bảy cột; 850 và 390×844 hiện bảy hàng ngày; không tràn ngang.
 - Không thử lại ở lượt điều chỉnh này: hiển thị lỗi, Tới suất cần sửa khi lỗi nằm ở phòng khác, nhập Excel, kéo thả, 1920×1080 và 620. Chưa đối chiếu SQL cho 6 suất của lượt này (giao diện báo đã tạo và tải lại lịch từ server).
+
+### Vòng đời phim có ngày kết thúc và làm lại UX Admin — được duyệt 11/11/2026
+
+Người dùng nhận xét phim chưa có điểm kết thúc (sau ngày khởi chiếu phim "Đang chiếu" mãi cho tới khi Admin đổi tay sang Ngừng chiếu) và UX/UI Admin chưa đạt: form phim 9 bước, nút mở rộng và mũi tên phân trang ở Tổng quan kém thẩm mỹ, thông tin trong bảng khó đọc, muốn thu gọn sidebar mượt. Quyết định đã chốt: ngày kết thúc **bắt buộc**; suất chỉ nằm trong khoảng chiếu; khách **đặt trước ngay khi Admin mở bán suất**; phim hết lịch **mờ + khóa 7 ngày rồi tự ẩn**; dữ liệu cũ tự điền ngày kết thúc theo suất cuối; phạm vi UI gồm form phim, Tổng quan, bảng danh sách và sidebar. Làm trên nhánh `feature/movie-lifecycle-admin-ux`, chỉ merge khi người dùng đồng ý.
+
+Không khảo sát Galaxy ở lượt này: phần sửa là Admin (thiết kế từ nghiệp vụ) và thẻ phim công khai chỉ thêm nhãn/nút theo quy tắc mới.
+
+- [x] Migration `V4__movie_end_date.sql`: thêm `end_date`; điền `release_date` trống bằng ngày suất đầu (hoặc hôm nay) và lùi về ngày suất đầu nếu có suất sớm hơn; `end_date` = max(khởi chiếu + 30 ngày, ngày suất chưa hủy cuối); STOPPED → ẩn; hai cột NOT NULL và CHECK `end_date >= release_date`. Không sửa V1–V3.
+- [x] `MovieLifecycle`: Sắp chiếu / Đang chiếu / Đã kết thúc theo ngày Việt Nam, cùng biểu thức HQL cho lọc/đếm/phân trang; mốc 7 ngày công khai; kiểm khoảng chiếu của suất.
+- [x] Ràng buộc: lịch tuần/Excel (`OUT_OF_RELEASE_WINDOW`), form sửa suất và kiểm tra sẵn sàng mở bán chặn suất ngoài khoảng; lưu phim chặn khoảng mới bỏ suất ra ngoài và chặn đổi thời lượng khi còn suất (kể cả nháp) sắp tới; đặt vé chặn suất sau ngày kết thúc.
+- [x] Khách: nhãn "Khởi chiếu dd/MM/yyyy", nút ĐẶT TRƯỚC, thẻ phim đã kết thúc mờ không có link đặt vé, bộ lọc "Vừa kết thúc", banner trang chủ bỏ phim đã kết thúc, trang chi tiết ghi khoảng chiếu.
+- [x] Form phim một trang (`admin/movie-form.pug`, `admin-movie.js`, `admin-movie.css`): 4 thẻ (cơ bản, lịch phát hành, nội dung/đoàn phim, hình ảnh/trailer), cột xem trước dính, checklist sẵn sàng, công tắc hiển thị/nổi bật, chọn nhanh 2/4/6/8 tuần và dải thời gian, tìm đạo diễn/diễn viên dạng chip, lỗi tại chỗ (client và server). Upload/slug/trailer dùng lại `admin-editor.js`.
+- [x] Sidebar thu gọn trên desktop (nút ☰, nút Thu gọn, Ctrl + B) thành thanh biểu tượng SVG, nhóm mở dạng menu bay; nhớ trạng thái và áp dụng trước lần vẽ đầu bằng `admin-nav-pref.js` (CSP không cho script inline). Mobile giữ ngăn kéo.
+- [x] Tổng quan: nút mở rộng dạng viên có mũi tên xoay, định nghĩa số liệu dạng danh sách, câu kỳ so sánh viết lại; phân trang mũi tên nhỏ "x / y", ẩn mũi tên khi chỉ một trang; trạng thái trống gọn.
+- [x] Bảng danh sách: nhãn trạng thái có màu và chữ rõ (Đang hiển thị/Đã ngừng/Sắp hết · còn N ngày…), nút Sửa gọn, thao tác rủi ro trong menu "⋯" ghi đúng hành động, ẩn nút ngừng với dòng đã ngừng.
+
+Kết quả kiểm chứng ngày 11/11/2026:
+
+- Hồi quy đầy đủ sau từng giai đoạn: **124 tests, 0 failures/errors/skipped** (96 MySQL/HTTP trên `cineprime_test`, 28 unit/render/Excel/HMAC). Ca mới: ba trạng thái và ranh giới ngày Việt Nam, mốc 7 ngày, khoảng chiếu của suất ở lịch tuần/form sửa suất, chặn rút/lùi khoảng ngày khi còn suất, bắt buộc ngày kết thúc, khóa thời lượng do suất nháp, đặt trước và chặn đặt vé sau kết thúc.
+- Migration trên **bản sao dữ liệu thật**: dump chỉ đọc từ `cineprime` khôi phục vào `cineprime_test` ở V3, thêm 5 phim trường hợp khó (STOPPED, chưa có ngày có/không suất, suất trước ngày khởi chiếu, suất xa hơn 30 ngày kèm suất hủy). JAR mới áp V4 thành công; cả 6 phim ra đúng ngày dự tính, 0 suất chưa hủy nằm ngoài khoảng, hai cột NOT NULL và CHECK có mặt; Hibernate validate qua và trang công khai trả 200. Đã xóa file dump tạm. `cineprime` **chưa** được migrate.
+- GUI trên JAR/`cineprime_test` cổng 8081 với dữ liệu demo, 1440×900 và 375×812: thêm phim mới và lưu; sửa phim có 24 suất (dải thời gian, checklist); đổi thời lượng bị server chặn, giữ dữ liệu và đánh dấu đúng ô; Tổng quan với nút mở rộng mới; sidebar thu gọn, menu bay, giữ trạng thái khi chuyển trang; danh sách phim và menu "⋯"; ngăn kéo mobile.
+- Chưa kiểm tra trên GUI: upload ảnh thật qua form mới (mã upload không đổi), chỉnh cuối đặt cột xem trước dưới form trên mobile và menu "⋯" định vị cố định từ CSS (chỉ qua test tự động), 1920×1080 và breakpoint 620/850/1090 cho các trang mới, trang khách với phim đã kết thúc trên GUI (có ca test HTTP/catalog).
