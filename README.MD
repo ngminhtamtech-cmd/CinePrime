@@ -2,58 +2,70 @@
 
 Đồ án đặt vé xem phim bằng Spring Boot MVC, Pug4J và MySQL. Ba vai trò: Customer, Admin, Staff.
 
-## Hiện trạng
+## Tổng quan công nghệ và nghiệp vụ
 
-**Cập nhật 11/11/2026 — bảng lịch cả tuần:** màn `/admin/showtimes/new` nay mở ở chế độ **Cả tuần**: chọn phòng ở danh sách phía trên, mỗi phòng là một lịch riêng với Thứ 2 đến Chủ nhật mỗi ngày một cột, mỗi suất là một nút ghi giờ bắt đầu – kết thúc và tên phim. Bấm **+ Thêm** ở ngày muốn chiếu để mở hộp **Thêm suất chiếu**: chọn phim, giờ (một suất hoặc nhiều suất nối tiếp, tự nhảy qua suất đang có), các ngày lặp lại, và xem trước chính xác những suất sẽ thêm. Bảng theo giờ có kéo thả của bản 10/11 còn nguyên ở chế độ **Theo giờ**. Trạng thái sau khi tạo đổi lời thành **Bán vé ngay sau khi tạo** / **Lưu nháp · chưa bán vé**. Chỉ đổi Pug/JS/CSS; backend, API, Excel v1–v3, giới hạn một rạp/một tuần/500 suất và việc không tự lưu nháp giữ nguyên; không thêm migration hoặc thư viện.
+### 1. Mô hình công nghệ (Tech stack)
 
-**Nghiệm thu 11/11/2026 (bảng cả tuần):** **122 kiểm thử đầy đủ đều qua, không bỏ qua ca nào** (95 MySQL/HTTP, 27 unit/render/Excel/HMAC), log `target/week-table-full.log`. Trên executable JAR/`cineprime_test` cổng 8081: thêm nhiều suất nối tiếp lặp ba ngày (báo trước 6, vào bảng đúng 6); hai suất chồng nhau hiện đỏ kèm lý do của server, đầu cột ghi 2 lỗi, hộp xác nhận khi còn lỗi khóa nút xác nhận; chuyển Theo giờ rồi quay lại giữ nguyên đợt; Chép ngày thêm 1 suất; xác nhận tạo **6 suất**, SQL xác nhận đúng giờ, trạng thái Mở bán và 60 ghế tồn mỗi suất. Ở ngày đã có suất, một suất trùng giờ bị từ chối kèm lý do còn nhiều suất nối tiếp xếp tiếp sau suất đang có. Đổi tuần khi còn suất chưa lưu có cảnh báo. Sau khi đổi sang mỗi phòng một lịch (sáng 11/11) đã chạy lại 122 kiểm thử và thử lại: chọn phòng, thêm 6 suất cho Phòng 2, tạo lịch; 1366×768 và 1090×768 đủ bảy cột, 850 và 390×844 hiện bảy hàng ngày, không tràn ngang. Phần hiển thị lỗi, 1920×1080 và 620 được thử ở bố cục phòng × ngày trước đó, chưa thử lại sau điều chỉnh. Ba tài nguyên JS/CSS do JAR cuối phục vụ khớp SHA-256 với source.
+- Ngôn ngữ phía máy chủ: Java 25.
+- Framework: Spring Boot MVC, đóng gói một file JAR chạy được.
+- Giao diện: Pug4J (render HTML phía máy chủ), CSS thuần.
+- Truy cập dữ liệu: JPA/Hibernate (`ddl-auto: validate`), migration bằng Flyway.
+- Cơ sở dữ liệu: MySQL 8.
+- Bảo mật: Spring Security, session, CSRF, băm mật khẩu.
+- Thanh toán: MoMo (captureWallet, IPN, truy vấn, xác thực HMAC).
+- Tiện ích: PDFBox (vé PDF), mã QR, ZXing (quét QR bằng camera), email outbox.
+- Kiểm thử: JUnit; kiểm thử tích hợp chạy trên MySQL thật, không dùng H2.
 
-**Giới hạn của lượt 11/11:** kéo thả ở chế độ Theo giờ và nhập/xuất Excel không được thử lại trên GUI (mã các phần này không đổi; dựa vào kết quả 10/11 và các ca Maven). Chưa chọn file Excel thật qua hộp thoại trình duyệt. Chưa thử đường bàn phím đầy đủ, trình đọc màn hình, điện thoại thật hoặc mất mạng đúng lúc ghi. Không đếm lại đủ 31 bảng `cineprime` trước/sau; lượt này không chạy lệnh ghi nào vào database đó và dòng nhật ký cuối vẫn là 07/11. Dải phim có thanh cuộn ngang khi rạp nhiều phim. Thông báo trùng lịch của server còn in ngày giờ dạng `2026-11-24T09:30`. Suất đã lưu vẫn sửa ở trang riêng. Sau khi cập nhật mã cần **restart cấu hình CinePrime Local** để nạp template mới.
+### 2. Logic nghiệp vụ
 
-**Cập nhật 10/11/2026 — bảng xếp suất theo ngày × phòng (lịch sử; nay là chế độ Theo giờ, thanh Thêm một suất/Xếp liên tiếp đã thay bằng hộp Thêm suất chiếu):** màn `/admin/showtimes/new` nay hiển thị một ngày, mỗi phòng một cột, khung giờ mặc định 09:00–23:00 và tự mở rộng khi có suất nằm ngoài. Chọn phim ở danh sách bên trái rồi bấm vào cột phòng; bóng xem trước ghi giờ bắt đầu → hết phim → hết dọn phòng, tự dính sát suất trước, lùi cho vừa khoảng trống hoặc nêu lý do khi không đủ chỗ. Giờ theo bước 5 phút. **Xếp liên tiếp** nối các suất từ giờ bắt đầu đến giờ suất cuối và dừng trước suất đã có; **Chép ngày** chép các suất mới của ngày đang xem sang ngày khác trong tuần, suất trùng không được thêm và được liệt kê. Kéo suất chưa lưu để dời giờ hoặc sang phòng khác, nút × để bỏ, lỗi của server ghi ngay trên khối. **Tạo N suất** mở một hộp xác nhận tóm tắt theo ngày/phòng; trước đó chưa ghi database. Bố cục này thay lịch một phòng × bảy ngày, ô tick 15 phút và nút Mở lịch xếp suất ở các đoạn lịch sử bên dưới. Backend, Excel v1–v3, giới hạn một rạp/một tuần/500 suất và việc không tự lưu nháp giữ nguyên; không thêm migration hoặc thư viện.
+- Giữ ghế 5 phút do máy chủ quyết định; tải lại trang, đổi combo, đổi voucher hay thanh toán đều không kéo dài thời gian giữ.
+- Mỗi người một lượt giữ ghế, tối đa 8 ghế; ghế đôi bán theo cặp.
+- Chỉ cho giữ ghế khi còn ít nhất 5 phút trước giờ đóng bán (15 phút trước giờ chiếu).
+- Tiền tính bằng VND nguyên, chỉ tính ở backend; đơn lưu ảnh chụp giá, tên và giảm giá.
+- Thanh toán xử lý lặp lại an toàn (idempotent), kiểm tra chữ ký, merchant, mã đơn, số tiền. Thanh toán thành công đến sau khi hết hạn giữ ghế thì ghi nhận để đối soát, không phát vé.
+- Check-in: mỗi mã QR dùng một lần, trong khoảng 60 phút trước đến 30 phút sau giờ chiếu, chỉ tại rạp của nhân viên.
+- Thời gian nghiệp vụ theo múi giờ Asia/Ho_Chi_Minh, tầng DB/JDBC dùng UTC.
+- Đổi vai trò hoặc khóa tài khoản làm các phiên đăng nhập cũ mất hiệu lực (`authVersion`).
 
-**Nghiệm thu 10/11/2026 (bảng ngày × phòng, lịch sử):** **122 kiểm thử đầy đủ đều qua, không bỏ qua ca nào** (95 MySQL/HTTP, 27 unit/render/Excel/HMAC), log `target/day-board-full.log`. Trên executable JAR/`cineprime_test` cổng 8081: bấm thêm suất, tự dính sau suất trước (09:05 → 11:00), xếp liên tiếp 8 suất 09:00 → 22:25, kéo 11:00 → 15:35, chép 10 suất sang ngày trống và bị từ chối đủ 10 suất ở ngày đã kín lịch, rồi xác nhận tạo **20 suất Mở bán**; SQL xác nhận đúng giờ, đủ 60 ghế tồn mỗi suất, một biên nhận và một dòng nhật ký. Hai suất chồng nhau hiện đỏ kèm lý do của server, tab ngày ghi 2 lỗi; bỏ một suất thì hợp lệ lại. File mẫu trống bị từ chối và giữ nguyên đợt đang xếp. Đổi tuần khi còn suất chưa lưu có cảnh báo. 1366×768 hiện trọn 09:00–23:00 không cuộn bảng; 1920×1080, 850, 620 và 390×844 không tràn ngang trang; mobile một cột phòng, nút bỏ suất 44px. Ba tài nguyên JS/CSS do JAR cuối phục vụ khớp SHA-256 với source; trang trả UTF-8 đúng tiếng Việt. Số dòng của đủ 31 bảng `cineprime` không đổi; mọi dữ liệu thử nằm trong `cineprime_test`.
+### 3. Ngôn ngữ JavaScript
 
-**Giới hạn của lượt 10/11 (lịch sử):** nhánh nhập Excel thành công trên GUI được thử bằng phản hồi đọc file giả lập (các suất vẫn do server thật kiểm tra); chưa chọn file Excel thật qua hộp thoại của trình duyệt trong lượt này, phần đọc file ở backend chỉ có các ca Maven. Hộp xác nhận ở trạng thái còn lỗi chưa được mở thử trên GUI. Kéo chỉ dùng chuột; trên màn chạm đổi giờ/phòng qua hộp sửa. Ở 1090×768 thanh công cụ xuống hai hàng nên bảng dài hơn phần còn lại của màn hình và cần cuộn trang. Chưa thử trình đọc màn hình, điện thoại thật hoặc mất mạng đúng lúc ghi. Suất đã lưu vẫn sửa ở trang riêng; dời/hủy ngay trên bảng và mở bán nhiều suất Nháp thuộc đợt sau, chưa làm. Sau khi cập nhật mã cần **restart cấu hình CinePrime Local** để nạp template mới.
+- JavaScript thuần (không framework, không Node ở runtime), nằm trong `static/js`.
+- Dùng cho: sơ đồ ghế và giữ ghế, chọn combo/voucher, trạng thái thanh toán, quét QR check-in, thông báo, màn xếp suất chiếu.
+- Máy chủ vẫn là nơi kiểm tra cuối cùng; JS chỉ hỗ trợ hiển thị và thao tác.
+- Màn xếp suất chiếu: bảng lịch cả tuần theo phòng, hộp thêm suất, chế độ theo giờ có kéo thả, nhập/xuất Excel.
 
-**Cập nhật 10/11/2026 — trạng thái phim và lịch tick/kéo thả:** phim có ngày khởi chiếu tự phân loại Sắp chiếu/Đang chiếu theo giờ Việt Nam khi đọc dữ liệu. Ngừng chiếu và Ẩn vẫn do Admin quyết định; phim cũ thiếu ngày giữ trạng thái cũ và được nhắc bổ sung. Phim đến ngày chưa có lịch mở bán vẫn có đăng ký nhắc. Việc đổi danh mục không tự tạo hoặc mở bán các suất Nháp đã có.
+### 4. Cơ sở dữ liệu: MySQL
 
-**Xếp suất mới (bản tick 09–10/11, lịch sử — đã thay bằng bảng ngày × phòng ở trên):** chọn rạp → phim → phòng → Mở lịch xếp suất. Tick từng ô giờ bắt đầu để thêm ngay vào một đợt; dấu ✓ bỏ suất, thân khối mở sửa, tay nắm ↕ kéo suất chưa lưu. Lịch tính thời lượng phim + 15 phút dọn phòng và kiểm tra mọi phim trong phòng. Đổi phim/phòng giữ đợt; đổi rạp/tuần cần xác nhận bỏ thay đổi. Mobile xem một ngày và có dialog đổi ngày/giờ tương đương kéo. Giờ Excel lẻ như 11:55 giữ nguyên khi nhập.
+- Quản lý bằng Flyway (`db/migration`), không sửa migration đã áp dụng.
+- Ràng buộc duy nhất: tồn kho ghế theo (suất chiếu, ghế), mã QR, giao dịch, sổ điểm, lượt dùng voucher.
+- Giao dịch nguyên tử (tất cả hoặc không gì cả) ở mức READ COMMITTED; khóa bi quan theo thứ tự cố định để tránh tranh chấp.
+- Các tranh chấp (ghế, voucher, check-in) được kiểm chứng trên MySQL thật.
 
-**Hoàn tất (bản tick, lịch sử):** nhập Excel bổ sung hoặc tick thủ công → Lưu và kiểm tra N suất → xem toàn bộ phòng/ngày/giờ/lỗi → Xác nhận tạo N suất. Mặc định Mở bán; chọn Nháp thì khách chưa đặt được. Trước bước xác nhận chưa ghi database. Khi kết quả chưa rõ, dùng Kiểm tra kết quả lưu hoặc Gửi lại cùng yêu cầu; không lập đợt khác. Tối đa 500 suất trong một rạp/tuần. Bố cục và luồng này thay bảng phim × ngày cùng form thêm nhóm ở các mục lịch sử bên dưới.
+### 5. Phân tích nghiệp vụ
 
-**Nghiệm thu 09–10/11/2026:** **122 kiểm thử đầy đủ đều qua, không bỏ qua ca nào** (95 MySQL/HTTP, 27 unit/render/Excel/HMAC). GUI JAR đã tick và tạo 6 Mở bán; kéo một suất, nhập thêm Excel và chỉnh ngày trên mobile rồi tạo 3 Mở bán. Đã xác minh thả vào lịch trùng giữ vị trí cũ, lỗi ở phòng khác chặn xác nhận, keyboard tick, giữ giờ Excel 11:55 và lỗi tải lịch giữ đợt/khóa Lưu. Desktop/mobile và breakpoint 620/850/1090 không tràn ngang trang; mobile ô giờ 44px. Checksum **31/31 bảng ứng dụng không đổi**. Bằng chứng: `target/timeline-full.log`, `timeline-jar-verification.json`, `timeline-gui-verification.json`, `timeline-responsive.json`, `timeline-data-verification.json`.
+#### 5.1. Nghiệp vụ của Admin
 
-**Nạp bản mới (ghi chú của đợt 09–10/11):** restart cấu hình **CinePrime Local** hiện có trong IntelliJ để nạp mã/template mới; JAR tại `target/cineprime-1.0.0.jar`. JAR xem thử 8081 đã dừng. Chỉ tạo dữ liệu giả trên cineprime_test, không dừng tiến trình ứng dụng 8080. Mất phản hồi sau commit có hồi quy/mô phỏng, chưa thử cắt mạng đúng thời điểm; trình đọc màn hình/điện thoại thật/MoMo/SMTP/hosting chưa được nghiệm thu thêm.
+- Quản lý phim: thêm, sửa, ẩn; trạng thái Sắp chiếu / Đang chiếu tự suy ra từ ngày phát hành.
+- Quản lý rạp, phòng chiếu, sơ đồ ghế, giá theo phòng.
+- Quản lý suất chiếu: xếp lịch theo tuần cho từng phòng, thêm hàng loạt, nhập/xuất Excel, kiểm tra trùng giờ và thời gian dọn phòng.
+- Quản lý combo, voucher, điểm thưởng.
+- Quản lý người dùng và phân quyền (Customer, Admin, Staff), khóa tài khoản.
+- Xem đơn hàng, đối soát thanh toán, báo cáo doanh thu và xuất CSV, nhật ký thao tác (audit).
 
-**Cách dùng Excel v3:** Xuất lịch tuần hoặc Tải mẫu trống → điền sheet **Đăng ký suất mới**, mỗi dòng một phim/phòng, mỗi cột ngày có thể điền `09:00; 14:30; 19:00` → lưu `.xlsx` → Nhập Excel tại đúng rạp/tuần → sửa các dòng lỗi trên web → xác nhận lưu. **Lịch hiện tại** chỉ để tham khảo, không được nhập thành suất mới. File tối đa 5 MB, cả đợt tối đa 500 suất sau khi tách giờ; dòng có dữ liệu nhưng thiếu giờ vẫn cần sửa. Không có tự lưu nháp.
+#### 5.2. Nghiệp vụ của Staff
 
-Kế hoạch được duyệt và ứng dụng được triển khai ngày 05/11/2026. Có executable JAR, migration MySQL, dữ liệu demo, giao diện Customer/Admin/Staff, giữ ghế, combo/voucher, adapter MoMo sandbox, QR/PDF, hồ sơ, điểm, đánh giá, thông báo và báo cáo.
+- Check-in vé bằng quét QR hoặc nhập mã thủ công.
+- Chỉ xử lý vé thuộc rạp được phân công; mỗi vé chỉ vào một lần.
+- Xem danh sách vé, suất chiếu trong ngày tại rạp của mình.
+- Nhân viên chưa được phân rạp thấy thông báo chờ phân công.
 
-**Đã kiểm chứng ngày 07/11/2026:** build JAR; 73 kiểm thử (64 tích hợp MySQL/HTTP và 9 unit/HMAC/render) đều qua, không bỏ qua test trong lượt nghiệm thu; Pug UTF-8 từ executable JAR, PDF tiếng Việt và giải mã QR. Lượt đầy đủ ghi tại `target/form-wizard-full.log`; đóng gói và kiểm tra Pug cuối tại `target/form-wizard-final-package.log`; các ca cũ về tài chính, callback, voucher và Staff check-in tiếp tục qua. Đã xem desktop 1366×768, mobile 390×844 và breakpoint 620/850/1090; không tràn ngang trang trong các màn đã xem. JavaScript qua kiểm tra cú pháp.
+#### 5.3. Nghiệp vụ của Khách hàng
 
-**Dữ liệu local hiện tại được giữ nguyên:** đợt sơ đồ tập trung không reset cineprime. Hiện có 1 phim, 1 rạp, 3 phòng, 180 ghế, 6 khung giá và giao dịch người dùng đã nhập. Đối chiếu ban đầu có 28 bảng không đổi, users/audit có cập nhật Staff được Admin lưu lúc 15:41 trong thời gian gián đoạn; giữ cập nhật này. Từ lúc tiếp tục đến sau khởi động JAR cuối, checksum đủ 30 bảng khớp. Không tự tạo giá, gán thể loại hoặc đổi mật khẩu. GUI nghiệm thu dùng tài khoản và dữ liệu giả trên cineprime_test.
-
-Lần dọn dữ liệu **trước đợt này** diễn ra lúc 01:01 ngày 07/11/2026: phim/rạp và giao dịch được đưa về 0; giữ 4 tài khoản, 3 combo/sản phẩm, 2 voucher, 4 thể loại, 2 người tham gia, 9 nội dung và bỏ phân công rạp Staff cũ. Sau đó người dùng đã tự nhập lại dữ liệu như trên. `DEMO_SEED=false` để dữ liệu demo không tự quay lại.
-
-Backup trước reset tại **`D:\CinePrime_Backups\20261107_010044`**: `cineprime.sql`, uploads, `verification.json` và `reset-result.json`. Đã khôi phục vào `cineprime_test` và đối chiếu checksum/số dòng đủ 30 bảng trước khi DELETE; schema test đã dọn bản sao sau xác minh. Trước reset có 9 phim, 2 rạp, 124 suất, 3 đơn và 1 vé. Transaction reset ứng dụng giữ FK bật, không reset ID/Flyway; audit giữ và ghi RESET_LOCAL_DATA. Không nhập file dump vào database ứng dụng đang chạy nếu chưa chủ động quyết định khôi phục.
-
-Đợt sửa này bổ sung form phim/auto-upload JPG/PNG/WEBP và preview, link YouTube thường/shorts/embed, banner phim nổi bật và trailer chỉ tải khi mở, dialog Ẩn/Hiện/Xóa phim chưa dùng, lịch phòng và preview trùng cả 15 phút vệ sinh. Đơn chờ ghi Chưa thu tiền/Giá trị đơn; tiền báo cáo vẫn chỉ lấy PAID. Dashboard dùng hai cột độc lập, tối đa 5 dòng/khối. MoMo, thu tiền tại quầy và hosting tiếp tục ngoài đợt này.
-
-Đợt **liên kết luồng** bổ sung chọn nhiều thể loại ngay trong form phim, cảnh báo phim cũ chưa phân loại, chặn bỏ/ngừng thể loại hoạt động cuối cùng của phim đang hiển thị và lọc User tự áp dụng. Danh mục có Làm mới và đọc lại khi quay về tab, giữ nội dung đang nhập. Luồng rạp → phòng → sơ đồ xem trước theo hàng/ghế/cặp → giá chung của rạp → suất mang đúng ID ngữ cảnh; lịch ngày và danh sách suất liên kết qua lại giữ bộ lọc. Sơ đồ mặc định Standard; Couple phải đủ hai ghế liền nhau. Giá hỗ trợ 24:00, VND nguyên đồng và giá cả cặp để đối chiếu; chỉ báo sẵn sàng sau khi kiểm tra giờ/ngày suất cụ thể.
-
-Trong **Trạng thái theo suất**, chọn suất để xem ghế trống/giữ/bán/bảo trì và cập nhật 30 giây khi tab hiện. Ghế đang giữ mở đơn liên quan; giải phóng bằng hủy toàn bộ đơn chờ, không hủy riêng một ghế và không hủy đơn đã trả tiền. Khóa sơ đồ cũ vẫn giữ nguyên, kể cả suất OPEN đã qua; giao diện chỉ rõ suất gây khóa. Combo/voucher tiếp tục toàn hệ thống; thay đổi danh mục không tính lại snapshot tiền cũ.
-
-Đợt **form Admin từng bước** áp dụng cho thêm/sửa: form dài có Quay lại/Kế tiếp, Xác nhận rồi mới Lưu; form ngắn Lưu trực tiếp. Sidebar thu thành menu, footer giữ trong viewport. Phim giữ bốn nhóm chính, chọn nhiều Đạo diễn/Diễn viên hiện có cùng thể loại; lưu tất cả trong một transaction, payload cũ giữ quan hệ. Bộ chọn tìm kiếm và năm mục/trang, upload tự động, lỗi có vị trí và giữ nội dung. Không có bản nháp sau tải lại/đóng tab. Giá/sơ đồ tiếp tục lưu riêng; Lưu và kết thúc phòng không bắt tạo suất. Checksum đủ 30 bảng cineprime trước/sau khớp; các thao tác GUI dùng cineprime_test, không thêm phim/người tham gia giả vào dữ liệu ứng dụng.
-
-Bằng chứng: `target/form-wizard-full.log` (73 tests qua, không bỏ qua), `target/form-wizard-final-package.log`, `target/form-wizard-jar-verification.json`, ảnh `target/form-wizard-desktop.jpg` / `target/form-wizard-mobile.jpg`. Đã kiểm tra luồng upload–lỗi trailer–giữ dữ liệu–lưu–mở lại và đo desktop/mobile. **Chưa nghiệm thu đủ** dialog bỏ thay đổi cuối, mất phản hồi ghi, upload bị chậm/lỗi chủ động và bàn phím điện thoại thật: phiên browser cuối kẹt ở hộp thoại native cũ; dialog Hủy đã chuyển sang CinePrime trong JAR. Các mục này được giữ chưa hoàn tất trong Plan.md để người dùng thử tiếp.
-Đợt **sơ đồ tập trung** dùng một viewport desktop: sidebar dạng drawer, sơ đồ lớn với Vừa khung/100%/zoom/pan và công cụ bên cạnh cuộn riêng. Chọn ghế/cặp để chỉnh bản xem trước; Lưu sơ đồ mới ghi dữ liệu. Tab Giá của rạp cho thêm/sửa tại chỗ, năm dòng/trang; hai phần lưu độc lập và giữ nội dung khi đổi tab. Giá có phiên bản riêng để từ chối ghi đè thay đổi từ Admin khác. Khi tạo phòng, nút chính Lưu và kết thúc về đúng rạp; thiết lập ghế/giá và tạo suất đều có thể làm sau. Hoàn tất cảnh báo phần chưa lưu, không tự đánh dấu đủ điều kiện mở bán. Mobile dùng ngăn công cụ, mặc định 100% để giữ vùng chạm; có Vừa khung cho tổng thể. Ảnh `target/workspace-*.jpg` chỉ chứa dữ liệu test.
-
-Phiên bàn giao chạy JAR mới tại **http://127.0.0.1:8080/**, seed tắt, tác vụ nền bật. Đã kiểm tra HTTP/UTF-8 và checksum dữ liệu sau khởi động; preview 8081 đã dừng. Dừng tiến trình Java đang dùng cổng 8080 trước khi Run từ IntelliJ để tránh trùng cổng.
-
-**Chưa kiểm chứng với dịch vụ ngoài:** tạo/trả tiền qua ví MoMo Test thực tế, SMTP thực tế, camera trên thiết bị thật và triển khai HTTPS. Chưa có khóa hoặc máy chủ được cung cấp. Không có chế độ tự giả thanh toán thành công. Callback trong test là dữ liệu kiểm thử có chữ ký, không phải bằng chứng giao dịch MoMo thực.
-
-Đặc tả/checklist tại [Plan.md](Plan.md), chuẩn thiết kế tại [UI-Template.md](UI-Template.md), hướng dẫn AI tại [AGENTS.md](AGENTS.md). Checkout ban đầu chỉ có UI-Template.md; các file demo cũ nhắc trong tài liệu không có trong dự án này.
+- Xem danh sách phim, chi tiết phim, lịch chiếu theo rạp và ngày.
+- Đăng ký, đăng nhập, quên và đặt lại mật khẩu.
+- Chọn ghế (giữ 5 phút), thêm combo, áp voucher, dùng điểm.
+- Thanh toán qua MoMo; nhận vé có mã QR và vé PDF.
+- Xem lịch sử đơn, nhận email và thông báo nhắc suất chiếu.
 
 ## Stack và môi trường
 
