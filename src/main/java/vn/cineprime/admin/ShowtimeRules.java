@@ -14,7 +14,7 @@ public final class ShowtimeRules {
     }
     public static List<String> openingErrors(Movie movie,Room room,Cinema cinema,List<Seat> seats,List<Price> prices,boolean visible,Instant start,long surcharge){
         List<String> errors=new ArrayList<>();
-        if(!movie.active||"STOPPED".equals(movie.status)||!room.active||!cinema.active)errors.add("Phim/rạp/phòng đã ngừng hoạt động.");
+        if(!movie.active||!room.active||!cinema.active)errors.add("Phim/rạp/phòng đã ngừng hoạt động.");
         if(!visible)errors.add("Phim chưa có thể loại hoạt động.");
         List<Seat> active=seats.stream().filter(s->s.active).toList();
         if(active.isEmpty())errors.add("Phòng chưa có ghế hoạt động.");

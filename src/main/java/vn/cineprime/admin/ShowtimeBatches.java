@@ -52,6 +52,7 @@ public class ShowtimeBatches {
                 proposed=new Showtime();proposed.movieId=movie.id;proposed.roomId=room.id;proposed.startsAt=day.atTime(time).atZone(ReportService.ZONE).toInstant();proposed.endsAt=proposed.startsAt.plusSeconds(movie.duration*60L);proposed.language=language;proposed.format=format;proposed.surcharge=surcharge;proposed.status=input.targetStatus();
                 start=db.local(proposed.startsAt);end=db.local(proposed.endsAt);cleanup=db.local(proposed.endsAt.plusSeconds(900));
                 if(!proposed.startsAt.isAfter(now))errors.add(new Problem("START_IN_PAST","time","Giờ bắt đầu phải sau giờ hiện tại của máy chủ."));
+                String window=vn.cineprime.domain.MovieLifecycle.windowError(movie,proposed.startsAt);if(window!=null)errors.add(new Problem("OUT_OF_RELEASE_WINDOW","date",window));
                 var opening=ShowtimeRules.openingErrors(movie,room,cinema,seats.stream().filter(s->s.roomId.equals(room.id)).toList(),prices,visible.contains(movie.id),proposed.startsAt,surcharge);
                 if("OPEN".equals(input.targetStatus()))opening.forEach(s->errors.add(new Problem("CANNOT_OPEN","status",s)));else warnings.addAll(opening);
             }
@@ -115,7 +116,7 @@ public class ShowtimeBatches {
         String hql="select s,m.title from "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r, "+db.entityName(Movie.class)+" m where s.roomId=r.id and s.movieId=m.id and r.cinemaId=?1 and s.status<>'CANCELLED' and s.startsAt<?2 and s.endsAt>?3"+(roomId==null?"":" and s.roomId=?4")+" order by s.startsAt,s.id";
         var records=roomId==null?db.query(hql,Object[].class,cinemaId,until.plusSeconds(36900),from.minusSeconds(900)):db.query(hql,Object[].class,cinemaId,until.plusSeconds(36900),from.minusSeconds(900),roomId);
         var events=records.stream().map(v->{Showtime s=(Showtime)v[0];return Map.of("id",s.id,"movieId",s.movieId,"roomId",s.roomId,"movieTitle",v[1],"startsAt",db.local(s.startsAt),"endsAt",db.local(s.endsAt),"cleanupUntil",db.local(s.endsAt.plusSeconds(900)),"status",s.status);}).toList();
-        var movies=db.list(Movie.class,"order by e.title,e.id").stream().map(m->Map.of("id",(Object)m.id,"title",m.title,"poster",Objects.toString(m.poster,""),"duration",m.duration,"active",m.active,"status",vn.cineprime.domain.MovieLifecycle.status(m,vn.cineprime.domain.MovieLifecycle.today(clock)),"ageRating",Objects.toString(m.ageRating,"P"))).toList();
+        var movies=db.list(Movie.class,"order by e.title,e.id").stream().map(m->Map.of("id",(Object)m.id,"title",m.title,"poster",Objects.toString(m.poster,""),"duration",m.duration,"active",m.active,"status",vn.cineprime.domain.MovieLifecycle.status(m,vn.cineprime.domain.MovieLifecycle.today(clock)),"ageRating",Objects.toString(m.ageRating,"P"),"releaseDate",Objects.toString(m.releaseDate,""),"endDate",Objects.toString(m.endDate,""))).toList();
         return Map.of("cinemaId",cinemaId,"cinemaName",cinema.name,"date",startDay.toString(),"weekStart",startDay.toString(),"rangeEnd",endDay.toString(),"rooms",rooms,"movies",movies,"events",events,"serverTime",clock.instant().toString());
     }
 }

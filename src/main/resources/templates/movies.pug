@@ -10,6 +10,7 @@ block content
         option(value="") Tất cả phim
         option(value="NOW_SHOWING" selected=selectedStatus == 'NOW_SHOWING') Đang chiếu
         option(value="COMING_SOON" selected=selectedStatus == 'COMING_SOON') Sắp chiếu
+        option(value="ENDED" selected=selectedStatus == 'ENDED') Vừa kết thúc
       select(name="genre" aria-label="Thể loại")
         option(value="") Tất cả thể loại
         each g in genres
@@ -22,7 +23,7 @@ block content
       button.button(type="submit") TÌM PHIM
     p.filter-summary(role="status")
       strong #{movies.size()} phim
-      span  · #{q ? 'Tên: ' + q + ' · ' : ''}#{selectedStatus == 'COMING_SOON' ? 'Sắp chiếu' : selectedStatus == 'NOW_SHOWING' ? 'Đang chiếu' : 'Mọi trạng thái'}
+      span  · #{q ? 'Tên: ' + q + ' · ' : ''}#{selectedStatus == 'COMING_SOON' ? 'Sắp chiếu' : selectedStatus == 'NOW_SHOWING' ? 'Đang chiếu' : selectedStatus == 'ENDED' ? 'Vừa kết thúc' : 'Mọi trạng thái'}
       each g in genres
         if selectedGenre == g.id
           span  · #{g.name}

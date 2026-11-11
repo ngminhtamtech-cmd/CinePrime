@@ -46,17 +46,30 @@ mixin sectionPagination(data, param)
       else
         button.button.secondary(type="button" disabled) Sau →
 mixin movieCard(m)
-  article.movie-card
-    a.poster(href='/movies/' + m.slug)
-      img(src=m.poster alt=m.title loading="lazy")
-      span.age= m.ageRating
-      span.score ★ #{m.score}
-      span.poster-cta Xem chi tiết →
+  article.movie-card(class=m.ended ? 'is-ended' : '' aria-disabled=m.ended ? 'true' : false)
+    if m.ended
+      .poster
+        img(src=m.poster alt=m.title loading="lazy")
+        span.age= m.ageRating
+        span.ended-ribbon Đã kết thúc
+    else
+      a.poster(href='/movies/' + m.slug)
+        img(src=m.poster alt=m.title loading="lazy")
+        span.age= m.ageRating
+        span.score ★ #{m.score}
+        if m.comingSoon
+          span.release-ribbon Khởi chiếu #{m.releaseText}
+        span.poster-cta Xem chi tiết →
     .movie-card-body
-      a(href='/movies/' + m.slug)
+      if m.ended
         h3= m.title
-      p #{m.genres} · #{m.duration} phút
-      a.book-link(href='/movies/' + m.slug)= m.hasBookableShows ? 'MUA VÉ →' : 'KHÁM PHÁ →'
+        p #{m.genres} · #{m.duration} phút
+        span.book-link.disabled Đã hết lịch chiếu
+      else
+        a(href='/movies/' + m.slug)
+          h3= m.title
+        p #{m.genres} · #{m.duration} phút
+        a.book-link(href='/movies/' + m.slug)= m.hasBookableShows ? (m.comingSoon ? 'ĐẶT TRƯỚC →' : 'MUA VÉ →') : 'KHÁM PHÁ →'
 mixin showList(shows)
   if shows.size() == 0
     .empty Không có suất chiếu phù hợp. Hãy chọn ngày hoặc rạp khác.

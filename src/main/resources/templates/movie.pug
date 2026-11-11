@@ -5,12 +5,12 @@ block content
     .container.detail-grid
       img.detail-poster(src=movie.poster alt=movie.title)
       div
-        .eyebrow #{movie.statusLabel}#{movie.hasBookableShows ? '' : ' · Chưa có lịch mở bán'}
+        .eyebrow #{movie.statusLabel}#{movie.ended ? ' · Không còn nhận đặt vé' : movie.hasBookableShows ? (movie.comingSoon ? ' · Đang mở đặt trước' : '') : ' · Chưa có lịch mở bán'}
         h1= movie.title
         .metadata
           span.badge= movie.ageRating
           span #{movie.duration} phút
-          span= movie.releaseDate
+          span Lịch chiếu #{movie.windowText}
           span ★ #{movie.score} / 5 · #{movie.reviewCount} đánh giá
         p= movie.genres
         p.description= movie.description
@@ -19,8 +19,8 @@ block content
             span #{c.kind == 'DIRECTOR' ? 'Đạo diễn' : 'Diễn viên'}: #{c.name}
         .actions
           if movie.hasBookableShows
-            a.button(href="#schedule") CHỌN SUẤT CHIẾU →
-          else
+            a.button(href="#schedule")= movie.comingSoon ? 'ĐẶT VÉ TRƯỚC →' : 'CHỌN SUẤT CHIẾU →'
+          else if !movie.ended
             a.button.secondary(href="#schedule") XEM THÔNG TIN LỊCH CHIẾU →
           if viewer
             form(action='/account/favorites/' + movie.id method="post")
@@ -28,7 +28,7 @@ block content
               button.button.secondary(type="submit")= favorite ? '♥ Đã yêu thích' : '♡ Yêu thích'
           else
             a.button.secondary(href="/login") ♡ Yêu thích
-        if !movie.hasBookableShows || subscribed
+        if (!movie.hasBookableShows && !movie.ended) || subscribed
           form.inline-form(action='/account/subscriptions/' + movie.id method="post")
             +csrf()
             label.check

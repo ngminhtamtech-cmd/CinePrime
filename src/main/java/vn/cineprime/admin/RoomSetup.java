@@ -39,7 +39,7 @@ public class RoomSetup {
     }
     public Map<String,Object> readiness(Long cinema,Long roomId,Long movieId,Instant start,Long editingId){
         List<String> errors=new ArrayList<>();if(roomId==null||movieId==null||start==null)return Map.of("canOpen",false,"errors",List.of("Chọn đủ phim, rạp, phòng và giờ để kiểm tra mở bán."));
-        Room room=room(cinema,roomId);Movie movie=db.get(Movie.class,movieId);if(!room.active||!db.get(Cinema.class,room.cinemaId).active||!movie.active||movie.status.equals("STOPPED"))errors.add("Phim/rạp/phòng đã ngừng hoạt động.");
+        Room room=room(cinema,roomId);Movie movie=db.get(Movie.class,movieId);if(!room.active||!db.get(Cinema.class,room.cinemaId).active||!movie.active)errors.add("Phim/rạp/phòng đã ngừng hoạt động.");String window=vn.cineprime.domain.MovieLifecycle.windowError(movie,start);if(window!=null)errors.add(window);
         if(db.query("select count(g) from "+db.entityName(Genre.class)+" g, "+db.entityName(MovieGenre.class)+" x where x.genreId=g.id and x.movieId=?1 and g.active=true",Long.class,movieId).getFirst()==0)errors.add("Phim chưa có thể loại hoạt động. Bổ sung trong form phim trước khi mở bán.");
         Showtime proposed=new Showtime();proposed.roomId=roomId;proposed.movieId=movieId;proposed.startsAt=start;proposed.endsAt=start.plusSeconds(movie.duration*60L);
         var seats=db.list(Seat.class,"where e.roomId=?1 and e.active=true",roomId);if(seats.isEmpty())errors.add("Phòng chưa có ghế hoạt động.");

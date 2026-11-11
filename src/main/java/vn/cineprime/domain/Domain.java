@@ -25,7 +25,7 @@ public final class Domain {
         public String title, slug;
         @Column(length=6000) public String description;
         public String poster, banner, trailer, ageRating="P", status="COMING_SOON";
-        public int duration=90; public LocalDate releaseDate; public boolean featured, active=true;
+        public int duration=90; public LocalDate releaseDate, endDate; public boolean featured, active=true;
     }
     @Entity @Table(name="movie_genres") public static class MovieGenre extends Row { public Long movieId, genreId; }
     @Entity @Table(name="credits") public static class Credit extends Row { public Long movieId, personId; public String kind="ACTOR"; }

@@ -31,7 +31,7 @@ public class Workers {
         for(Subscription snapshot:db.list(Subscription.class,"where e.sent=false"))tx.executeWithoutResult(status->{
             User u=db.lock(User.class,snapshot.userId);Subscription s=db.lock(Subscription.class,snapshot.id);if(s.sent)return;
             Movie m=db.get(Movie.class,s.movieId);
-            if(m.active&&!m.status.equals("STOPPED")&&!db.query("select s.id from "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r, "+db.entityName(Cinema.class)+" c where s.movieId=?1 and s.status='OPEN' and s.startsAt>=?2 and s.roomId=r.id and r.cinemaId=c.id and r.active=true and c.active=true",Long.class,s.movieId,clock.instant().plusSeconds(1200)).isEmpty()){
+            if(m.active&&!"ENDED".equals(vn.cineprime.domain.MovieLifecycle.status(m,vn.cineprime.domain.MovieLifecycle.today(clock)))&&!db.query("select s.id from "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r, "+db.entityName(Cinema.class)+" c where s.movieId=?1 and s.status='OPEN' and s.startsAt>=?2 and s.roomId=r.id and r.cinemaId=c.id and r.active=true and c.active=true",Long.class,s.movieId,clock.instant().plusSeconds(1200)).isEmpty()){
                 notices.notify(u,"movie:"+s.id,"Phim bạn chờ đã mở bán",m.title+" đã có lịch chiếu. Khám phá và đặt vé tại CinePrime.",s.email);s.sent=true;
             }
         });

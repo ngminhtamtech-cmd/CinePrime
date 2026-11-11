@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cineprime.booking.BookingService;
+import vn.cineprime.domain.MovieLifecycle;
 import vn.cineprime.domain.Store;
 import static vn.cineprime.domain.Domain.*;
 
@@ -15,7 +16,7 @@ public class AdminService {
     public record Resource(String label,Class<? extends Row> type,String fields){}
     public static final Map<String,Resource> RESOURCES=new LinkedHashMap<>();
     static {
-        add("movies","Phim",Movie.class,"title,slug,description,poster,banner,trailer,ageRating,status,duration,releaseDate,featured,active");
+        add("movies","Phim",Movie.class,"title,slug,description,poster,banner,trailer,ageRating,duration,releaseDate,endDate,featured,active");
         add("genres","Thể loại",Genre.class,"name,active");add("people","Diễn viên / Đạo diễn",Person.class,"name,biography,active");
         add("movie-genres","Thể loại của phim",MovieGenre.class,"movieId,genreId");add("credits","Đoàn phim",Credit.class,"movieId,personId,kind");
         add("cinemas","Rạp",Cinema.class,"name,city,address,phone,description,active");add("rooms","Phòng",Room.class,"cinemaId,name,format,active");
@@ -54,7 +55,7 @@ public class AdminService {
         String oldSchedule=row instanceof Showtime s?s.movieId+"|"+s.roomId+"|"+s.startsAt+"|"+s.status:"";
         if(row instanceof Seat seat&&id!=null&&busyRoom(seat.roomId))throw new IllegalArgumentException("Phòng có suất đang mở bán/giữ ghế/vé bán; không thể đổi sơ đồ.");
         if(row instanceof Room room&&id!=null&&busyRoom(room.id))throw new IllegalArgumentException("Phòng có lịch mở bán, không thể thay thông tin.");
-        if(row instanceof Movie m&&id!=null&&!db.list(Showtime.class,"where e.movieId=?1 and e.status='OPEN'",id).isEmpty()&&Integer.parseInt(values.getOrDefault("duration","0"))!=m.duration)throw new IllegalArgumentException("Không đổi thời lượng phim đã có lịch mở bán.");
+        if(row instanceof Movie m&&id!=null&&!values.getOrDefault("duration","").trim().equals(Integer.toString(m.duration))&&db.count(Showtime.class,"where e.movieId=?1 and e.status<>'CANCELLED' and e.endsAt>?2",id,clock.instant())>0)throw new AdminFormProblem("Không đổi thời lượng khi phim còn suất chiếu sắp tới, kể cả suất nháp. Hủy các suất đó hoặc chờ chúng kết thúc.","duration");
         for(String name:r.fields().split(","))try{
             Field f=r.type().getField(name);String v=values.getOrDefault(name,"").trim();
             if(v.length()>20000)throw new AdminFormProblem("Nội dung quá dài.",name);
@@ -77,6 +78,7 @@ public class AdminService {
         if(row instanceof Showtime s){
             if(s.roomId!=null&&!s.roomId.equals(originalRoom))db.lock(Room.class,s.roomId);
             Movie movie=db.lockRead(Movie.class,s.movieId);if(!protectedShow)s.endsAt=s.startsAt.plusSeconds(movie.duration*60L);if(values.containsKey("cinemaId"))require(db.get(Room.class,s.roomId).cinemaId.toString().equals(values.get("cinemaId")),"Phòng không thuộc rạp đang chọn.");
+            String window=s.status.equals("CANCELLED")?null:MovieLifecycle.windowError(movie,s.startsAt);if(window!=null)throw new AdminFormProblem(window,"startsAt");
             if(protectedShow&&!oldSchedule.equals(s.movieId+"|"+s.roomId+"|"+s.startsAt+"|"+s.status))throw new IllegalArgumentException("Suất có lượt giữ hoặc vé đã bán. Không thể đổi/hủy.");
             if(!s.status.equals("CANCELLED"))for(Showtime other:db.list(Showtime.class,"where e.roomId=?1 and e.status<>'CANCELLED'",s.roomId))if(!Objects.equals(other.id,s.id)&&ShowtimeRules.overlaps(s.startsAt,s.endsAt,other.startsAt,other.endsAt))throw new AdminFormProblem("Trùng lịch phòng, bao gồm 15 phút vệ sinh.","startsAt");
             if(s.status.equals("OPEN")){
@@ -95,10 +97,18 @@ public class AdminService {
     }
     public boolean busyShow(Long id){return id!=null&&(!db.list(Order.class,"where e.showtimeId=?1 and (e.status='PAID' or (e.status='PENDING_PAYMENT' and e.expiresAt>?2))",id,clock.instant()).isEmpty());}
     public boolean busyRoom(Long id){return !db.list(Showtime.class,"where e.roomId=?1 and (e.status='OPEN' or e.endsAt>?2)",id,clock.instant()).isEmpty();}
+    /** Shrinking or moving the window must not strand an existing (non-cancelled) showtime outside it. */
+    private void releaseWindowFitsShowtimes(Movie m){
+        Instant from=m.releaseDate.atStartOfDay(MovieLifecycle.ZONE).toInstant(),until=m.endDate.plusDays(1).atStartOfDay(MovieLifecycle.ZONE).toInstant();
+        List<Showtime> outside=db.list(Showtime.class,"where e.movieId=?1 and e.status<>'CANCELLED' and (e.startsAt<?2 or e.startsAt>=?3) order by e.startsAt",m.id,from,until);
+        if(outside.isEmpty())return;
+        boolean early=outside.getFirst().startsAt.isBefore(from);Showtime edge=early?outside.getFirst():outside.getLast();
+        throw new AdminFormProblem("Còn "+outside.size()+" suất chiếu nằm ngoài khoảng ngày mới (suất "+(early?"sớm":"muộn")+" nhất: "+db.date(edge.startsAt)+"). Hủy hoặc dời các suất đó trước.",early?"releaseDate":"endDate");
+    }
     private void require(boolean ok,String message){if(!ok)throw new IllegalArgumentException(message);}
     private void choice(String value,String... allowed){require(Arrays.asList(allowed).contains(value),"Giá trị lựa chọn không hợp lệ.");}
     private void validate(Row row,Map<String,String> values){
-        if(row instanceof Movie m){if(m.title.isBlank())throw new AdminFormProblem("Nhập tên phim.","title");if(m.duration<=0||m.duration>600)throw new AdminFormProblem("Thời lượng phải từ 1 đến 600 phút.","duration");if(!m.slug.matches("[a-z0-9-]+"))throw new AdminFormProblem("Đường dẫn chỉ gồm chữ thường, số và dấu gạch ngang.","slug");choice(m.status,"COMING_SOON","NOW_SHOWING","STOPPED");choice(m.ageRating,"P","K","T13","T16","T18");try{m.poster=media.image(m.poster);}catch(IllegalArgumentException e){throw new AdminFormProblem("Poster: "+e.getMessage(),"poster");}try{m.banner=media.image(m.banner);}catch(IllegalArgumentException e){throw new AdminFormProblem("Banner: "+e.getMessage(),"banner");}try{m.trailer=media.trailer(m.trailer);}catch(IllegalArgumentException e){throw new AdminFormProblem("Trailer: "+e.getMessage(),"trailer");}}
+        if(row instanceof Movie m){if(m.title.isBlank())throw new AdminFormProblem("Nhập tên phim.","title");if(m.duration<=0||m.duration>600)throw new AdminFormProblem("Thời lượng phải từ 1 đến 600 phút.","duration");if(!m.slug.matches("[a-z0-9-]+"))throw new AdminFormProblem("Đường dẫn chỉ gồm chữ thường, số và dấu gạch ngang.","slug");if(m.releaseDate==null)throw new AdminFormProblem("Chọn ngày khởi chiếu.","releaseDate");if(m.endDate==null)throw new AdminFormProblem("Chọn ngày kết thúc chiếu.","endDate");if(m.endDate.isBefore(m.releaseDate))throw new AdminFormProblem("Ngày kết thúc phải bằng hoặc sau ngày khởi chiếu.","endDate");if(m.id!=null)releaseWindowFitsShowtimes(m);choice(m.ageRating,"P","K","T13","T16","T18");try{m.poster=media.image(m.poster);}catch(IllegalArgumentException e){throw new AdminFormProblem("Poster: "+e.getMessage(),"poster");}try{m.banner=media.image(m.banner);}catch(IllegalArgumentException e){throw new AdminFormProblem("Banner: "+e.getMessage(),"banner");}try{m.trailer=media.trailer(m.trailer);}catch(IllegalArgumentException e){throw new AdminFormProblem("Trailer: "+e.getMessage(),"trailer");}}
         if(row instanceof Cinema c)require(!c.name.isBlank()&&!c.city.isBlank(),"Nhập tên rạp và thành phố.");
         if(row instanceof Room r){db.get(Cinema.class,r.cinemaId);require(!r.name.isBlank(),"Nhập tên phòng.");}
         if(row instanceof Seat s){db.lock(Room.class,s.roomId);require(!busyRoom(s.roomId),"Chỉ sửa sơ đồ trước khi tạo lịch mở bán.");require(!s.label.isBlank()&&!s.rowLabel.isBlank()&&s.position>0,"Thông tin ghế không hợp lệ.");choice(s.type,"STANDARD","VIP","COUPLE");if(s.type.equals("COUPLE"))require(s.coupleGroup!=null&&!s.coupleGroup.isBlank(),"Ghế đôi cần mã nhóm.");}
@@ -136,7 +146,7 @@ public class AdminService {
         genres.lockCatalog();
         Movie movie=db.lock(Movie.class,id);String name=movie.title;
         switch(action){
-            case "restore"->{require(!movie.status.equals("STOPPED"),"Phim đang Ngừng chiếu. Hãy đổi trạng thái trong form trước khi hiện lại.");movie.active=true;genres.requireVisible(movie);}
+            case "restore"->{movie.active=true;genres.requireVisible(movie);}
             case "delete"->{
                 require(db.count(Showtime.class,"where e.movieId=?1",id)==0&&db.count(Favorite.class,"where e.movieId=?1",id)==0&&db.count(Review.class,"where e.movieId=?1",id)==0&&db.count(Subscription.class,"where e.movieId=?1",id)==0,"Phim đã có suất hoặc dữ liệu khách. Chỉ được ẩn để giữ lịch sử.");
                 for(MovieGenre link:db.list(MovieGenre.class,"where e.movieId=?1",id))db.delete(link);

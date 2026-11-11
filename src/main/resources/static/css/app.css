@@ -16,3 +16,7 @@
 @media(max-width:620px){.hero>.hero-slide{min-height:380px}.hero-shade{background:linear-gradient(90deg,#07182fe8,#07182f70)}.cine-dialog{padding:18px}.trailer-dialog{padding:12px}.trailer-dialog>h2{font-size:17px}}
 .seat.couple.pair-first{border-right:2px solid #9d64b7;border-radius:8px 2px 2px 8px!important;margin-right:-7px!important}.seat.couple.pair-last{border-radius:2px 8px 8px 2px!important}.filter-summary{color:var(--muted);margin:12px 0 20px}.seat-row .seat.pair-last{margin-left:0!important}
 @media(max-width:620px){#seat-map .seat{min-width:44px;min-height:44px}}
+.release-ribbon,.ended-ribbon{position:absolute;left:8px;right:8px;bottom:8px;padding:6px 8px;border-radius:6px;background:#0a1d35d9;color:#fff;font-size:11px;font-weight:700;text-align:center;letter-spacing:.2px}
+.release-ribbon{background:#f47b20e6}
+.movie-card.is-ended .poster img{filter:grayscale(1);opacity:.55}.movie-card.is-ended .poster:hover img{transform:none}.movie-card.is-ended h3,.movie-card.is-ended p{opacity:.6}
+.book-link.disabled{color:var(--muted);cursor:not-allowed}

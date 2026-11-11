@@ -45,7 +45,7 @@
     durations.clear();movies.forEach(m=>durations.set(String(m.id),+m.duration));const active=rooms.filter(r=>r.active);
     options('room',active,'Chọn phòng');options('line-room',rooms);options('line-movie',movies);
     if(!$('room').value&&active.length)$('room').value=String(active[0].id);
-    if(!movies.some(m=>String(m.id)===movieId&&m.active&&m.status!=='STOPPED'))movieId='';
+    if(!movies.some(m=>String(m.id)===movieId&&m.active&&m.status!=='ENDED'))movieId='';
   }
   function setBounds(){$('line-day').min=week;$('line-day').max=C.addDays(week,6);$('week-label').textContent=`Tuần ${dateLabel(week).slice(0,5)} – ${dateLabel(C.addDays(week,6))}`;}
   function state(){
@@ -110,7 +110,7 @@
     }
   }
   function renderMovies(){
-    const box=$('movies'),q=$('movie-filter').value.trim().toLowerCase(),list=movies.filter(m=>m.active&&m.status!=='STOPPED');box.replaceChildren();$('movie-filter').hidden=list.length<=6;
+    const box=$('movies'),q=$('movie-filter').value.trim().toLowerCase(),list=movies.filter(m=>m.active&&m.status!=='ENDED');box.replaceChildren();$('movie-filter').hidden=list.length<=6;
     for(const m of list.filter(m=>!q||m.title.toLowerCase().includes(q)||String(m.id)===movieId)){
       const on=String(m.id)===movieId,item=button('',()=>{movieId=String(m.id);renderMovies();renderMain();state();},`sched-movie${on?' active':''}`);
       item.setAttribute('role','radio');item.setAttribute('aria-checked',String(on));item.style.setProperty('--tone',tone(m.id));
@@ -217,7 +217,7 @@
     apply.textContent=`Thêm ${result.added.length} suất vào lịch`;apply.disabled=false;
   }
   function openAdd(room,day){
-    if(locked()||!calendar)return;const list=movies.filter(m=>m.active&&m.status!=='STOPPED'),active=rooms.filter(r=>r.active);
+    if(locked()||!calendar)return;const list=movies.filter(m=>m.active&&m.status!=='ENDED'),active=rooms.filter(r=>r.active);
     if(!active.length){message('Rạp chưa có phòng hoạt động. Tạo phòng trước khi xếp suất.','error');return;}if(!list.length){message('Chưa có phim đang hoạt động để xếp suất.','error');return;}
     if(room&&active.some(r=>String(r.id)===String(room)))$('room').value=String(room);if(!$('room').value)$('room').value=String(active[0].id);
     const select=$('add-movie');select.replaceChildren();for(const m of list){const o=node('option',`${m.title} · ${m.duration} phút${m.status==='COMING_SOON'?' · Sắp chiếu':''}`);o.value=String(m.id);select.append(o);}

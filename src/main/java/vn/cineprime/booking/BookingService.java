@@ -34,7 +34,7 @@ public class BookingService {
         Showtime show=db.lock(Showtime.class,showtimeId);
         if(!show.status.equals("OPEN")||now().plusSeconds(1200).isAfter(show.startsAt))throw new IllegalArgumentException("Suất đã ngừng nhận đặt vé.");
         Movie movie=db.lockRead(Movie.class,show.movieId);Room room=db.get(Room.class,show.roomId);Cinema cinema=db.get(Cinema.class,room.cinemaId);
-        if(!movie.active||movie.status.equals("STOPPED")||!room.active||!cinema.active)throw new IllegalArgumentException("Suất không còn mở bán.");
+        if(!movie.active||vn.cineprime.domain.MovieLifecycle.afterEnd(movie,show.startsAt)||!room.active||!cinema.active)throw new IllegalArgumentException("Suất không còn mở bán.");
         db.lock(Cinema.class,cinema.id);
         List<Seat> seats=requested.stream().sorted().map(id->db.get(Seat.class,id)).toList();
         Set<Long> selected=new HashSet<>(requested);
