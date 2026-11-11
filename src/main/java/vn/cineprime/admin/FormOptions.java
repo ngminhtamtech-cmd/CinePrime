@@ -10,8 +10,18 @@ import static vn.cineprime.domain.Domain.*;
 
 @RestController @RequestMapping("/api/admin/form-options") @Transactional(readOnly=true)
 public class FormOptions {
-    private final Store db;
-    public FormOptions(Store db){this.db=db;}
+    private final Store db;private final AdminService admin;
+    public FormOptions(Store db,AdminService admin){this.db=db;this.admin=admin;}
+    /** Quick-add from the movie form: reuse an active person with the same name, otherwise create one through the normal admin save path. */
+    @PostMapping("/people") @Transactional public ResponseEntity<Map<String,Object>> addPerson(@org.springframework.security.core.annotation.AuthenticationPrincipal vn.cineprime.auth.SecurityConfig.SessionUser user,@RequestBody Map<String,String> body){
+        String name=Objects.toString(body.get("name"),"").trim().replaceAll("\\s+"," ");
+        if(name.isEmpty())return ResponseEntity.badRequest().body(Map.of("message","Nhập họ tên."));
+        if(name.length()>255)return ResponseEntity.badRequest().body(Map.of("message","Họ tên tối đa 255 ký tự."));
+        var existing=db.entityManager().createQuery("from "+db.entityName(Person.class)+" p where lower(p.name)=:name and p.active=true order by p.id",Person.class).setParameter("name",name.toLowerCase(Locale.ROOT)).setMaxResults(1).getResultList();
+        if(!existing.isEmpty())return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("person",view(existing.getFirst()),"created",false));
+        Person person=(Person)admin.save(user.id(),"people",null,Map.of("name",name,"biography","","active","true"));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("person",view(person),"created",true));
+    }
     @GetMapping public ResponseEntity<Map<String,Object>> options(@RequestParam String kind,@RequestParam(defaultValue="")String q,@RequestParam(defaultValue="0")int page,@RequestParam(defaultValue="")String selected){
         Class<? extends Row> type=switch(kind){case "genres"->Genre.class;case "people"->Person.class;default->throw new AdminFormProblem("Danh mục không hợp lệ.");};
         String entity=db.entityName(type),search=q.trim().toLowerCase(Locale.ROOT);if(search.length()>255)search=search.substring(0,255);

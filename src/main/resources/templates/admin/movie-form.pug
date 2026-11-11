@@ -131,8 +131,7 @@ block admin
               .mf-combo
                 input.mf-search(id='mf-search-' + role type="search" autocomplete="off" placeholder=role == 'director' ? 'Gõ tên đạo diễn để tìm…' : 'Gõ tên diễn viên để tìm…' aria-autocomplete="list" aria-expanded="false" aria-controls='mf-results-' + role)
                 ul.mf-results(id='mf-results-' + role role="listbox" hidden)
-              small
-                a(href="/admin/manage/people/edit" target="_blank" rel="noopener") + Thêm người mới ↗
+              small Gõ tên để tìm. Chưa có trong danh sách thì chọn “Thêm … mới” ngay trong gợi ý.
 
         //- 4. Media
         section.mf-card#mf-media(aria-labelledby="mf-media-title")

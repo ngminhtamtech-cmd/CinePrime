@@ -7,28 +7,24 @@
   let preferences={groups:{},scroll:0};
   try {const saved=JSON.parse(localStorage.getItem(preferenceKey));if(saved && saved.groups && typeof saved.groups==='object')preferences=saved;} catch {}
   for(const group of groups)group.open=group.dataset.active==='true'||preferences.groups[group.dataset.groupId]===true;
-  // Collapsible sidebar (desktop). Collapsed: icon rail, each group opens as a flyout on hover/focus/click.
-  const root=document.documentElement,wide=matchMedia('(min-width:851px)'),collapseKey='cineprime.admin.navCollapsed';
-  const headerToggle=one('#open-sidebar'),railToggle=one('#collapse-sidebar');let remembered=null;
+  // Sidebar toggle (desktop): hides the whole sidebar with a slide, like a chat app panel. Mobile keeps the drawer.
+  const root=document.documentElement,wide=matchMedia('(min-width:851px)'),collapseKey='cineprime.admin.navCollapsed',headerToggle=one('#open-sidebar');
   const collapsed=()=>root.classList.contains('nav-collapsed');
-  function closeFlyouts(except){groups.forEach(g=>{if(g!==except)g.classList.remove('flyout-open');});}
   function applyCollapsed(on,persist){
-    if(on&&!remembered)remembered=new Map(groups.map(g=>[g,g.open]));
-    root.classList.toggle('nav-collapsed',on);
-    if(on)groups.forEach(g=>g.open=true);else if(remembered){remembered.forEach((open,g)=>g.open=open);remembered=null;}
-    closeFlyouts();const label=on?'Mở rộng thanh điều hướng':'Thu gọn thanh điều hướng';
-    railToggle?.setAttribute('aria-label',label);if(railToggle)one('.nav-label',railToggle).textContent=on?'Mở rộng':'Thu gọn';
-    if(wide.matches)headerToggle?.setAttribute('aria-expanded',String(!on));
+    root.classList.toggle('nav-collapsed',on);sidebar.inert=on&&wide.matches&&!document.body.matches('.seat-workspace,.form-focus');
+    if(wide.matches){headerToggle?.setAttribute('aria-expanded',String(!on));headerToggle?.setAttribute('aria-label',on?'Hiện thanh điều hướng':'Ẩn thanh điều hướng');}
     if(persist)try{localStorage.setItem(collapseKey,on?'1':'0');}catch{}
   }
-  if(collapsed())applyCollapsed(true,false);
+  applyCollapsed(collapsed(),false);
   requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove('nav-instant')));
   const toggle=()=>{if(wide.matches)applyCollapsed(!collapsed(),true);};
-  document.addEventListener('toggle-nav-collapse',toggle);railToggle?.addEventListener('click',toggle);
-  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='b'&&!e.target.closest?.('input,textarea,select,[contenteditable]')){e.preventDefault();toggle();}if(e.key==='Escape')closeFlyouts();});
-  wide.addEventListener('change',e=>{if(!e.matches&&collapsed())applyCollapsed(false,false);else if(e.matches){try{if(localStorage.getItem(collapseKey)==='1')applyCollapsed(true,false);}catch{}}});
-  groups.forEach(g=>one('summary',g).addEventListener('click',e=>{if(!collapsed())return;e.preventDefault();const open=!g.classList.contains('flyout-open');closeFlyouts(g);g.classList.toggle('flyout-open',open);}));
-  document.addEventListener('click',e=>{if(collapsed()&&!e.target.closest('.nav-group'))closeFlyouts();});
+  document.addEventListener('toggle-nav-collapse',toggle);
+  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='b'&&!e.target.closest?.('input,textarea,select,[contenteditable]')){e.preventDefault();toggle();}});
+  wide.addEventListener('change',e=>{if(!e.matches){root.classList.remove('nav-collapsed');sidebar.inert=false;}else{try{applyCollapsed(localStorage.getItem(collapseKey)==='1',false);}catch{}}});
+  // Back / forward buttons next to the toggle; disabled when the browser reports nothing to go to.
+  const back=one('#nav-back'),forward=one('#nav-forward'),nav=window.navigation;
+  const syncHistory=()=>{if(back)back.disabled=nav?!nav.canGoBack:history.length<2;if(forward)forward.disabled=nav?!nav.canGoForward:false;};
+  back?.addEventListener('click',()=>history.back());forward?.addEventListener('click',()=>history.forward());syncHistory();addEventListener('pageshow',syncHistory);nav?.addEventListener?.('currententrychange',syncHistory);
   // Row "⋯" menus: fixed positioning so the table's scroll container never clips them.
   const rowMenus=all('.row-menu');
   const closeMenus=except=>rowMenus.forEach(m=>{if(m!==except&&m.open)m.open=false;});
@@ -40,7 +36,7 @@
   document.addEventListener('click',e=>{if(!e.target.closest('.row-menu'))closeMenus();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus();});
   addEventListener('scroll',()=>closeMenus(),{passive:true,capture:true});addEventListener('resize',()=>closeMenus());
-  const save=()=>{if(collapsed())return;try {localStorage.setItem(preferenceKey,JSON.stringify({groups:Object.fromEntries(groups.map(g=>[g.dataset.groupId,g.open])),scroll:sidebar.scrollTop}));}catch {}};
+  const save=()=>{try {localStorage.setItem(preferenceKey,JSON.stringify({groups:Object.fromEntries(groups.map(g=>[g.dataset.groupId,g.open])),scroll:sidebar.scrollTop}));}catch {}};
   requestAnimationFrame(()=>{sidebar.scrollTop=Math.max(0,Number(preferences.scroll)||0);groups.forEach(g=>g.addEventListener('toggle',save));sidebar.addEventListener('scroll',save,{passive:true});});
   window.addEventListener('pagehide',save);
   all('a',sidebar).forEach(link=>link.addEventListener('click',()=>{save();if(sidebar.classList.contains('open'))one('#close-sidebar').click();}));

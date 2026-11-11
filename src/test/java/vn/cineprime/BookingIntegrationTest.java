@@ -94,6 +94,14 @@ class BookingIntegrationTest {
         assertEquals(LocalDate.of(2026,12,10),db.get(Movie.class,movie).endDate);assertEquals(100,db.get(Movie.class,movie).duration);
         Map<String,String> extend=movieFields(movie);extend.put("endDate","2026-12-20");admin.save(5L,"movies",movie,extend);assertEquals(LocalDate.of(2026,12,20),db.get(Movie.class,movie).endDate);
     }
+    @Autowired vn.cineprime.admin.FormOptions formOptions;
+    @Test void quickAddPersonFromMovieFormCreatesOnceAndReusesSameName() {
+        var admin5=new vn.cineprime.auth.SecurityConfig.SessionUser(5L,"admin@example.test","x","ADMIN",0);
+        var first=formOptions.addPerson(admin5,Map.of("name","  Adam   Wingard "));assertEquals(200,first.getStatusCode().value());assertEquals(true,first.getBody().get("created"));
+        Long id=(Long)((Map<?,?>)first.getBody().get("person")).get("id");assertEquals("Adam Wingard",db.get(Person.class,id).name);assertTrue(db.get(Person.class,id).active);
+        var again=formOptions.addPerson(admin5,Map.of("name","adam wingard"));assertEquals(false,again.getBody().get("created"));assertEquals(id,((Map<?,?>)again.getBody().get("person")).get("id"));
+        assertEquals(1L,db.count(Person.class,""));assertEquals(400,formOptions.addPerson(admin5,Map.of("name","   ")).getStatusCode().value());assertEquals(1L,db.count(Person.class,""));
+    }
     @Test void sixTimelineSelectionsPublishTogetherAndReplayWithoutDuplicates() {
         var lines=new ArrayList<vn.cineprime.admin.ShowtimeBatch.Line>();for(String date:List.of("2026-12-07","2026-12-08"))for(String time:List.of("09:00","12:00","15:00"))lines.add(batchLine(date+time,date,time));
         var input=new vn.cineprime.admin.ShowtimeBatch.Input(cinema,"MANUAL","OPEN",lines);String key=UUID.randomUUID().toString();var result=commitBatch(input,key);

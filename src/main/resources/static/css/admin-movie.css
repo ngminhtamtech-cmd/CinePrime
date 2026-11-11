@@ -165,3 +165,8 @@
 .movie-form .media-field.mf-video{background:none;border:0;padding:0;margin:4px 0 0}
 .mf-drop .media-preview{background:transparent;border:0;max-width:none;max-height:none}
 @media(max-width:900px){.mf-side{max-height:none;overflow:visible}}
+.mf-results li.mf-create{display:flex;align-items:center;gap:10px;color:var(--blue);border-top:1px solid var(--line);margin-top:4px;padding-top:10px}
+.mf-results li.mf-create:first-child{border-top:0;margin-top:0;padding-top:9px}
+.mf-results li.mf-create strong{font-weight:700}
+.mf-create-icon{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;background:#eef5fd;color:var(--blue);font-weight:700;font-size:15px;line-height:1}
+.mf-results li.mf-create.is-active .mf-create-icon,.mf-results li.mf-create:hover .mf-create-icon{background:var(--blue);color:#fff}

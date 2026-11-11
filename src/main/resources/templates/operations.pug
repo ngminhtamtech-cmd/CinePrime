@@ -28,7 +28,17 @@ html(lang="vi")
     header.ops-header
       .ops-brand
         if navGroups
-          button#open-sidebar.icon-button(type="button" aria-label="Mở điều hướng" aria-expanded="false" aria-controls="ops-sidebar") ☰
+          .nav-controls
+            button#open-sidebar.nav-control(type="button" aria-label="Ẩn / hiện thanh điều hướng" title="Ẩn / hiện thanh điều hướng (Ctrl + B)" aria-expanded="false" aria-controls="ops-sidebar")
+              svg(viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false")
+                rect(x="3" y="4.5" width="18" height="15" rx="3")
+                path(d="M9 4.5v15")
+            button#nav-back.nav-control.nav-history(type="button" aria-label="Quay lại trang trước" title="Quay lại (Alt + ←)")
+              svg(viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false")
+                path(d="M15 18l-6-6 6-6")
+            button#nav-forward.nav-control.nav-history(type="button" aria-label="Tới trang sau" title="Tới (Alt + →)")
+              svg(viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false")
+                path(d="M9 18l6-6-6-6")
         a.brand(href=navGroups ? '/admin' : '/staff' aria-label="CinePrime điều hành")
           img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="32" height="32")
           span Cine

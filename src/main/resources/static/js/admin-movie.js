@@ -63,25 +63,42 @@
     }
     chips.addEventListener('click',e=>{const remove=e.target.closest('.mf-chip-remove');if(!remove)return;remove.closest('.mf-chip').remove();form.dispatchEvent(new Event('input',{bubbles:true}));search.focus();});
     function close(){results.hidden=true;search.setAttribute('aria-expanded','false');active=-1;}
+    const roleLabel=name==='directorIds'?'đạo diễn':'diễn viên';let creating=false;
+    const typed=()=>search.value.trim().replace(/\s+/g,' ');
+    // Create the typed name as a new person (or reuse an active one with the same name) and add it straight away.
+    async function create(){
+      const value=typed();if(!value||creating)return;creating=true;render('Đang thêm “'+value+'”…');
+      try{const data=await api('/api/admin/form-options/people',{method:'POST',body:JSON.stringify({name:value})});addChip(data.person);search.value='';close();toast(data.created?'Đã thêm '+roleLabel+' mới: '+data.person.name:'Đã chọn '+data.person.name+' (đã có sẵn).');}
+      catch(error){render('Chưa thêm được: '+error.message);}
+      finally{creating=false;}
+    }
     function render(message){
-      results.replaceChildren();const chosen=selected();
-      const rows=items.filter(p=>!chosen.has(String(p.id)));
-      if(message||!rows.length){const li=document.createElement('li');li.className='mf-empty';li.textContent=message||'Không tìm thấy. Kiểm tra chính tả hoặc thêm người mới.';results.append(li);}
-      rows.forEach((p,i)=>{const li=document.createElement('li');li.role='option';li.id=root.dataset.pickerName+'-opt-'+i;li.textContent=p.name+(p.active?'':' · đã ngừng');li.classList.toggle('is-active',i===active);li.addEventListener('mousedown',e=>{e.preventDefault();addChip(p);search.value='';close();});results.append(li);});
+      results.replaceChildren();const chosen=selected(),value=typed();
+      const rows=message?[]:items.filter(p=>!p.create&&!chosen.has(String(p.id)));
+      const exact=items.some(p=>!p.create&&p.name.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
+      if(!message&&value&&!exact)rows.push({create:true,name:value});
+      if(message||!rows.length){const li=document.createElement('li');li.className='mf-empty';li.textContent=message||(value?'Đã chọn người này.':'Gõ tên để tìm hoặc thêm mới.');results.append(li);}
+      rows.forEach((p,i)=>{
+        const li=document.createElement('li');li.role='option';li.id=name+'-opt-'+i;li.classList.toggle('is-active',i===active);
+        if(p.create){li.className+=' mf-create';const plus=document.createElement('span');plus.className='mf-create-icon';plus.textContent='+';const text=document.createElement('span');text.append('Thêm “');const strong=document.createElement('strong');strong.textContent=p.name;text.append(strong,'” làm '+roleLabel+' mới');li.append(plus,text);li.addEventListener('mousedown',e=>{e.preventDefault();create();});}
+        else{li.textContent=p.name+(p.active?'':' · đã ngừng');li.addEventListener('mousedown',e=>{e.preventDefault();addChip(p);search.value='';close();});}
+        results.append(li);
+      });
       items=rows;results.hidden=false;search.setAttribute('aria-expanded','true');
     }
     async function lookup(){
       controller?.abort();controller=new AbortController();
-      try{const data=await api('/api/admin/form-options?'+new URLSearchParams({kind:'people',q:search.value.trim(),page:'0'}),{signal:controller.signal});items=data.rows||[];active=-1;render();}
+      try{const data=await api('/api/admin/form-options?'+new URLSearchParams({kind:'people',q:typed(),page:'0'}),{signal:controller.signal});items=data.rows||[];active=-1;render();}
       catch(error){if(error.name!=='AbortError')render('Không tải được danh sách: '+error.message);}
     }
+    const choose=pick=>{if(!pick)return;if(pick.create)create();else{addChip(pick);search.value='';close();}};
     search.addEventListener('input',e=>{e.stopPropagation();clearTimeout(timer);timer=setTimeout(lookup,180);});
     search.addEventListener('focus',()=>{if(!results.hidden)return;lookup();});
     search.addEventListener('blur',()=>setTimeout(close,120));
     search.addEventListener('keydown',e=>{
       if(e.key==='Escape'){close();return;}
       if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(results.hidden){lookup();return;}active=Math.max(0,Math.min(items.length-1,active+(e.key==='ArrowDown'?1:-1)));render();search.setAttribute('aria-activedescendant',name+'-opt-'+active);}
-      if(e.key==='Enter'){e.preventDefault();const pick=active>=0?items[active]:items.length===1?items[0]:null;if(pick){addChip(pick);search.value='';close();}}
+      if(e.key==='Enter'){e.preventDefault();if(results.hidden||creating)return;choose(active>=0?items[active]:items.length===1?items[0]:null);}
     });
   });
 
