@@ -52,7 +52,7 @@ public class ReportService {
         long revenue=total(rows),oldRevenue=total(previous),ticketCount=range.future()?0:tickets(range.from().atStartOfDay(ZONE).toInstant(),range.end(),cinemaId),oldTickets=range.future()?0:tickets(range.previousFrom().atStartOfDay(ZONE).toInstant(),range.previousEnd(),cinemaId);
         String id=UUID.randomUUID().toString();Map<String,Object> model=new LinkedHashMap<>();
         model.put("reportId",id);model.put("period",period);model.put("reportDate",date.toString());model.put("cinemaId",cinemaId==null?"":cinemaId.toString());model.put("cinemaLabel",cinema);model.put("generatedAt",stamp(now));model.put("range",range.from()+" → "+range.until().minusDays(1));
-        model.put("cutoff",range.future()?"Chưa bắt đầu":stamp(range.end()));model.put("comparisonRange",range.future()?"Không so sánh kỳ chưa bắt đầu":range.previousFrom()+" → "+stamp(range.previousEnd())+" (mốc kết thúc không bao gồm)");
+        model.put("cutoff",range.future()?"Chưa bắt đầu":stamp(range.end()));model.put("comparisonRange",range.future()?"Không so sánh kỳ chưa bắt đầu":"từ 00:00 · "+range.previousFrom().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))+" đến trước "+stamp(range.previousEnd()));
         model.put("revenue",db.money(revenue));model.put("revenueValue",revenue);model.put("ticketCount",ticketCount);model.put("orderCount",rows.size());
         model.put("revenueChange",change(revenue,oldRevenue,range.future()));model.put("ticketChange",change(ticketCount,oldTickets,range.future()));model.put("orderChange",change(rows.size(),previous.size(),range.future()));
         model.put("chart",chart(range,now,rows));model.put("topMovies",top(rows));model.put("occupancy",occupancy(range,cinemaId));

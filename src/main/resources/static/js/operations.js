@@ -6,7 +6,7 @@
   const one=(s,r=document)=>r.querySelector(s),all=(s,r=document)=>[...r.querySelectorAll(s)];
   const sidebar=one('#ops-sidebar'),open=one('#open-sidebar'),close=one('#close-sidebar'),overlay=one('#sidebar-overlay'),main=one('#main');
   function drawer(show){if(!sidebar)return;sidebar.classList.toggle('open',show);overlay.hidden=!show;open.setAttribute('aria-expanded',String(show));main.inert=show;document.body.style.overflow=show?'hidden':'';one('.ops-header').inert=show;if(show)requestAnimationFrame(()=>close.focus());else open.focus();}
-  open?.addEventListener('click',()=>drawer(true));close?.addEventListener('click',()=>drawer(false));overlay?.addEventListener('click',()=>drawer(false));
+  open?.addEventListener('click',()=>{if(matchMedia('(min-width:851px)').matches){document.dispatchEvent(new Event('toggle-nav-collapse'));return;}drawer(true);});close?.addEventListener('click',()=>drawer(false));overlay?.addEventListener('click',()=>drawer(false));
   document.addEventListener('keydown',e=>{if(!sidebar?.classList.contains('open'))return;if(e.key==='Escape'){e.preventDefault();drawer(false);}if(e.key==='Tab'){const nodes=all('summary,a,button',sidebar).filter(n=>n.offsetParent!==null);const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
   matchMedia('(min-width:851px)').addEventListener('change',e=>{if(e.matches&&sidebar?.classList.contains('open'))drawer(false);});
   all('.nav-group[data-active="true"]').forEach(group=>group.addEventListener('toggle',()=>{if(!group.open)group.open=true;}));

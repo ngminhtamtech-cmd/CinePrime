@@ -1,27 +1,40 @@
 mixin csrf()
   input(type="hidden" name=csrfName value=csrfToken)
+mixin chevron(direction)
+  svg(viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false")
+    path(d=direction == 'left' ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6')
 mixin pagination()
-  nav.ops-pagination(aria-label="Phân trang")
-    span Trang #{page + 1} · #{total} kết quả
-    .actions
+  nav.ops-pagination.pager(aria-label="Phân trang" data-single=page == 0 && !hasMore ? 'true' : 'false')
+    span.pager-info Trang #{page + 1} / #{(total + 4) / 5 > 0 ? (total + 4) / 5 : 1} · #{total} kết quả
+    .actions.pager-arrows
       if page > 0
-        a.button.secondary(href='?page=' + (page - 1) data-page=page - 1) ← Trước
+        a.pager-btn(href='?page=' + (page - 1) data-page=page - 1 aria-label="Trang trước" title="Trang trước")
+          +chevron('left')
       else
-        button.button.secondary(type="button" disabled) ← Trước
+        button.pager-btn(type="button" disabled aria-label="Trang trước")
+          +chevron('left')
       if hasMore
-        a.button.secondary(href='?page=' + (page + 1) data-page=page + 1) Sau →
+        a.pager-btn(href='?page=' + (page + 1) data-page=page + 1 aria-label="Trang sau" title="Trang sau")
+          +chevron('right')
       else
-        button.button.secondary(type="button" disabled) Sau →
+        button.pager-btn(type="button" disabled aria-label="Trang sau")
+          +chevron('right')
 mixin widgetPager(data, refresh, moreUrl)
-  nav.ops-pagination(aria-label="Phân trang khối")
-    span(data-widget-page) Trang #{data.page + 1} · #{data.total} kết quả
-    .actions
-      button.button.secondary(type="button" data-widget-prev disabled) ← Trước
-      button.button.secondary(type="button" data-widget-next disabled=!data.hasMore) Sau →
+  nav.ops-pagination.pager.widget-pager(aria-label="Phân trang khối" data-single=data.page == 0 && !data.hasMore ? 'true' : 'false')
+    .pager-arrows
+      button.pager-btn(type="button" data-widget-prev disabled aria-label="Trang trước" title="Trang trước")
+        +chevron('left')
+      span.pager-count(data-widget-page title=data.total + ' kết quả') #{data.page + 1} / #{(data.total + 4) / 5 > 0 ? (data.total + 4) / 5 : 1}
+      button.pager-btn(type="button" data-widget-next disabled=!data.hasMore aria-label="Trang sau" title="Trang sau")
+        +chevron('right')
+    .pager-tools
       if refresh
-        button.text-button.widget-refresh(type="button" data-widget-refresh aria-label="Làm mới khối" title="Làm mới khối") ↻
+        button.pager-btn.widget-refresh(type="button" data-widget-refresh aria-label="Làm mới khối" title="Làm mới")
+          svg(viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false")
+            path(d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7")
       if moreUrl
-        a.widget-more(href=moreUrl) Xem đủ →
+        a.widget-more(href=moreUrl) Xem tất cả
+          +chevron('right')
   p.refresh-status(data-widget-status role="status")
 mixin operationWidget(name, data, moreUrl)
   .operation-widget(data-op-widget=name data-cinema=cinemaId data-next=data.nextCursor data-revision=data.revision)
@@ -31,20 +44,24 @@ mixin operationWidget(name, data, moreUrl)
           strong= item.label
           small= item.detail
       if data.rows.size() == 0
-        p.muted Chưa có dữ liệu cần hiển thị.
+        p.muted.empty-inline Không có mục nào lúc này.
     +widgetPager(data, true, moreUrl)
 mixin sectionPagination(data, param)
-  nav.ops-pagination(aria-label="Phân trang chi tiết")
-    span Trang #{data.page + 1} · #{data.total} kết quả
-    .actions
+  nav.ops-pagination.pager(aria-label="Phân trang chi tiết" data-single=data.page == 0 && !data.hasMore ? 'true' : 'false')
+    span.pager-info Trang #{data.page + 1} · #{data.total} kết quả
+    .actions.pager-arrows
       if data.page > 0
-        a.button.secondary(href='?' + param + '=' + (data.page - 1) data-page=data.page - 1 data-page-param=param) ← Trước
+        a.pager-btn(href='?' + param + '=' + (data.page - 1) data-page=data.page - 1 data-page-param=param aria-label="Trang trước")
+          +chevron('left')
       else
-        button.button.secondary(type="button" disabled) ← Trước
+        button.pager-btn(type="button" disabled aria-label="Trang trước")
+          +chevron('left')
       if data.hasMore
-        a.button.secondary(href='?' + param + '=' + (data.page + 1) data-page=data.page + 1 data-page-param=param) Sau →
+        a.pager-btn(href='?' + param + '=' + (data.page + 1) data-page=data.page + 1 data-page-param=param aria-label="Trang sau")
+          +chevron('right')
       else
-        button.button.secondary(type="button" disabled) Sau →
+        button.pager-btn(type="button" disabled aria-label="Trang sau")
+          +chevron('right')
 mixin movieCard(m)
   article.movie-card(class=m.ended ? 'is-ended' : '' aria-disabled=m.ended ? 'true' : false)
     if m.ended

@@ -92,7 +92,7 @@ block admin
               each cell in row.cells
                 td(data-label=cell.label)
                   if cell.badge
-                    span.badge= cell.value
+                    span.status-badge(class='tone-' + cell.tone)= cell.value
                   else if cell.expandable && cell.value.length() > 80
                     details.cell-details
                       summary
@@ -101,43 +101,54 @@ block admin
                       p= cell.value
                   else
                     span.cell-text= cell.value
-              td
+              td.actions-cell
                 .row-actions
                   if key == 'seats'
-                    a.button.secondary(href='/admin/setup/rooms/' + roomId + '?seatId=' + row.id) Sửa ghế / cặp
+                    a.action-btn.primary(href='/admin/setup/rooms/' + roomId + '?seatId=' + row.id) Sửa ghế
                   else
-                    a.button.secondary(href='/admin/manage/' + key + '/edit?id=' + row.id + '&returnTo=' + returnEncoded)= key == 'reviews' ? 'Duyệt' : 'Sửa'
+                    a.action-btn.primary(href='/admin/manage/' + key + '/edit?id=' + row.id + '&returnTo=' + returnEncoded)
+                      svg(viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false")
+                        path(d=key == 'reviews' ? 'M20 6L9 17l-5-5' : 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4')
+                      | #{key == 'reviews' ? 'Duyệt' : 'Sửa'}
                   if key == 'cinemas'
-                    a(href='/admin/manage/rooms/edit?cinemaId=' + row.id) Tạo phòng →
+                    a.action-btn(href='/admin/manage/rooms/edit?cinemaId=' + row.id) + Phòng
                   if key == 'rooms'
-                    a(href='/admin/setup/rooms/' + row.id) Tiếp tục thiết lập / Sơ đồ
+                    a.action-btn(href='/admin/setup/rooms/' + row.id) Sơ đồ ghế
                   if key == 'users'
-                    a(href='/admin/orders?q=' + row.email) Lịch sử
+                    a.action-btn(href='/admin/orders?q=' + row.email) Lịch sử
                   if key == 'vouchers'
-                    a(href='/admin/voucher-usage/' + row.id) Lượt dùng
-                  if key == 'movies'
-                    if row.active
-                      form(action='/admin/manage/movies/' + row.id + '/disable' method="post")
-                        +csrf()
-                        input(type="hidden" name="returnTo" value=returnTo)
-                        button.text-button.danger-text(type="submit" data-confirm='Ẩn phim “' + row.name + '” khỏi website và dừng nhận đơn mới? Đơn còn hạn, vé đã thanh toán và check-in vẫn được giữ.') Ẩn khỏi website
-                    else
-                      form(action='/admin/manage/movies/' + row.id + '/restore' method="post")
-                        +csrf()
-                        input(type="hidden" name="returnTo" value=returnTo)
-                        button.button.secondary(type="submit" disabled=row.stopped title=row.stopped ? 'Đổi trạng thái Ngừng chiếu trong form trước khi hiện lại.' : 'Hiện phim trên website' data-confirm='Hiện lại phim “' + row.name + '” trên website?') Hiện lại
-                    if row.canDelete
-                      form(action='/admin/manage/movies/' + row.id + '/delete' method="post")
-                        +csrf()
-                        input(type="hidden" name="returnTo" value=returnTo)
-                        button.text-button.danger-text(type="submit" data-confirm='Xóa vĩnh viễn phim chưa sử dụng “' + row.name + '”? Thao tác xóa bản ghi và liên kết thể loại/đoàn phim, không thể hoàn tác từ website.') Xóa vĩnh viễn
-                    else
-                      small Chỉ được ẩn: phim đã có lịch hoặc dữ liệu khách.
-                  else if key != 'users'
-                    form(action='/admin/manage/' + key + '/' + row.id + '/disable' method="post")
+                    a.action-btn(href='/admin/voucher-usage/' + row.id) Lượt dùng
+                  if key == 'movies' && !row.active
+                    form(action='/admin/manage/movies/' + row.id + '/restore' method="post")
                       +csrf()
                       input(type="hidden" name="returnTo" value=returnTo)
-                      button.text-button.danger-text(type="submit" data-confirm=(key == 'prices' ? 'Xóa khung giá ' : key == 'showtimes' ? 'Hủy suất ' : 'Ngừng hoạt động hoặc ẩn ') + row.name + '? Backend sẽ kiểm tra dữ liệu liên quan trước khi thay đổi.')= key == 'prices' ? 'Xóa giá' : key == 'showtimes' ? 'Hủy suất' : 'Ngừng / Ẩn'
+                      button.action-btn(type="submit" data-confirm='Hiện lại phim “' + row.name + '” trên website?') Hiện lại
+                  if (key == 'movies' && (row.active || row.canDelete)) || (key != 'movies' && key != 'users' && row.canDisable)
+                    details.row-menu
+                      summary(aria-label='Thao tác khác cho ' + row.name title="Thao tác khác")
+                        svg(viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false")
+                          circle(cx="5" cy="12" r="1.8")
+                          circle(cx="12" cy="12" r="1.8")
+                          circle(cx="19" cy="12" r="1.8")
+                      .row-menu-list(role="menu")
+                        if key == 'movies'
+                          if row.active
+                            form(action='/admin/manage/movies/' + row.id + '/disable' method="post")
+                              +csrf()
+                              input(type="hidden" name="returnTo" value=returnTo)
+                              button.menu-item.danger(type="submit" role="menuitem" data-confirm='Ẩn phim “' + row.name + '” khỏi website và dừng nhận đơn mới? Đơn còn hạn, vé đã thanh toán và check-in vẫn được giữ.') Ẩn khỏi website
+                          if row.canDelete
+                            form(action='/admin/manage/movies/' + row.id + '/delete' method="post")
+                              +csrf()
+                              input(type="hidden" name="returnTo" value=returnTo)
+                              button.menu-item.danger(type="submit" role="menuitem" data-confirm='Xóa vĩnh viễn phim chưa sử dụng “' + row.name + '”? Thao tác xóa bản ghi và liên kết thể loại/đoàn phim, không thể hoàn tác từ website.') Xóa vĩnh viễn
+                          else
+                            p.menu-note Phim đã có lịch hoặc dữ liệu khách nên chỉ ẩn được, không xóa được.
+                        else
+                          form(action='/admin/manage/' + key + '/' + row.id + '/disable' method="post")
+                            +csrf()
+                            input(type="hidden" name="returnTo" value=returnTo)
+                            button.menu-item.danger(type="submit" role="menuitem" data-confirm=(key == 'prices' ? 'Xóa khung giá ' : key == 'showtimes' ? 'Hủy suất ' : key == 'movie-genres' || key == 'credits' ? 'Gỡ liên kết ' : key == 'reviews' ? 'Ẩn bình luận ' : 'Ngừng hoạt động ') + row.name + '? Hệ thống sẽ kiểm tra dữ liệu liên quan trước khi thay đổi.')= key == 'prices' ? 'Xóa khung giá' : key == 'showtimes' ? 'Hủy suất chiếu' : key == 'movie-genres' || key == 'credits' ? 'Gỡ liên kết' : key == 'reviews' ? 'Ẩn bình luận' : key == 'cinemas' ? 'Ngừng hoạt động rạp' : key == 'rooms' ? 'Ngừng sử dụng phòng' : key == 'seats' ? 'Ngừng dùng ghế' : key == 'products' ? 'Ngừng bán' : key == 'vouchers' ? 'Ngừng mã ưu đãi' : key == 'contents' ? 'Ẩn nội dung' : 'Ngừng hoạt động'
     if rows.size() == 0
       .empty= key == 'seats' && !roomId ? 'Chọn phòng trong rạp ở trên để xem và quản lý ghế.' : 'Không có dữ liệu phù hợp. Thử đổi bộ lọc hoặc thêm bản ghi mới.'
     +pagination()

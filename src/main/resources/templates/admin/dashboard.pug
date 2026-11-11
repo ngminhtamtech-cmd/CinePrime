@@ -23,10 +23,24 @@ block admin
   .report-caption
     strong #{range} · #{cinemaLabel}
     span Mốc chốt: #{cutoff} · Bản chụp giữ 15 phút
-    details
-      summary Định nghĩa & kỳ so sánh
-      p Doanh thu = tổng đơn đã thanh toán theo thời điểm thanh toán, gồm vé + combo − giảm giá. Không gồm giao dịch thành công muộn cần đối soát. Vé tính theo ghế vật lý; đơn miễn phí vẫn có vé và đơn, doanh thu 0đ.
-      p So sánh: #{comparisonRange}. Mốc chốt không bao gồm thời điểm kết thúc. Mã báo cáo: #{reportId}.
+    details.disclosure
+      summary
+        span.disclosure-icon(aria-hidden="true") i
+        span Cách tính số liệu
+      dl.definition-list
+        div
+          dt Doanh thu
+          dd Tổng các đơn đã thanh toán (vé + bắp nước − giảm giá), tính theo lúc khách thanh toán. Chưa gồm giao dịch về muộn đang chờ đối soát.
+        div
+          dt Vé đã bán
+          dd Mỗi ghế là 1 vé. Đơn miễn phí vẫn được tính vé và đơn, doanh thu 0 đ.
+        div
+          dt So sánh với
+          dd= comparisonRange
+        div
+          dt Mã báo cáo
+          dd
+            code= reportId
   .kpi-grid
     article.kpi-card
       .kpi-label
@@ -70,8 +84,9 @@ block admin
                   else if !point.future
                     circle(cx=point.labelX cy="170" r="2" class="chart-zero")
                   text(x=point.labelX y=point.labelY text-anchor="middle" class=point.future ? 'chart-future' : '')= point.label
-        details.chart-data(data-report-widget="chart" data-report-id=reportId)
-          summary Xem bảng số liệu chính xác
+        details.chart-data.disclosure(data-report-widget="chart" data-report-id=reportId)
+          summary
+            span Xem bảng số liệu
           .table-wrap
             table
               thead
