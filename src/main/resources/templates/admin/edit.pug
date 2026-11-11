@@ -1,32 +1,209 @@
 extends layout
 block admin
-  a.more(href='/admin/manage/' + key) ← Danh sách
-  h1= resourceLabel
-  .panel
-    form.admin-form(action='/admin/manage/' + key + '/save' method="post")
-      +csrf()
-      if rowId
-        input(type="hidden" name="id" value=rowId)
-      each field in fields
-        if field.type == 'checkbox'
-          label.check
-            input(type="checkbox" name=field.name value="true" checked=field.checked)
-            span= field.label
-        else
-          label= field.label
-            if field.options.size() > 0
-              select(name=field.name)
-                option(value="") — Chọn —
-                each option in field.options
-                  option(value=option.value selected=field.value == option.value)= option.label
-            else if field.type == 'textarea'
-              textarea(name=field.name rows="5")= field.value
+  .page-heading#admin-form-heading
+    div
+      h1 #{rowId ? 'Chỉnh sửa' : 'Thêm mới'} · #{resourceLabel}
+      p.muted= rowId ? 'Bản ghi #' + rowId : 'Nhập thông tin bên dưới để tạo bản ghi.'
+    a.button.secondary(href=returnTo) ← Danh sách
+  if formError
+    .form-error(role="alert" tabindex="-1")
+      strong Chưa thể lưu thay đổi
+      p= formError
+  if lockReason
+    p#form-lock.notice= lockReason
+  if editingContext
+    .cinema-context(data-form-context data-cinema=editingContext.cinemaId data-room=editingContext.roomId)
+      strong= editingContext.cinemaName
+      span= editingContext.roomName
+      if setupRoomId
+        a(href='/admin/setup/rooms/' + setupRoomId) Tiếp tục thiết lập phòng →
+    button.text-button(type="button" data-refresh-catalog) Làm mới danh mục
+    p#catalog-refresh-status.muted(role="status") Đọc mới khi quay lại tab, giữ nội dung đang nhập.
+  if key == 'prices'
+    p.notice Áp dụng chung cho các phòng trong rạp này. Chỉ nhập giá bạn muốn áp dụng; hệ thống không tự tạo hoặc ghi đè giá.
+  if key == 'products' || key == 'vouchers'
+    p.notice Toàn hệ thống · Áp dụng trong bước combo / mã ưu đãi của đơn hàng, không phụ thuộc phòng.
+  form.ops-edit-form(action='/admin/manage/' + key + '/save' method="post" data-admin-form=key data-editing=rowId ? 'true' : 'false' data-error-fields=errorFields data-dirty-form data-movie-form=key == 'movies' ? 'true' : false data-showtime-form=key == 'showtimes' ? 'true' : false)
+    +csrf()
+    input(type="hidden" name="returnTo" value=returnTo)
+    if setupRoomId
+      input(type="hidden" name="setupRoomId" value=setupRoomId)
+    if rowId
+      input(type="hidden" name="id" value=rowId)
+    if priceVersion
+      input(type="hidden" name="priceVersion" value=priceVersion)
+    if key == 'movies'
+      fieldset.panel.form-group(data-field="genreIds" data-picker="genres" data-picker-name="genreIds")
+        legend Thể loại
+        input(type="hidden" name="genresPresent" value="true")
+        p.muted Chọn một hoặc nhiều thể loại. Phim hiển thị cần ít nhất một thể loại đang hoạt động.
+        p#genre-warning.notice(hidden=!genreWarning) Chưa có thể loại hoạt động được gán. Hãy bổ sung trước khi hiển thị phim.
+        #movie-genre-options.genre-options
+          each g in movieGenres
+            label.check
+              input(type="checkbox" name="genreIds" value=g.id checked=g.selected disabled=!g.active && !g.selected data-active=g.active ? 'true' : 'false')
+              span #{g.name}#{g.active ? '' : ' · Đã ngừng'}
+        a(href="/admin/manage/genres" target="_blank" rel="noopener") Quản lý thể loại ↗
+        button.text-button(type="button" data-refresh-catalog) Làm mới danh mục
+        p.catalog-refresh-status.muted(role="status") Danh mục sẽ cập nhật khi quay lại tab, giữ các lựa chọn đang nhập.
+      input(type="hidden" name="creditsPresent" value="true")
+      each role in ['director', 'actor']
+        fieldset.panel.form-group(data-field=role + 'Ids' data-picker="people" data-picker-name=role + 'Ids')
+          legend= role == 'director' ? 'Đạo diễn' : 'Diễn viên'
+          .genre-options
+            each person in role == 'director' ? movieDirectors : movieActors
+              label.check
+                input(type="checkbox" name=role + 'Ids' value=person.id checked data-active=person.active ? 'true' : 'false')
+                span= person.name
+          a(href="/admin/manage/people" target="_blank" rel="noopener") Quản lý diễn viên / đạo diễn ↗
+    if key == 'showtimes'
+      fieldset.panel.form-group
+        legend Phim / Rạp / Phòng và thời gian
+        button.text-button(type="button" data-refresh-catalog) Làm mới danh mục
+        p#catalog-refresh-status.muted(role="status") Đọc mới khi quay lại tab, giữ phim/giờ đang nhập.
+        .form-fields
+          label(data-field="movieId") Phim
+            select#editor-movie(name="movieId" required disabled=protectedShow)
+              option(value="") — Chọn phim —
+              each m in editorMovies
+                option(value=m.id selected=movieId == m.id.toString())= m.title
+            if protectedShow
+              input(type="hidden" name="movieId" value=movieId)
+          label(data-field="cinemaId") Rạp
+            select#editor-cinema(name="cinemaId" required disabled=protectedShow)
+              option(value="") — Chọn rạp —
+              each c in adminCinemas
+                option(value=c.id selected=cinemaId == c.id.toString())= c.name
+            if protectedShow
+              input(type="hidden" name="cinemaId" value=cinemaId)
+          label(data-field="roomId") Phòng
+            select#editor-room(name="roomId" required disabled=protectedShow)
+              option(value="") — Chọn phòng —
+              each r in editorAllRooms
+                option(value=r.id data-cinema=r.cinemaId selected=roomId == r.id.toString() hidden=cinemaId != r.cinemaId.toString() disabled=cinemaId != r.cinemaId.toString())= r.name
+            if protectedShow
+              input(type="hidden" name="roomId" value=roomId)
+          label(data-field="show-date") Ngày chiếu
+            input#editor-date(type="date" value=editorDate required readonly=protectedShow)
+          label(data-field="show-time") Giờ bắt đầu
+            input#editor-time(type="time" value=editorTime step="any" required readonly=protectedShow)
+          input#field-startsAt(type="hidden" name="startsAt" value=editorStartsAt data-locked=protectedShow ? 'true' : 'false')
+        #showtime-preview(data-field="preview" data-editing=rowId role="region" aria-label="Lịch phòng và kiểm tra trùng")
+          p#preview-summary.muted Chọn rạp, phòng và ngày để xem lịch; chọn phim và giờ để kiểm tra trùng.
+          p#preview-proposal
+          p#preview-readiness(role="status")
+          a#preview-fix-setup(href="#" hidden) Kiểm tra ghế và giá của phòng →
+          .table-wrap
+            table.management-table
+              thead
+                tr
+                  th Phim / Trạng thái
+                  th Thời gian
+                  th Hết vệ sinh
+              tbody#preview-rows
+          nav.ops-pagination(aria-label="Phân trang lịch phòng")
+            span#preview-page
+            .actions
+              button#preview-prev.button.secondary(type="button" disabled) ← Trước
+              button#preview-next.button.secondary(type="button" disabled) Sau →
+          p#preview-status.refresh-status(role="status")
+    each group in groups
+      fieldset.panel.form-group(disabled=fullyLocked data-primary=key == 'movies' && group.label == 'Thông tin phim' ? 'true' : false)
+        legend= group.label
+        .form-fields
+          each field in group.fields
+            if key == 'showtimes' && (field.name == 'movieId' || field.name == 'roomId' || field.name == 'startsAt')
+              //- Rendered by the dedicated showtime editor above.
+            else if field.type == 'checkbox'
+              label.check(data-field=field.name)
+                input(type="checkbox" name=field.name value="true" checked=field.checked)
+                span= field.label
+                if key == 'movies' && field.name == 'featured'
+                  small Banner trên trang chủ
             else
-              input(type=field.type name=field.name value=field.value)
-      if key == 'users' && !rowId
-        label Mật khẩu ban đầu (ít nhất 10 ký tự)
-          input(type="password" name="initialPassword" minlength="10" required autocomplete="new-password")
-      if key == 'prices'
-        p.notice Giá COUPLE được lưu theo một ghế vật lý; giá cặp bằng hai ghế. Khung giờ tính bằng phút từ 00:00, ví dụ 17:00 = 1020.
-      p.muted Hình/trailer dùng đường dẫn tại mục Upload. Thời gian nhập theo giờ Việt Nam. Các thay đổi phải đáp ứng ràng buộc lịch sử và giao dịch.
-      button.button(type="submit") LƯU THAY ĐỔI
+              .form-field(data-field=field.name class=field.type == 'textarea' || field.name == 'trailer' || (field.media && key != 'movies') ? 'wide' : '')
+                if key != 'movies' || field.name != 'slug'
+                  label(for='field-' + field.name)= field.label
+                if field.options.size() > 0
+                  select(id='field-' + field.name name=field.name disabled=field.locked)
+                    option(value="") — Chọn —
+                    each option in field.options
+                      option(value=option.value selected=field.value == option.value)= option.label
+                  if field.locked
+                    input(type="hidden" name=field.name value=field.value)
+                else if field.type == 'textarea'
+                  textarea(id='field-' + field.name name=field.name rows="5")= field.value
+                else if key == 'movies' && field.name == 'slug'
+                  details.slug-options
+                    summary Đường dẫn nâng cao
+                    label(for="field-slug") Đường dẫn phim
+                    input#field-slug(type="text" name="slug" value=field.value)
+                else if field.media && field.name != 'trailer'
+                  input(id='field-' + field.name type="hidden" name=field.name value=field.value)
+                else
+                  input(id='field-' + field.name type=field.type name=field.name value=field.value readonly=field.locked step=field.type == 'number' ? '1' : field.type == 'datetime-local' ? 'any' : false inputmode=field.type == 'number' ? 'numeric' : false data-money=field.money ? 'true' : 'false')
+                if key == 'movies' && field.name == 'status'
+                  small#movie-lifecycle-note(data-today=field.movieToday data-fallback=field.lifecycle) #{field.lifecycle}#{field.missingDate ? ' · Chưa có ngày khởi chiếu, đang giữ trạng thái cũ. Hãy bổ sung ngày.' : ' · Tự động theo ngày khởi chiếu (giờ Việt Nam).'}
+                if key == 'movies' && field.name == 'slug'
+                  small Tự gợi ý từ tên phim. Có thể chỉnh đường dẫn; nếu trùng, thêm hậu tố riêng.
+                if key == 'movies' && field.name == 'featured'
+                  small Hiện banner phim này trên trang chủ.
+                if field.locked
+                  small Đang khóa để bảo vệ lượt giữ/vé đã bán.
+                if field.name == 'fromMinute' || field.name == 'toMinute'
+                  small HH:mm, ví dụ 17:00. Giờ kết thúc có thể là 24:00.
+                if field.money
+                  output.money-preview(for='field-' + field.name)
+                if key == 'prices' && field.name == 'amount'
+                  output#couple-price-preview
+                if field.media
+                  .media-field(data-target='field-' + field.name data-kind=field.name data-video=field.name == 'trailer' ? 'true' : 'false')
+                    label.upload-label= field.name == 'trailer' ? 'Hoặc chọn video MP4 (tối đa 100 MB)' : 'Chọn ảnh JPG / PNG / WEBP (tối đa 5 MB)'
+                      input(type="file" accept=field.name == 'trailer' ? 'video/mp4' : 'image/jpeg,image/png,image/webp')
+                    .upload-actions
+                      button.text-button(type="button" data-upload-retry hidden) Thử lại
+                      button.text-button(type="button" data-upload-cancel hidden) Bỏ lựa chọn mới
+                    span.upload-status(role="status")= field.name == 'trailer' ? 'Dán link YouTube hoặc chọn MP4. Chỉ phát khi bấm Xem trailer.' : 'Ảnh tự tải khi chọn. Đợi tải xong rồi Lưu thay đổi.'
+                    if field.value && field.name != 'trailer'
+                      img.media-preview(src=field.value alt="Ảnh hiện tại")
+                if field.name == 'trailer'
+                  button.button.secondary(type="button" data-trailer-preview data-trailer-target="field-trailer") Xem thử trailer
+    if key == 'users' && !rowId
+      fieldset.panel.form-group(data-field="initialPassword")
+        legend Bảo mật
+        label(for="initial-password") Mật khẩu ban đầu
+        input#initial-password(type="password" name="initialPassword" minlength="10" required autocomplete="new-password")
+        small Ít nhất 10 ký tự. Nhập lại mật khẩu nếu form cần sửa sau lỗi.
+    if key == 'prices'
+      p.notice Giá ghế đôi được lưu theo một ghế vật lý; giá cả cặp bằng hai ghế. Các giá trị được kiểm tra tại backend.
+    .form-savebar
+      span.muted Thời gian Việt Nam · Tiền VND nguyên đồng
+      .actions
+        a.button.secondary(href=returnTo) Hủy
+        if key == 'rooms'
+          button.button(type="submit" name="next" value="finish" disabled=fullyLocked) Lưu và kết thúc
+          button.button.secondary(type="submit" name="next" value="continue" disabled=fullyLocked) Lưu và thiết lập ghế →
+        else if key == 'cinemas'
+          button.button(type="submit" name="next" value="continue" disabled=fullyLocked)= key == 'cinemas' ? 'Lưu và tạo phòng →' : 'Lưu và thiết lập ghế →'
+          button.button.secondary(type="submit" disabled=fullyLocked) Lưu thay đổi
+        else
+          button.button(type="submit" disabled=fullyLocked)= key == 'prices' && setupRoomId ? 'Lưu và kiểm tra giá tiếp →' : 'Lưu thay đổi'
+  if genreRelated
+    section#genre-related.panel
+      h2 Phim đang sử dụng thể loại này
+      p.muted Gán thể loại thay thế hoặc ẩn phim trước khi ngừng thể loại cuối cùng.
+      each m in genreRelated.rows
+        .ranking-row
+          span #{m.title} · #{m.visible ? 'Đang hiển thị' : 'Đang ẩn / ngừng'}
+          a(href='/admin/manage/movies/edit?id=' + m.id) Sửa thể loại của phim →
+      nav.ops-pagination
+        span Trang #{genreRelated.page + 1} · #{genreRelated.total} phim
+        .actions
+          if genreRelated.hasPrevious
+            a.button.secondary(href="#" data-page-param="relatedPage" data-page=genreRelated.page - 1) ← Trước
+          else
+            button.button.secondary(type="button" disabled) ← Trước
+          if genreRelated.hasMore
+            a.button.secondary(href="#" data-page-param="relatedPage" data-page=genreRelated.page + 1) Sau →
+          else
+            button.button.secondary(type="button" disabled) Sau →

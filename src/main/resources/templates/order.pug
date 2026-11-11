@@ -9,7 +9,7 @@ block content
       span 04 · Nhận vé
     .section-heading
       h1 Đơn #{order.code}
-      span.badge= order.status
+      span.badge= order.statusLabel
     #order-status(data-order-id=order.id data-status=order.status)
     if order.status == 'PENDING_PAYMENT' && !order.expired
       .hold-clock(role="status") Thời gian giữ ghế còn lại 
@@ -41,7 +41,7 @@ block content
                   input(type="number" name='product_' + p.id min="0" max="20" value=p.quantity)
             label Mã ưu đãi (một mã/đơn)
               input(name="voucher" value=voucherCode placeholder="Nhập mã ưu đãi")
-            button.button.secondary(type="submit") CẬP NHẬT ĐƠN HÀNG
+            button.button.secondary(type="submit") ÁP DỤNG COMBO / MÃ ƯU ĐÃI
         if order.frozen && order.status == 'PENDING_PAYMENT'
           .notice Đơn đã gửi sang thanh toán. Nội dung được giữ nguyên để đối chiếu. Hãy kiểm tra trạng thái nếu bạn đã thanh toán.
         if order.status == 'PAID'

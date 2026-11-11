@@ -11,5 +11,8 @@ block admin
         .seat-row
           span= row.label
           each s in row.seats
-            a.seat(href='/admin/manage/seats/edit?id=' + s.id class=s.className title=s.label + ' · ' + s.type)= s.label
+            if busy
+              span.seat(class=s.className title=s.label + ' · Sơ đồ đang khóa')= s.label
+            else
+              a.seat(href='/admin/manage/seats/edit?id=' + s.id class=s.className title=s.label + ' · ' + s.type)= s.label
   a.button.secondary(href="/admin/manage/rooms") ← DANH SÁCH PHÒNG

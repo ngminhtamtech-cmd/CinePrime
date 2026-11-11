@@ -1,0 +1,34 @@
+package vn.cineprime;
+
+import java.nio.file.*;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import de.neuland.pug4j.PugConfiguration;
+import de.neuland.pug4j.template.FileTemplateLoader;
+import vn.cineprime.admin.*;
+import vn.cineprime.domain.Store;
+
+class AdminFormsTest {
+    @Test void allAdminFormsRenderUtf8AndKeepNativePayloadWithoutJavaScript()throws Exception{
+        Store db=new Store(){@Override public <T> List<T> list(Class<T> type,String where,Object... args){return List.of();}};
+        AdminService service=new AdminService(db,null,null,null,null,null,null,null);AdminPresentation presentation=new AdminPresentation(db,service,java.time.Clock.systemUTC());
+        PugConfiguration pug=new PugConfiguration();pug.setTemplateLoader(new FileTemplateLoader(Path.of("src/main/resources/templates"),java.nio.charset.StandardCharsets.UTF_8));
+        for(String key:AdminService.RESOURCES.keySet()){
+            Map<String,Object> model=new HashMap<>();model.put("title","Kiểm thử form");model.put("adminForm",true);model.put("key",key);model.put("resourceLabel",service.resource(key).label());model.put("returnTo","/admin/manage/"+key);model.put("csrfName","_csrf");model.put("csrfToken","test-csrf");model.put("csrfHeader","X-CSRF-TOKEN");model.put("operationsRole","Quản trị");model.put("viewer",Map.of("id",5,"name","Quản trị kiểm thử"));
+            if(key.equals("showtimes"))model.put("rowId",1L); // This generic template is retained only for existing showtimes.
+            model.put("navGroups",List.of(Map.of("id","films","label","Phim","icon","▷","active",true,"items",List.of(Map.of("href","/admin/manage/movies","label","Phim","active",true)))));
+            model.put("groups",presentation.groups(key,null,null));model.put("movieGenres",List.of(Map.of("id",1,"name","Phiêu lưu","selected",true,"active",true)));model.put("movieDirectors",List.of(Map.of("id",2,"name","Đạo diễn thử","selected",true,"active",true)));model.put("movieActors",List.of(Map.of("id",3,"name","Diễn viên thử","selected",true,"active",true)));
+            model.put("editorMovies",List.of(Map.of("id",1,"title","Phim thử")));model.put("adminCinemas",List.of(Map.of("id",1,"name","Rạp thử")));model.put("editorAllRooms",List.of(Map.of("id",1,"cinemaId",1,"name","Phòng 1")));model.put("cinemaId","1");model.put("roomId","1");model.put("movieId","1");model.put("editorDate","2026-12-01");model.put("editorTime","17:00");model.put("editorStartsAt","2026-12-01T17:00");
+            String html=pug.renderTemplate(pug.getTemplate("admin/edit"),model);assertTrue(html.contains("name=\"_csrf\""),key);assertTrue(html.contains("data-admin-form=\""+key+"\""),key);assertTrue(html.contains("/js/admin-forms.js"),key);
+            if(key.equals("movies")){Files.createDirectories(Path.of("target/form-fixtures"));Files.writeString(Path.of("target/form-fixtures/movies.html"),html);assertTrue(html.contains("name=\"creditsPresent\""),"credits marker");assertTrue(html.contains("name=\"directorIds\""),"director payload");assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(html).contains("Đạo diễn thử"),"director name");assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(html).contains("Diễn viên thử"),"actor name");}
+            Files.createDirectories(Path.of("target/form-fixtures"));Files.writeString(Path.of("target/form-fixtures/"+key+".html"),html);
+        }
+    }
+    @Test void relationIdsRejectMalformedAndDeduplicateWithinEachRole(){assertEquals(Set.of(1L,2L),MovieCredits.parse("1,2,1","actorIds"));assertEquals(Set.of(),MovieCredits.parse(null,"directorIds"));var problem=assertThrows(AdminFormProblem.class,()->MovieCredits.parse("0","actorIds"));assertEquals(List.of("actorIds"),problem.fields());assertThrows(AdminFormProblem.class,()->MovieCredits.parse("1,x","directorIds"));}
+    @Test void weekTableRendersAddDialogDayBoardAndFinalConfirmation()throws Exception{
+        var pug=new PugConfiguration();pug.setTemplateLoader(new FileTemplateLoader(Path.of("src/main/resources/templates"),java.nio.charset.StandardCharsets.UTF_8));
+        Map<String,Object> model=new HashMap<>();model.put("title","Thêm suất chiếu");model.put("resourceLabel","Thêm suất chiếu");model.put("viewer",Map.of("id",5,"name","Quản trị"));model.put("operationsRole","Quản trị");model.put("navGroups",List.of());model.put("csrfName","_csrf");model.put("csrfToken","test");model.put("csrfHeader","X-CSRF-TOKEN");model.put("batchCinemaId","1");model.put("batchRoomId","1");model.put("batchMovieId","1");model.put("batchDate","2026-12-07");model.put("adminCinemas",List.of(Map.of("id",1,"name","Rạp tiếng Việt")));model.put("batchRooms",List.of(Map.of("id",1,"name","Phòng 1","format","2D")));model.put("batchMovies",List.of(Map.of("id",1,"title","Phim tiếng Việt","duration",100,"poster","/images/no-poster.svg","status","NOW_SHOWING","active",true)));
+        String html=pug.renderTemplate(pug.getTemplate("admin/showtime-batch"),model),decoded=org.springframework.web.util.HtmlUtils.htmlUnescape(html);assertTrue(html.contains("id=\"batch-week\""));assertTrue(html.contains("id=\"batch-add-dialog\""));assertTrue(decoded.contains("Nhiều suất nối tiếp"));assertTrue(decoded.contains("Cả tuần"));assertTrue(decoded.contains("<strong>+ Thêm</strong>"));assertFalse(html.contains("id=\"batch-fill\""));assertTrue(decoded.contains("Chép ngày"));assertTrue(html.contains("id=\"batch-board\""));assertTrue(html.contains("id=\"batch-days\""));assertFalse(html.contains("id=\"batch-open\""));assertTrue(decoded.contains("Tuần trước"));assertTrue(decoded.contains("Phim tiếng Việt"));assertFalse(html.contains("id=\"batch-room-filter\""));assertTrue(html.contains("id=\"batch-room\""));assertTrue(html.contains("id=\"batch-review\""));assertTrue(html.contains("id=\"batch-confirm\""));assertTrue(decoded.contains("Bán vé ngay sau khi tạo"));Files.writeString(Path.of("target/week-table-fixture.html"),html);
+    }
+}

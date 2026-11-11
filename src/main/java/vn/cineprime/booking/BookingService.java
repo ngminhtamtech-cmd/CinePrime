@@ -27,13 +27,13 @@ public class BookingService {
         if(requested==null||requested.isEmpty()||requested.size()>8||new HashSet<>(requested).size()!=requested.size())throw new IllegalArgumentException("Chọn từ 1 đến 8 ghế, không lặp.");
         User user=db.lock(User.class,userId);
         if(!user.enabled)throw new IllegalArgumentException("Tài khoản đã khóa.");
-        for(Order old:db.list(Order.class,"where e.userId=?1 and e.status='PENDING_PAYMENT' order by e.showtimeId,e.id",userId)){
-            if(now().isBefore(old.expiresAt))throw new IllegalArgumentException("Bạn còn đơn đang giữ ghế. Vui lòng hoàn tất hoặc hủy đơn trước.");
-            expireLocked(old);
+            for(Order old:db.list(Order.class,"where e.userId=?1 and e.status='PENDING_PAYMENT' order by e.showtimeId,e.id",userId)){
+                if(now().isBefore(old.expiresAt))throw new IllegalArgumentException("Bạn còn đơn đang giữ ghế. Vui lòng hoàn tất hoặc hủy đơn trước.");
+                expireLocked(old);
         }
         Showtime show=db.lock(Showtime.class,showtimeId);
         if(!show.status.equals("OPEN")||now().plusSeconds(1200).isAfter(show.startsAt))throw new IllegalArgumentException("Suất đã ngừng nhận đặt vé.");
-        Movie movie=db.get(Movie.class,show.movieId);Room room=db.get(Room.class,show.roomId);Cinema cinema=db.get(Cinema.class,room.cinemaId);
+        Movie movie=db.lockRead(Movie.class,show.movieId);Room room=db.get(Room.class,show.roomId);Cinema cinema=db.get(Cinema.class,room.cinemaId);
         if(!movie.active||movie.status.equals("STOPPED")||!room.active||!cinema.active)throw new IllegalArgumentException("Suất không còn mở bán.");
         db.lock(Cinema.class,cinema.id);
         List<Seat> seats=requested.stream().sorted().map(id->db.get(Seat.class,id)).toList();

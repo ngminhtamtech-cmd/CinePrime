@@ -1,33 +1,69 @@
 extends layout
 block admin
-  a.more(href="/admin/orders") ← Danh sách đơn
-  h1= order.code
-  .panel
-    h2= order.movieTitle
-    p #{order.cinemaName} · #{order.roomName} · #{order.when}
-    p Khách hàng: #{customer.name} · #{customer.email}
-    a(href='/admin/orders?q=' + customer.email) Xem lịch sử khách hàng →
-    p Trạng thái: #{order.status} · Tổng: #{order.totalText}
-    each l in lines
-      p= l
-    each c in combos
-      p= c
-    if order.status == 'PENDING_PAYMENT'
-      form(action='/admin/orders/' + order.id + '/cancel' method="post")
-        +csrf()
-        button.button.secondary(type="submit" data-confirm="Hủy đơn chưa thanh toán này?") HỦY ĐƠN
-  each p in payments
-    .panel
-      h2= p.externalOrderId
-      p #{p.status} · #{p.amount} VND · Mã phản hồi: #{p.resultCode}
-      if p.reconciliation
-        .notice Cần đối soát: ghi nhận tiền nhưng chưa phát vé; chưa hoàn tiền.
-      p Phương thức: #{p.provider}
-      if p.provider == 'MOMO'
-        form(action='/admin/payments/' + p.id + '/verify' method="post")
+  .page-heading
+    div
+      h1= order.code
+      p.muted Chi tiết đơn và lịch sử thanh toán
+    a.button.secondary(href="/admin/orders") ← Danh sách đơn
+  .dashboard-columns
+    section.panel
+      h2= order.movieTitle
+      p #{order.cinemaName} · #{order.roomName} · #{order.when}
+      p #{customer.name} · #{customer.email}
+      a(href='/admin/orders?q=' + customer.email) Lịch sử khách hàng →
+      p
+        span.badge= order.statusLabel
+      .ranking-row
+        span Tạm tính
+        strong= order.subtotalText
+      .ranking-row
+        span Giảm giá
+        strong= order.discountText
+      .ranking-row
+        strong= order.status == 'PAID' ? 'Thực trả' : 'Giá trị đơn · Chưa thu tiền'
+        strong= order.totalText
+      if order.status == 'PENDING_PAYMENT'
+        form(action='/admin/orders/' + order.id + '/cancel' method="post")
           +csrf()
-          button.button(type="submit") XÁC MINH VỚI MOMO
-  .panel
+          button.button.secondary(type="submit" data-confirm='Hủy đơn chưa thanh toán ' + order.code + '? Ghế và lượt voucher sẽ được giải phóng theo nghiệp vụ.') Hủy đơn chưa thanh toán
+    section.panel
+      h2 Chi tiết snapshot trên đơn
+      h3 Ghế trên đơn
+      each l in lines.rows
+        .ranking-row
+          span Ghế #{l.seat} · #{l.type}
+          strong= l.price
+      +sectionPagination(lines, 'linePage')
+      h3 Combo trên đơn
+      each c in combos.rows
+        .ranking-row
+          span #{c.name} × #{c.quantity}
+          strong= c.price
+      +sectionPagination(combos, 'comboPage')
+      p.muted Giá được giữ tại thời điểm đặt; không lấy lại giá hiện tại.
+  section.panel
+    h2 Các lần thanh toán
+    each p in payments.rows
+      article.payment-attempt
+        .panel-heading
+          h3= p.externalOrderId
+          span.badge= p.statusLabel
+        p #{p.provider} · #{p.amountText} · Mã phản hồi: #{p.resultCode}
+        if p.reconciliation
+          p.notice Cần đối soát: đã ghi nhận giao dịch bất thường; chưa tự phát vé hoặc hoàn tiền.
+        if p.provider == 'MOMO'
+          form(action='/admin/payments/' + p.id + '/verify' method="post")
+            +csrf()
+            button.button.secondary(type="submit") Xác minh với MoMo
+    if payments.rows.size() == 0
+      p.muted Chưa có yêu cầu thanh toán.
+    +sectionPagination(payments, 'paymentPage')
+  section.panel
     h2 Vé đã phát hành
-    each t in tickets
-      p #{t.code} · Ghế #{t.seat} · #{t.status} · #{t.when}
+    each t in tickets.rows
+      .ranking-row
+        strong #{t.code} · Ghế #{t.seat}
+        span #{t.statusLabel} · #{t.when}
+    if tickets.rows.size() == 0
+      p.muted Đơn chưa phát hành vé.
+    +sectionPagination(tickets, 'ticketPage')

@@ -23,10 +23,19 @@ public class CheckInService {
     }
     public Ticket checkIn(Long staffId,Long ticketId,Long selectedShowtime){
         Ticket t=db.lock(Ticket.class,ticketId);Showtime s=db.get(Showtime.class,t.showtimeId);permitted(staffId,s);
-        if(!Objects.equals(s.id,selectedShowtime))throw new IllegalArgumentException("Vé không đúng suất đang soát.");
-        if(!t.status.equals("VALID"))throw new IllegalArgumentException("Vé đã sử dụng hoặc không còn hiệu lực.");
-        if(!db.get(Order.class,t.orderId).status.equals("PAID")||s.status.equals("CANCELLED"))throw new IllegalArgumentException("Vé không hợp lệ.");
-        Instant now=clock.instant();if(now.isBefore(s.startsAt.minusSeconds(3600))||now.isAfter(s.startsAt.plusSeconds(1800)))throw new IllegalArgumentException("Ngoài khung check-in: từ 60 phút trước đến 30 phút sau giờ chiếu.");
+        Instant now=clock.instant();Eligibility eligibility=eligibility(t,s,db.get(Order.class,t.orderId),selectedShowtime,now);
+        if(!eligibility.allowed())throw new StaffProblem(eligibility.code(),eligibility.message());
         t.status="USED";t.checkedInAt=now;t.checkedInBy=staffId;db.audit(staffId,"CHECK_IN",t.code);return t;
+    }
+    public record Eligibility(boolean allowed,String code,String message){}
+    public static class StaffProblem extends IllegalArgumentException {
+        private final String code;public StaffProblem(String code,String message){super(message);this.code=code;}public String code(){return code;}
+    }
+    public static Eligibility eligibility(Ticket t,Showtime s,Order order,Long selected,Instant now){
+        if(!Objects.equals(s.id,selected))return new Eligibility(false,"WRONG_SHOW","Vé không đúng suất đang soát.");
+        if(t.status.equals("USED"))return new Eligibility(false,"USED","Vé đã sử dụng. Kiểm tra thời điểm vào rạp.");
+        if(!t.status.equals("VALID")||!order.status.equals("PAID")||s.status.equals("CANCELLED"))return new Eligibility(false,"VOID","Vé không còn hiệu lực.");
+        if(now.isBefore(s.startsAt.minusSeconds(3600))||now.isAfter(s.startsAt.plusSeconds(1800)))return new Eligibility(false,"OUTSIDE_WINDOW","Ngoài khung check-in: từ 60 phút trước đến 30 phút sau giờ chiếu.");
+        return new Eligibility(true,"READY","Vé hợp lệ · Có thể xác nhận vào rạp.");
     }
 }

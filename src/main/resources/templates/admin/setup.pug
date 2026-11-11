@@ -1,0 +1,176 @@
+extends layout
+block admin
+  #room-setup.workspace(data-room=setup.roomId data-cinema=setup.cinemaId data-step=step data-busy=setup.busy ? 'true' : 'false')
+    header.workspace-heading
+      div
+        strong= setup.cinemaName
+        h1= setup.roomName
+      span#setup-saved-counts Đã lưu: #{setup.activeSeats} ghế · #{setup.pairs} cặp
+      a.button.secondary.workspace-finish(href='/admin/manage/rooms?cinemaId=' + setup.cinemaId) Hoàn tất
+    nav.workspace-tabs(aria-label="Công cụ phòng")
+      button(type="button" data-workspace-tab="seats" aria-pressed=step == 'seats') Sơ đồ ghế
+      button(type="button" data-workspace-tab="prices" aria-pressed=step == 'prices') Giá của rạp
+      button(type="button" data-workspace-tab="inventory" aria-pressed=step == 'inventory') Theo suất
+      button#tools-toggle(type="button" aria-expanded="true" aria-controls="workspace-tools") Công cụ ▾
+      a.workspace-finish(href='/admin/showtimes/new?cinemaId=' + setup.cinemaId + '&roomId=' + setup.roomId) Thêm suất chiếu (tùy chọn) ↗
+    .workspace-body
+      section.workspace-canvas(aria-label="Vùng quan sát sơ đồ")
+        .canvas-toolbar
+          button#zoom-fit(type="button") Vừa khung
+          button#zoom-out(type="button" aria-label="Thu nhỏ sơ đồ") −
+          output#zoom-level 100%
+          button#zoom-in(type="button" aria-label="Phóng to sơ đồ") +
+          button#zoom-reset(type="button") 100%
+          span Kéo nền để di chuyển
+        p#layout-counts.workspace-counts(role="status") Đang đọc sơ đồ…
+        #seat-stage(tabindex="0" aria-label="Sơ đồ có thể thu phóng. Dùng nút zoom hoặc kéo nền để di chuyển.")
+          #seat-surface
+            .screen MÀN HÌNH
+            #setup-seat-map.seat-map(aria-label="Sơ đồ phòng")
+            #inventory-map.seat-map(hidden aria-label="Trạng thái ghế theo suất")
+          p#canvas-empty Chọn hàng/cột để tạo sơ đồ hoặc mở công cụ để tiếp tục.
+        .workspace-legends
+          span Standard · Ghế thường
+          span.vip VIP
+          span.couple Couple · Ghế đôi
+          span.maintenance Bảo trì
+          span#inventory-legend(hidden) Trạng thái: Trống · Đang giữ · Đã bán
+      aside#workspace-tools.workspace-tools(aria-label="Cấu hình và đối chiếu")
+        section.workspace-pane(data-pane="seats" hidden=step != 'seats')
+          h2 Sơ đồ ghế
+          p#layout-lock.notice(hidden=!setup.busy) Phòng có lịch đang khóa sơ đồ. Xem các suất gây khóa bên dưới.
+          if setup.totalSeats == 0 && !setup.busy
+            details#layout-generator(open)
+              summary Tạo sơ đồ phòng trống
+              .workspace-fields
+                label Số hàng
+                  input#layout-rows(type="number" min="1" max="20" value="6")
+                label Vị trí mỗi hàng
+                  input#layout-columns(type="number" min="2" max="30" value="10")
+              button#layout-build.button.secondary(type="button") Tạo bản xem trước
+              #row-config
+              nav.workspace-pager
+                span#row-page
+                button#row-prev(type="button" disabled) Trước
+                button#row-next(type="button" disabled) Sau
+          button#layout-add.button.secondary(type="button" disabled=setup.busy) + Thêm ghế / cặp
+          p#seat-selection-note.muted Chọn một ghế trên sơ đồ để xem và chỉnh thông tin.
+          #seat-editor(hidden)
+            h3#seat-editor-title Ghế đang chọn
+            p#seat-editor-pair.muted
+            form#seat-editor-form
+              .workspace-fields
+                label Tên ghế
+                  input#seat-label(required maxlength="30")
+                label#seat-second-field(hidden) Tên ghế thứ hai
+                  input#seat-label-second(maxlength="30")
+                label Hàng A–T
+                  input#seat-row(required pattern="[A-T]" maxlength="1")
+                label Vị trí cột
+                  input#seat-position(type="number" min="1" max="30" required)
+                label Loại ghế
+                  select#seat-type
+                    option(value="STANDARD") Standard · Ghế thường
+                    option(value="VIP") VIP
+                    option(value="COUPLE") Couple · Ghế đôi
+                label.check
+                  input#seat-active(type="checkbox" checked)
+                  span Hoạt động
+              p#seat-editor-error.form-error(hidden role="alert")
+              p#seat-delete-reason.muted
+              button#seat-apply.button(type="submit") Áp dụng vào bản xem trước
+              button#seat-editor-delete.button.danger-soft(type="button") Đánh dấu xóa ghế / cặp
+          section.workspace-blockers
+            h3 Suất gây khóa sơ đồ
+            #workspace-blockers
+              p.muted Đang kiểm tra…
+            nav.workspace-pager
+              span#blocker-page
+              button#blocker-prev(type="button" disabled) Trước
+              button#blocker-next(type="button" disabled) Sau
+        section.workspace-pane(data-pane="prices" hidden=step != 'prices')
+          .price-pane-heading
+            h2 Giá của rạp
+            button#price-add.button.secondary(type="button") + Thêm giá
+          p.notice Áp dụng chung cho các phòng trong rạp này. Giá được kiểm tra theo giờ suất khi mở bán.
+          .workspace-fields
+            label Lọc loại ghế
+              select#price-filter-type
+                option(value="") Tất cả loại ghế
+                option(value="STANDARD") Standard
+                option(value="VIP") VIP
+                option(value="COUPLE") Couple
+            label Lọc loại ngày
+              select#price-filter-day
+                option(value="") Tất cả ngày
+                option(value="WEEKDAY") Thứ 2–6
+                option(value="WEEKEND") Thứ 7, CN
+          #price-list(aria-label="Giá hiện có")
+          nav.workspace-pager
+            span#price-page
+            button#price-prev(type="button" disabled) Trước
+            button#price-next(type="button" disabled) Sau
+            button#price-refresh(type="button") Đọc lại
+          p#price-list-status.muted(role="status")
+          h3#price-form-title Thêm khung giá
+          form#workspace-price-form
+            .workspace-fields
+              label Loại ghế
+                select#price-type(required)
+                  option(value="STANDARD") Standard
+                  option(value="VIP") VIP
+                  option(value="COUPLE") Couple
+              label Loại ngày
+                select#price-day(required)
+                  option(value="WEEKDAY") Thứ 2–6
+                  option(value="WEEKEND") Thứ 7, CN
+              label Giờ bắt đầu
+                input#price-from(value="00:00" placeholder="HH:mm" required pattern="([01][0-9]|2[0-3]):[0-5][0-9]")
+              label Giờ kết thúc
+                input#price-to(value="24:00" placeholder="HH:mm hoặc 24:00" required pattern="(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)")
+            label Giá mỗi ghế vật lý (VND)
+              input#price-amount(type="text" inputmode="numeric" pattern="[0-9]+" required autocomplete="off")
+            output#price-money-preview Nhập số nguyên đồng.
+            p#price-form-message(role="status")
+            .actions
+              button#price-save.button(type="submit") Lưu giá
+              button#price-new.button.secondary(type="button") Thêm mới
+          #price-gaps.muted
+        section.workspace-pane(data-pane="inventory" hidden=step != 'inventory')
+          h2 Trạng thái theo suất
+          label(for="inventory-show") Suất trong phòng
+          select#inventory-show
+            option(value="") — Chọn suất —
+            if selectedInventoryShow
+              option(value=selectedInventoryShow.id selected)= selectedInventoryShow.title
+            each show in shows.rows
+              if !selectedInventoryShow || selectedInventoryShow.id != show.id
+                option(value=show.id)= show.title
+          nav.workspace-pager
+            span#show-page Trang #{shows.page + 1} · #{shows.total} suất
+            button#show-prev(type="button" disabled=!shows.hasPrevious) Trước
+            button#show-next(type="button" disabled=!shows.hasMore) Sau
+          button#inventory-refresh.button.secondary(type="button") Làm mới
+          p#inventory-status.muted(role="status") Chọn suất để xem. Tự cập nhật mỗi 30 giây.
+          #inventory-order(hidden)
+            p#inventory-order-label
+            a#inventory-order-link(href="#") Xem đơn liên quan →
+            form#inventory-cancel(method="post")
+              +csrf()
+              input(type="hidden" name="viewRoomId" value=setup.roomId)
+              input#inventory-cancel-show(type="hidden" name="viewShowtimeId")
+              button#inventory-cancel-button.button.danger-soft(type="submit" data-confirm="Hủy toàn bộ đơn chưa thanh toán? Tất cả ghế và lượt voucher được giải phóng.") Hủy toàn bộ đơn và giải phóng ghế
+    footer.workspace-footer
+      p#layout-message(role="status") Các phần được lưu độc lập. Tạo suất là tùy chọn.
+      form#layout-save(method="post")
+        +csrf()
+        button#layout-save-button.button(type="submit" disabled=setup.busy data-confirm="Lưu bản xem trước sơ đồ? Ghế đánh dấu xóa sẽ chỉ bị xóa khi chưa có lịch sử; backend kiểm tra lại trước khi lưu.") Lưu sơ đồ
+      a.button.secondary.workspace-finish(href='/admin/manage/rooms?cinemaId=' + setup.cinemaId) Hoàn tất
+    dialog#finish-dialog.cine-dialog(aria-labelledby="finish-title")
+      h2#finish-title Còn thay đổi chưa lưu
+      p Những phần đã lưu được giữ. Bản xem trước sơ đồ hoặc nội dung giá đang nhập chưa được lưu.
+      .actions
+        button#finish-stay.button(type="button") Quay lại để lưu
+        button#finish-discard.button.secondary(type="button") Bỏ thay đổi chưa lưu và kết thúc
+    noscript
+      p.notice Bật JavaScript để cấu hình sơ đồ và nhập giá tại chỗ. Các dữ liệu đã lưu vẫn được giữ.

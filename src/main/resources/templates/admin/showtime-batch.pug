@@ -1,0 +1,209 @@
+extends layout
+block head
+  link(rel="stylesheet" href="/css/showtime-batch.css")
+  script(src="/js/showtime-calendar.js" defer)
+  script(src="/js/showtime-batch.js" defer)
+block admin
+  #showtime-batch.sched.is-week(data-cinema=batchCinemaId data-room=batchRoomId data-movie=batchMovieId data-date=batchDate)
+    h1.sched-title Xếp suất chiếu
+    .sched-bar
+      label.sched-field Rạp
+        select#batch-cinema
+          each c in adminCinemas
+            option(value=c.id selected=batchCinemaId == c.id.toString())= c.name
+      .sched-week(role="group" aria-label="Tuần đang xếp")
+        button#batch-back.button.secondary(type="button" aria-label="Tuần trước" title="Tuần trước") ←
+        label.sched-date
+          span#batch-week-label
+          input#batch-day(type="date" value=batchDate aria-label="Chọn một ngày trong tuần muốn xếp")
+        button#batch-forward.button.secondary(type="button" aria-label="Tuần sau" title="Tuần sau") →
+        button#batch-today.button.secondary(type="button") Tuần này
+      .sched-tools
+        .sched-view(role="group" aria-label="Cách xem lịch")
+          button#batch-view-week.button.secondary.active(type="button" aria-pressed="true" title="Mọi phòng, cả tuần trên một bảng") Cả tuần
+          button#batch-view-day.button.secondary(type="button" aria-pressed="false" title="Một ngày theo trục giờ, kéo thả được") Theo giờ
+        button#batch-refresh.button.secondary(type="button") Làm mới
+        details#batch-excel.sched-menu
+          summary.button.secondary Excel ▾
+          .sched-menu-items
+            button#batch-export.button.secondary(type="button") Xuất lịch tuần
+            button#batch-import.button.secondary(type="button") Nhập Excel
+            button#batch-template.button.secondary(type="button") Tải mẫu trống
+        input#batch-file(type="file" accept=".xlsx" aria-label="Chọn file Excel đăng ký suất mới" hidden)
+    ol#batch-guide.sched-steps(aria-label="Ba bước xếp suất")
+      li Chọn phòng, rồi bấm <strong>+ Thêm</strong> ở ngày muốn chiếu
+      li Chọn phim, giờ chiếu và các ngày lặp lại
+      li Xem lại cả tuần rồi bấm <strong>Tạo</strong> ở cuối trang
+    #batch-days.sched-days(role="tablist" aria-label="Ngày trong tuần")
+    .sched-body
+      aside.sched-side(aria-label="Phim đang xếp")
+        section.sched-card
+          h2 Phim đang xếp
+          input#batch-movie-filter(type="search" placeholder="Tìm phim" aria-label="Tìm phim" hidden)
+          #batch-movies.sched-movies(role="radiogroup" aria-label="Phim đang xếp")
+      .sched-main
+        #batch-room-tabs.sched-rooms(role="group" aria-label="Chọn phòng để xem lịch")
+        .sched-quick(role="group" aria-label="Công cụ của ngày đang xem")
+          button#batch-add-open.button(type="button") + Thêm suất
+          .sched-hours(role="group" aria-label="Khung giờ hiển thị")
+            label Hiển thị từ
+              select#batch-from
+            label đến
+              select#batch-to
+          button#batch-copy.button.secondary(type="button" title="Chép các suất mới của ngày đang xem sang ngày khác trong tuần") Chép ngày
+        .sched-hint
+          span#batch-hint.sched-hint-text
+          #batch-strip.sched-strip(role="group" aria-label="Phim trong tuần")
+          span.sched-legend
+            span.open Đang bán vé
+            span.draft Nháp, chưa bán
+            span.fresh Mới, chưa lưu
+            span.error Trùng lịch, cần sửa
+        #batch-board.sched-board(tabindex="-1" aria-label="Bảng phòng theo giờ của ngày đang xem")
+        #batch-week-wrap.sched-weekwrap(tabindex="-1")
+          table#batch-week.sched-weektable(aria-label="Lịch cả tuần của phòng đang chọn")
+    details#batch-pending-panel.sched-pending
+      summary
+        strong#batch-panel-title Đang xếp 0 suất
+        span Danh sách suất mới (gồm dòng từ Excel) ⌄
+      .sched-pending-content
+        label.sched-error-filter
+          input#batch-errors-only(type="checkbox")
+          | Chỉ dòng lỗi
+        p#batch-summary.muted
+        #batch-rows
+        .sched-pager
+          button#batch-prev.button.secondary(type="button") Trước
+          span#batch-page
+          button#batch-next.button.secondary(type="button") Sau
+    .sched-footer
+      .sched-status
+        #batch-notice.sched-notice(hidden)
+        #batch-message.sched-message(role="status" aria-live="polite") Đang tải lịch tuần…
+      .sched-actions
+        strong#batch-total Chưa có suất mới
+        button#batch-list.button.secondary(type="button" hidden) Xem danh sách
+        button#batch-jump.button.secondary(type="button" hidden) Tới suất cần sửa
+        label Sau khi tạo
+          select#batch-status(aria-label="Trạng thái sau khi tạo")
+            option(value="OPEN") Bán vé ngay sau khi tạo
+            option(value="DRAFT") Lưu nháp · chưa bán vé
+        button#batch-commit.button(type="button" disabled) Tạo 0 suất
+        button#batch-result.button.secondary(type="button" hidden) Kiểm tra kết quả lưu
+        button#batch-retry.button.secondary(type="button" hidden) Gửi lại cùng yêu cầu
+    dialog#batch-add-dialog.sched-add
+      form#batch-add-form
+        h2 Thêm suất chiếu
+        .sched-editor-fields
+          label Phòng
+            select#batch-room
+              option(value="") Chọn phòng
+              each r in batchRooms
+                option(value=r.id data-format=r.format selected=batchRoomId == r.id.toString())= r.name
+          label Phim
+            select#batch-add-movie
+        fieldset
+          legend Chiếu vào các ngày
+          .sched-pills
+            #batch-add-days.sched-pills
+            button#batch-add-all.button.secondary(type="button") Cả tuần
+        fieldset
+          legend Giờ chiếu
+          .sched-pills
+            label
+              input(type="radio" name="batch-add-mode" value="one" checked)
+              span Một suất
+            label
+              input(type="radio" name="batch-add-mode" value="many")
+              span Nhiều suất nối tiếp
+          .sched-add-times
+            label Giờ bắt đầu
+              input#batch-add-start(type="time" step="60")
+            label#batch-add-until-field(hidden) Suất cuối bắt đầu muộn nhất
+              input#batch-add-until(type="time" step="60" value="23:00")
+        p#batch-add-busy.muted
+        #batch-add-preview.sched-add-preview(role="status" aria-live="polite")
+        details.sched-defaults
+          summary Ngôn ngữ, định dạng, phụ thu
+          .sched-editor-fields
+            label Ngôn ngữ
+              input#batch-language(value="Phụ đề" maxlength="255")
+            label Định dạng
+              input#batch-format(placeholder="Theo phòng" maxlength="255")
+            label Phụ thu (VND)
+              input#batch-surcharge(value="0" inputmode="numeric" pattern="[0-9]+")
+        .actions
+          button#batch-add-cancel.button.secondary(type="button") Quay lại
+          button#batch-add-apply.button(type="submit") Thêm vào lịch
+    dialog#batch-editor
+      form#batch-line-form
+        h2 Sửa suất đang xếp
+        p#batch-editor-source.muted
+        .sched-editor-fields
+          label Phim
+            select#batch-line-movie(required)
+              each m in batchMovies
+                option(value=m.id)= m.title
+          label Phòng
+            select#batch-line-room(required)
+              each r in batchRooms
+                option(value=r.id)= r.name
+          label Ngày trong tuần
+            input#batch-line-day(type="date" required)
+          label Giờ bắt đầu
+            input#batch-time(type="time" step="60" required)
+          label Ngôn ngữ
+            input#batch-line-language(maxlength="255")
+          label Định dạng
+            input#batch-line-format(placeholder="Theo phòng" maxlength="255")
+          label Phụ thu (VND)
+            input#batch-line-surcharge(inputmode="numeric" required pattern="[0-9]+")
+        p#batch-line-end
+        p#batch-edit-error.sched-errors(hidden)
+        .actions
+          button#batch-cancel-edit.button.secondary(type="button") Quay lại
+          button#batch-delete-edit.button.secondary(type="button") Bỏ suất này
+          button.button(type="submit") Áp dụng
+    dialog#batch-event-dialog
+      h2 Suất chiếu đã lưu
+      #batch-event-info
+      .actions
+        a#batch-event-edit.button.secondary(target="_blank" rel="noopener") Mở trang sửa suất ↗
+        button#batch-event-close.button.secondary(type="button") Đóng
+    dialog#batch-copy-dialog
+      h2 Chép sang ngày khác
+      p#batch-copy-info
+      #batch-copy-days.sched-copy-days
+      p#batch-copy-error.sched-errors(hidden) Chọn ít nhất một ngày.
+      .actions
+        button#batch-copy-cancel.button.secondary(type="button") Quay lại
+        button#batch-copy-all.button.secondary(type="button") Chọn mọi ngày còn lại
+        button#batch-copy-apply.button(type="button") Chép
+    dialog#batch-review.sched-review
+      h2 Xác nhận tạo lịch
+      p#batch-review-summary
+      p#batch-review-error.sched-errors(hidden)
+      #batch-review-groups.sched-groups
+      details#batch-review-details
+        summary Xem từng suất
+        .sched-review-scroll
+          table
+            thead
+              tr
+                th Phim / phòng / nguồn
+                th Bắt đầu
+                th Kết thúc
+                th Hết dọn phòng
+                th Kiểm tra
+            tbody#batch-review-rows
+      .actions
+        button#batch-review-back.button.secondary(type="button") Quay lại chỉnh lịch
+        button#batch-confirm.button(type="button") Xác nhận tạo lịch
+    dialog#batch-dialog
+      h2#batch-dialog-title Xác nhận
+      p#batch-dialog-text
+      .actions
+        button#batch-dialog-no.button.secondary(type="button") Ở lại / Quay lại
+        button#batch-dialog-yes.button(type="button") Xác nhận
+    noscript
+      p.form-error Hãy bật JavaScript để xem lịch và thêm suất chiếu.

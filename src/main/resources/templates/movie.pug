@@ -5,7 +5,7 @@ block content
     .container.detail-grid
       img.detail-poster(src=movie.poster alt=movie.title)
       div
-        .eyebrow= movie.statusLabel
+        .eyebrow #{movie.statusLabel}#{movie.hasBookableShows ? '' : ' · Chưa có lịch mở bán'}
         h1= movie.title
         .metadata
           span.badge= movie.ageRating
@@ -18,14 +18,17 @@ block content
           each c in credits
             span #{c.kind == 'DIRECTOR' ? 'Đạo diễn' : 'Diễn viên'}: #{c.name}
         .actions
-          a.button(href="#schedule") CHỌN SUẤT CHIẾU →
+          if movie.hasBookableShows
+            a.button(href="#schedule") CHỌN SUẤT CHIẾU →
+          else
+            a.button.secondary(href="#schedule") XEM THÔNG TIN LỊCH CHIẾU →
           if viewer
             form(action='/account/favorites/' + movie.id method="post")
               +csrf()
               button.button.secondary(type="submit")= favorite ? '♥ Đã yêu thích' : '♡ Yêu thích'
           else
             a.button.secondary(href="/login") ♡ Yêu thích
-        if movie.status == 'COMING_SOON'
+        if !movie.hasBookableShows || subscribed
           form.inline-form(action='/account/subscriptions/' + movie.id method="post")
             +csrf()
             label.check
@@ -45,11 +48,8 @@ block content
     +showList(shows)
   if movie.trailer
     section.container.section
-      h2 TRAILER
-      if movie.trailer.startsWith('/media/')
-        video.trailer(controls preload="metadata" src=movie.trailer)
-      else
-        iframe.trailer(src=movie.trailer title="Trailer phim" allowfullscreen loading="lazy")
+      h2 TRAILER PHIM
+      button.button.secondary(type="button" data-trailer=movie.trailer data-trailer-title='Trailer · ' + movie.title) ▷ Xem trailer
   section#reviews.soft.section
     .container
       h2 KHÁN GIẢ CHIA SẺ

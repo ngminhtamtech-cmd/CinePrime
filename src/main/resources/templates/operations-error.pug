@@ -1,0 +1,9 @@
+extends operations
+block content
+  main#main.staff-main
+    section.panel
+      h1 Chưa thể hoàn tất thao tác
+      p(role="alert")= message
+      .actions
+        a.button(href=operationsRole == 'Soát vé' ? '/staff' : '/admin')= operationsRole == 'Soát vé' ? 'Chọn lại suất' : 'Làm mới báo cáo'
+        a.button.secondary(href="/login") Đăng nhập lại

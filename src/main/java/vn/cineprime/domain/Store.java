@@ -12,7 +12,9 @@ import static vn.cineprime.domain.Domain.*;
 @Repository
 @Transactional(readOnly=true)
 public class Store {
+    @org.springframework.beans.factory.annotation.Autowired private Clock clock=Clock.systemUTC();
     @PersistenceContext public EntityManager em;
+    public EntityManager entityManager(){return em;}
     public String entityName(Class<?> type) { return em.getMetamodel().entity(type).getName(); }
     public <T> T get(Class<T> type, Long id) {
         T row = id==null ? null : em.find(type,id);
@@ -27,6 +29,7 @@ public class Store {
         if(em.getLockMode(row)!=LockModeType.PESSIMISTIC_WRITE)em.refresh(row,LockModeType.PESSIMISTIC_WRITE);
         return row;
     }
+    public <T> T lockRead(Class<T> type,Long id){T row=get(type,id);LockModeType mode=em.getLockMode(row);if(mode!=LockModeType.PESSIMISTIC_READ&&mode!=LockModeType.PESSIMISTIC_WRITE)em.refresh(row,LockModeType.PESSIMISTIC_READ);return row;}
     public <T> List<T> list(Class<T> type,String where,Object... args) {
         String entity=em.getMetamodel().entity(type).getName();
         TypedQuery<T> q=em.createQuery("select e from "+entity+" e "+where,type);
@@ -54,6 +57,7 @@ public class Store {
             if(Set.of("passwordHash","tokenHash","token").contains(f.getName())) continue;
             try {result.put(f.getName(),f.get(row));} catch(IllegalAccessException e) {throw new IllegalStateException(e);}
         }
+        if(row instanceof Movie movie)result.put("status",MovieLifecycle.status(movie,MovieLifecycle.today(clock)));
         return result;
     }
     public List<Map<String,Object>> views(Collection<? extends Row> rows) { return rows.stream().map(this::view).toList(); }

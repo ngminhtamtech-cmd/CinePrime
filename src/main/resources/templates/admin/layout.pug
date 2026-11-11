@@ -1,16 +1,25 @@
-extends ../layout
+extends ../operations
 include ../mixins
 block content
-  .admin-shell
-    aside.admin-sidebar
-      .eyebrow ĐIỀU HÀNH CINEPRIME
-      a(href="/admin") Tổng quan & Báo cáo
-      a(href="/admin/orders") Đơn & Thanh toán
-      a(href="/admin/schedule") Lịch vận hành theo ngày
-      each item in adminMenu
-        a(href='/admin/manage/' + item.key)= item.label
-      a(href="/admin/upload") Upload hình / Trailer
-      a(href="/admin/audit") Nhật ký hoạt động
-      a(href="/admin/transactions.csv") Xuất giao dịch CSV ↓
-    .admin-main
+  .ops-shell
+    button#sidebar-overlay(type="button" aria-label="Đóng điều hướng" hidden)
+    aside#ops-sidebar.ops-sidebar(aria-label="Điều hướng quản trị")
+      .sidebar-heading
+        span ĐIỀU HÀNH
+        button#close-sidebar.icon-button(type="button" aria-label="Đóng điều hướng") ×
+      each group in navGroups
+        details.nav-group(open=group.active data-group-id=group.id data-active=group.active ? 'true' : 'false')
+          summary
+            span.nav-icon(aria-hidden="true")= group.icon
+            span= group.label
+          each item in group.items
+            a(href=item.href class=item.active ? 'active' : '' aria-current=item.active ? 'page' : false)= item.label
+    main#main.ops-main
+      .ops-breadcrumb
+        a(href="/admin") Quản trị
+        span / #{resourceLabel ? resourceLabel : title}
+      if notice
+        p.action-notice(role="status")= notice
+      if actionError
+        p.form-error(role="alert")= actionError
       block admin

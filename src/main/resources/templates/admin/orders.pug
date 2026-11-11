@@ -1,18 +1,67 @@
 extends layout
 block admin
-  h1 Đơn hàng & Thanh toán
-  form.filters(method="get")
-    input(name="q" value=q placeholder="Mã đơn, email, ngày hoặc trạng thái" aria-label="Tìm đơn")
-    button.button(type="submit") TÌM KIẾM
-    a.button.secondary(href="/admin/transactions.csv") XUẤT CSV ↓
+  .page-heading
+    div
+      h1 Đơn hàng & Thanh toán
+      p.muted Trạng thái đơn và từng lần thanh toán được theo dõi riêng.
+    a.button.secondary(href="/admin/transactions.csv") ↓ Nhật ký giao dịch
+  details.report-caption
+    summary Về file nhật ký giao dịch
+    p File gồm toàn bộ thời gian/trạng thái; một đơn có thể xuất hiện nhiều lần. Không cộng cột thành tiền để kết luận doanh thu. Báo cáo doanh thu theo kỳ nằm ở trang Tổng quan.
+  form.ops-filters(method="get")
+    label Tìm đơn
+      input(name="q" value=q placeholder="Mã đơn, email, phim…")
+    label Trạng thái đơn
+      select(name="state")
+        option(value="") Tất cả
+        option(value="PAID" selected=state == 'PAID') Đã thanh toán
+        option(value="PENDING_PAYMENT" selected=state == 'PENDING_PAYMENT') Chờ thanh toán
+        option(value="EXPIRED" selected=state == 'EXPIRED') Hết hạn
+        option(value="CANCELLED" selected=state == 'CANCELLED') Đã hủy
+    label Thanh toán
+      select(name="paymentState")
+        option(value="") Tất cả
+        option(value="RECONCILIATION" selected=paymentState == 'RECONCILIATION') Cần đối soát
+        option(value="SUCCEEDED" selected=paymentState == 'SUCCEEDED') Thành công
+        option(value="FAILED" selected=paymentState == 'FAILED') Có lần thất bại
+        option(value="PENDING" selected=paymentState == 'PENDING') Đang xác minh
+        option(value="CREATED" selected=paymentState == 'CREATED') Mới tạo
+    label Rạp
+      select(name="cinemaId")
+        option(value="") Tất cả rạp
+        each c in adminCinemas
+          option(value=c.id selected=cinemaId == c.id.toString())= c.name
+    label Ngày tạo đơn
+      input(type="date" name="date" value=day)
+    button.button.secondary(type="submit") Lọc đơn
   .panel
-    each o in orders
-      a.order-row(href='/admin/orders/' + o.id)
-        div
-          strong #{o.code} · #{o.movieTitle}
-          p #{o.cinemaName} · #{o.when}
-        div
-          span.badge= o.status
-          p= o.totalText
-    if orders.size() == 0
-      .empty Không có đơn phù hợp.
+    .table-wrap
+      table.management-table
+        thead
+          tr
+            th Đơn / Khách
+            th Phim / Suất
+            th Ngày đặt
+            th Thực trả
+            th Đơn
+            th Thanh toán
+        tbody
+          each o in rows
+            tr
+              td(data-label="Đơn / Khách")
+                a(href='/admin/orders/' + o.id)
+                  strong= o.code
+                small= o.customerName
+                small= o.email
+              td(data-label="Phim / Suất")
+                span.cell-text= o.movieTitle
+                small #{o.cinemaName} · #{o.when}
+              td(data-label="Ngày đặt")= o.created
+              td(data-label="Thực trả")= o.totalText
+              td(data-label="Đơn")
+                span.badge= o.statusLabel
+              td(data-label="Thanh toán")
+                span.cell-text= o.paymentLabel
+    if rows.size() == 0
+      .empty Không có đơn phù hợp với bộ lọc.
+    +pagination()

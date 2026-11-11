@@ -1,60 +1,116 @@
-extends layout
+extends operations
 include mixins
 block head
   script(src="/js/vendor/zxing-browser.min.js" defer)
 block content
-  .container.section
-    .eyebrow CINEPRIME OPERATIONS
-    h1 Soát vé tại rạp
-    form.filters(method="get")
+  main#main.staff-main
+    .page-heading
+      div
+        h1 Soát vé tại rạp
+        p.muted Chọn đúng suất, kiểm tra vé rồi xác nhận khách vào rạp.
+      span.badge= staffCinema
+    form.ops-filters#staff-selection(method="get")
       label Ngày vận hành
         input(type="date" name="date" value=day required)
-      button.button.secondary(type="submit") XEM SUẤT
-    .show-list
-      each s in shows
-        a.show-row(href='/staff?date=' + day + '&showtimeId=' + s.id)
-          div
-            strong= s.movieTitle
-            p #{s.roomName} · #{s.when}
-          span Chọn suất →
+      label.shrink-select Suất chiếu · ưu tiên suất đang nhận khách
+        select(name="showtimeId")
+          option(value="") — Chọn suất để bắt đầu —
+          each s in shows
+            option(value=s.id selected=selectedShow == s.id) #{s.movieTitle} · #{s.roomName} · #{s.when} · #{s.state}
+      button.button.secondary(type="submit") Chọn suất
     if shows.size() == 0
-      .empty Không có suất mở bán tại rạp phụ trách trong ngày này.
+      .empty Không có suất mở vận hành tại rạp phụ trách trong ngày này. Hãy chọn ngày khác.
     if selectedShow
-      #staff-scanner.panel(data-showtime=selectedShow)
-        h2 Quét vé vào rạp
-        p.muted Chọn đúng suất, kiểm tra thông tin rồi xác nhận. Khung check-in: 60 phút trước đến 30 phút sau giờ bắt đầu.
-        .actions
-          button#start-camera.button(type="button") BẬT CAMERA
-          button#stop-camera.button.secondary(type="button" hidden) TẮT CAMERA
-        video#qr-video(playsinline muted hidden)
-        form#manual-lookup.inline-form
-          label Mã vé / Mã đơn
-            input#ticket-code(required placeholder="T-… hoặc CP-…" autocomplete="off")
-          button.button.secondary(type="submit") TRA CỨU
-        #scan-result(aria-live="polite")
-      .two-columns
-        .stat-card
+      section.selected-show
+        div
+          small SUẤT ĐANG SOÁT
+          h2= selected.movieTitle
+          p #{selected.roomName} · #{selected.cinemaName} · #{selected.when}
+        div
+          span#selected-show-state.badge= selected.state
+          small Khung check-in: #{selected.window}
+    else
+      .notice Chưa chọn suất. Chọn phim, phòng và giờ phía trên trước khi quét vé.
+    #staff-workspace(data-showtime=selectedShow)
+      .scan-grid
+        section.panel
+          .panel-heading
+            h2 Kiểm tra vé
+            span#camera-state.badge Chưa bật camera
+          .camera-frame
+            video#qr-video(playsinline muted hidden)
+            #camera-placeholder
+              span.scan-symbol(aria-hidden="true") ▣
+              strong Quét mã QR vé
+              p Đưa mã QR vào camera hoặc nhập mã bên dưới.
+            .camera-actions
+              button#start-camera.button(type="button" disabled=!selectedShow) Bật camera
+              button#stop-camera.button.secondary(type="button" hidden) Tắt camera
+          form#manual-lookup
+            label(for="ticket-code") Mã vé hoặc mã đơn
+            .manual-row
+              input#ticket-code(required placeholder="T-… hoặc CP-…" autocomplete="off" disabled=!selectedShow)
+              button.button.secondary(type="submit" disabled=!selectedShow) Tra cứu
+          p.muted Có thể dùng camera, máy quét nhập mã hoặc bàn phím. Enter chỉ tra cứu mã.
+        section.panel.scan-results
+          .panel-heading
+            h2 Kết quả kiểm tra
+            button#next-ticket.button.secondary(type="button" disabled=!selectedShow) Quét vé tiếp
+          #scan-result(aria-live="polite" aria-atomic="false")
+            .empty= selectedShow ? 'Sẵn sàng tra cứu. Kết quả sẽ được giữ để kiểm tra và xác nhận từng vé.' : 'Chọn suất chiếu trước khi tra cứu vé.'
+      .staff-stats
+        article.kpi-card
+          span Vé còn hiệu lực
+          strong(data-stat="total")= selectedShow ? ticketData.summary.total : '—'
+          small Không gồm vé vô hiệu
+        article.kpi-card
           span Đã vào rạp
-          strong= checkedIn
-        .stat-card
+          strong(data-stat="used")= selectedShow ? ticketData.summary.used : '—'
+          small Đã xác nhận check-in
+        article.kpi-card
           span Chưa vào rạp
-          strong= notCheckedIn
-      .panel
-        h2 Danh sách khách theo suất
+          strong(data-stat="valid")= selectedShow ? ticketData.summary.valid : '—'
+          small Vé còn chờ check-in
+        article.kpi-card
+          span Tỷ lệ check-in
+          strong(data-stat="rate")= selectedShow ? ticketData.summary.rate : '—'
+          small Đã vào / vé còn hiệu lực
+      section.panel
+        .panel-heading
+          h2 Danh sách vé theo suất
+          span#staff-updated.refresh-status(role="status")= selectedShow ? 'Cập nhật: ' + ticketData.updatedAt : 'Chưa chọn suất'
+        form#staff-ticket-filter.ops-filters
+          label Tìm mã vé / đơn / ghế
+            input(name="q" placeholder="Ví dụ A1 hoặc CP-…" disabled=!selectedShow)
+          label Trạng thái vé
+            select(name="state" disabled=!selectedShow)
+              option(value="") Tất cả
+              option(value="VALID") Chưa vào
+              option(value="USED") Đã vào
+              option(value="VOID") Vô hiệu
+          button.button.secondary(type="submit" disabled=!selectedShow) Lọc vé
         .table-wrap
-          table
+          table.staff-ticket-table
             thead
               tr
-                th Vé
-                th Đơn
+                th Vé / Đơn
                 th Ghế
                 th Trạng thái
-                th Check-in
-            tbody
-              each t in tickets
-                tr
-                  td= t.code
-                  td= t.order.code
-                  td= t.seat
-                  td= t.status
-                  td= t.when
+                th Thời điểm check-in
+            tbody#staff-ticket-rows
+              if selectedShow
+                each t in ticketData.tickets
+                  tr
+                    td
+                      strong= t.code
+                      small= t.orderCode
+                    td= t.seat
+                    td
+                      span.badge= t.statusLabel
+                    td= t.when
+        #staff-ticket-empty.empty(hidden=selectedShow && ticketData.tickets.size() > 0)= selectedShow ? 'Suất này chưa có vé được phát hành.' : 'Danh sách sẽ hiển thị sau khi chọn suất.'
+        .ops-pagination
+          span#staff-page-label= selectedShow ? 'Trang 1 · ' + ticketData.total + ' kết quả' : '—'
+          .actions
+            button#staff-prev.button.secondary(type="button" disabled) ← Trước
+            button#staff-next.button.secondary(type="button" disabled=!selectedShow || !ticketData.hasMore) Sau →

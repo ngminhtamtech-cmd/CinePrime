@@ -1,6 +1,10 @@
 extends layout
 block admin
   h1 Nhật ký hoạt động
+  form.ops-filters(method="get")
+    label Người thực hiện / Thao tác / Đối tượng
+      input(name="q" value=q placeholder="Tìm nhật ký…")
+    button.button.secondary(type="submit") Tìm kiếm
   .panel.table-wrap
     table
       thead
@@ -10,9 +14,12 @@ block admin
           th Thao tác
           th Đối tượng
       tbody
-        each log in logs
+        each log in rows
           tr
             td= log.when
-            td= log.actorId
+            td= log.actor
             td= log.action
             td= log.target
+    if rows.size() == 0
+      .empty Không có nhật ký phù hợp.
+    +pagination()

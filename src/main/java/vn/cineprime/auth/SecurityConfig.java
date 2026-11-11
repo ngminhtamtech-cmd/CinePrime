@@ -35,10 +35,17 @@ public class SecurityConfig {
     @Bean SecurityFilterChain security(HttpSecurity http,Store db,RateLimit rates) throws Exception {
         http.authorizeHttpRequests(a->a
             .requestMatchers("/css/**","/js/**","/images/**","/fonts/**","/media/**","/error","/","/movies/**","/cinemas/**","/showtimes","/catalog/showtimes","/content/**","/offers","/articles","/login","/register","/forgot-password","/reset-password","/payments/momo/ipn").permitAll()
-            .requestMatchers("/admin/**").hasRole("ADMIN")
+            .requestMatchers("/admin/**","/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/staff/**","/api/staff/**").hasRole("STAFF")
             .anyRequest().authenticated());
         http.csrf(c->c.ignoringRequestMatchers("/payments/momo/ipn"));
+        http.exceptionHandling(e->e.authenticationEntryPoint((req,res,error)->{
+            if(jsonRequest(req)){res.setStatus(401);res.setContentType("application/json;charset=UTF-8");res.getWriter().write("{\"code\":\"SESSION_EXPIRED\",\"message\":\"Phiên đã hết hạn. Vui lòng đăng nhập lại.\"}");}
+            else res.sendRedirect("/login");
+        }).accessDeniedHandler((req,res,error)->{
+            if(jsonRequest(req)){res.setStatus(403);res.setContentType("application/json;charset=UTF-8");res.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"Không đủ quyền hoặc phiên bảo mật không còn hợp lệ. Hãy đăng nhập lại rồi thử.\"}");}
+            else res.sendError(403);
+        }));
         http.formLogin(f->f.loginPage("/login").usernameParameter("email").successHandler((request,response,auth)-> {
             SessionUser u=(SessionUser)auth.getPrincipal();
             var cache=new org.springframework.security.web.savedrequest.HttpSessionRequestCache();
@@ -60,7 +67,7 @@ public class SecurityConfig {
                     Optional<User> current=db.first(User.class,"where e.id=?1",p.id());
                     if(current.isEmpty()||!current.get().enabled||current.get().authVersion!=p.version()||!current.get().role.equals(p.role())) {
                         SecurityContextHolder.clearContext(); if(req.getSession(false)!=null)req.getSession(false).invalidate();
-                        res.sendRedirect("/login?expired");return;
+                        if(jsonRequest(req)){res.setStatus(401);res.setContentType("application/json;charset=UTF-8");res.getWriter().write("{\"code\":\"SESSION_EXPIRED\",\"message\":\"Phiên đã hết hạn hoặc quyền đã thay đổi. Vui lòng đăng nhập lại.\"}");}else res.sendRedirect("/login?expired");return;
                     }
                 }
                 chain.doFilter(req,res);
@@ -69,6 +76,7 @@ public class SecurityConfig {
         http.headers(h->h.contentSecurityPolicy(c->c.policyDirectives("default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'")));
         return http.build();
     }
+    private static boolean jsonRequest(HttpServletRequest request){String path=request.getServletPath();return path.startsWith("/api/")||path.equals("/admin/operations")||path.equals("/admin/media")||path.startsWith("/admin/layout")&&Objects.toString(request.getContentType(),"").startsWith("application/json");}
     @org.springframework.stereotype.Component
     public static class RateLimit {
         private record Window(long start,int count) {}

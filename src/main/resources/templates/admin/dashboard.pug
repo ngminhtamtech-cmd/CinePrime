@@ -1,74 +1,152 @@
 extends layout
 block admin
-  .eyebrow ADMIN DASHBOARD
-  h1 Tổng quan kinh doanh
-  form.filters(method="get")
-    select(name="period" aria-label="Khoảng báo cáo")
-      option(value="day" selected=period == 'day') Ngày
-      option(value="week" selected=period == 'week') Tuần
-      option(value="month" selected=period == 'month') Tháng
-      option(value="year" selected=period == 'year') Năm
-    input(type="date" name="date" value=reportDate aria-label="Ngày báo cáo")
-    button.button(type="submit") XEM BÁO CÁO
-  p.muted Khoảng báo cáo: #{range} · Doanh thu tính theo thời điểm thanh toán thành công, không tính giao dịch cần đối soát.
-  .stats-grid
-    .stat-card
-      span Doanh thu
+  .page-heading
+    div
+      h1 Tổng quan kinh doanh
+      p.muted Quan sát kết quả, theo dõi vận hành và xử lý đúng việc.
+    a.button.secondary(href='/admin/revenue/' + reportId + '.csv') ↓ Xuất doanh thu
+  form.ops-filters(method="get")
+    label Kỳ báo cáo
+      select(name="period")
+        option(value="day" selected=period == 'day') Ngày
+        option(value="week" selected=period == 'week') Tuần
+        option(value="month" selected=period == 'month') Tháng
+        option(value="year" selected=period == 'year') Năm
+    label Ngày đại diện
+      input(type="date" name="date" value=reportDate required)
+    label Phạm vi rạp
+      select(name="cinemaId")
+        option(value="") Tất cả rạp
+        each c in adminCinemas
+          option(value=c.id selected=cinemaId == c.id.toString())= c.name
+    button.button(type="submit") Làm mới báo cáo
+  .report-caption
+    strong #{range} · #{cinemaLabel}
+    span Mốc chốt: #{cutoff} · Bản chụp giữ 15 phút
+    details
+      summary Định nghĩa & kỳ so sánh
+      p Doanh thu = tổng đơn đã thanh toán theo thời điểm thanh toán, gồm vé + combo − giảm giá. Không gồm giao dịch thành công muộn cần đối soát. Vé tính theo ghế vật lý; đơn miễn phí vẫn có vé và đơn, doanh thu 0đ.
+      p So sánh: #{comparisonRange}. Mốc chốt không bao gồm thời điểm kết thúc. Mã báo cáo: #{reportId}.
+  .kpi-grid
+    article.kpi-card
+      .kpi-label
+        span Doanh thu
+        span.kpi-icon(aria-hidden="true") ₫
       strong= revenue
-    .stat-card
-      span Vé đã bán
+      span.kpi-change= revenueChange
+      small Theo thời điểm thanh toán
+    article.kpi-card
+      .kpi-label
+        span Vé đã bán
+        span.kpi-icon(aria-hidden="true") ▤
       strong= ticketCount
-    .stat-card
-      span Đơn thanh toán
+      span.kpi-change= ticketChange
+      small Ghế vật lý thuộc đơn đã thanh toán
+    article.kpi-card
+      .kpi-label
+        span Đơn đã thanh toán
+        span.kpi-icon(aria-hidden="true") ✓
       strong= orderCount
-    .stat-card
-      span Khách hàng
-      strong= customerCount
-    .stat-card
-      span Phim đang chiếu
-      strong= nowCount
-    .stat-card
-      span Phim sắp chiếu
-      strong= comingCount
-  .panel
-    h2 Doanh thu theo ngày
-    each point in chart
-      .chart-line
-        span= point.label
-        meter(min="0" max="100" value=point.width)= point.amount
-        strong= point.amount
-    if chart.size() == 0
-      .empty Chưa có doanh thu trong khoảng thời gian này.
-  .panel
-    h2 Phim có doanh thu cao nhất
-    each movie in topMovies
-      .line
-        strong= movie.title
-        span= movie.amount
-    if topMovies.size() == 0
-      p.muted Chưa có dữ liệu.
-  .panel
-    h2 Tỷ lệ lấp đầy theo suất
-    .table-wrap
-      table
-        thead
-          tr
-            th Phim
-            th Rạp / Phòng
-            th Suất
-            th Đã bán / Sức chứa
-        tbody
-          each s in occupancy
-            tr
-              td= s.movieTitle
-              td #{s.cinemaName} · #{s.roomName}
-              td= s.when
-              td= s.occupancy
-  .panel
-    h2 Giao dịch cần đối soát
-    each p in reconciliation
-      .line
-        span #{p.externalOrderId} · #{p.status}
-        a(href='/admin/orders/' + p.orderId) Xem đơn →
-    if reconciliation.size() == 0
-      p.muted Chưa có giao dịch cần đối soát.
+      span.kpi-change= orderChange
+      small Bao gồm đơn miễn phí hợp lệ
+  .dashboard-board
+    .dashboard-lane
+      section#revenue-overview.panel.chart-panel
+        .panel-heading
+          h2 Diễn biến doanh thu
+          span.badge= period == 'day' ? 'Theo giờ' : period == 'year' ? 'Theo tháng' : 'Theo ngày'
+        if revenueValue == 0
+          .empty.chart-empty Không phát sinh doanh thu trong phần kỳ đã chốt · 0 đ.
+        else
+          .chart-scroll
+            svg.revenue-chart(viewBox='0 0 ' + chartWidth + ' 220' role="img" aria-labelledby="revenue-chart-title")
+              title#revenue-chart-title Doanh thu #{range}. Bảng giá trị chính xác ở ngay dưới biểu đồ.
+              line(x1="5" y1="170" x2=chartWidth y2="170" class="chart-axis")
+              each point in chart
+                g(tabindex="0" aria-label=point.label + ': ' + point.amount)
+                  title #{point.label}: #{point.amount}
+                  if point.height > 0 && !point.future
+                    rect(x=point.x y=point.y width="18" height=point.height rx="3" class="chart-bar")
+                  else if !point.future
+                    circle(cx=point.labelX cy="170" r="2" class="chart-zero")
+                  text(x=point.labelX y=point.labelY text-anchor="middle" class=point.future ? 'chart-future' : '')= point.label
+        details.chart-data(data-report-widget="chart" data-report-id=reportId)
+          summary Xem bảng số liệu chính xác
+          .table-wrap
+            table
+              thead
+                tr
+                  th Khoảng thời gian
+                  th Doanh thu (VND)
+              tbody(data-widget-rows)
+                each point in chartPage.rows
+                  tr
+                    td= point.label
+                    td= point.amount
+          +widgetPager(chartPage)
+      section#new-orders.panel
+        .panel-heading
+          h2 Đơn đặt mới hôm nay
+          span.badge(data-op-count="latest")= operations.newCount
+        +operationWidget('latest', operations.pages.latest, '/admin/orders?cinemaId=' + cinemaId)
+      section.panel(data-report-widget="topMovies" data-report-id=reportId)
+        h2 Giá trị đơn theo phim
+        p.muted Gồm combo và giảm giá theo đơn; không phải doanh thu vé riêng.
+        div(data-widget-rows)
+          each movie in topMoviesPage.rows
+            .ranking-row
+              strong= movie.title
+              span= movie.amount
+          if topMoviesPage.rows.size() == 0
+            .empty Chưa có đơn đã thanh toán trong kỳ.
+        +widgetPager(topMoviesPage)
+    .dashboard-lane
+      section#admin-operations.panel(data-cinema=cinemaId)
+        .panel-heading
+          h2 Việc cần theo dõi
+          span.live-indicator Vận hành hiện tại
+        p.muted Thời gian hiện tại · #{cinemaLabel} · tự cập nhật 30 giây
+        details.operation-section(open=operations.reconciliationCount > 0)
+          summary
+            span Cần đối soát
+            strong(data-op-count="reconciliation")= operations.reconciliationCount
+            span(data-op-amount="reconciliation")= operations.reconciliationAmount
+          +operationWidget('reconciliation', operations.pages.reconciliation)
+        details.operation-section
+          summary
+            span Lần thanh toán lỗi trong 24 giờ
+            strong(data-op-count="failures")= operations.failedCount
+          +operationWidget('failures', operations.pages.failures)
+        a.more(href='/admin/orders?paymentState=RECONCILIATION&cinemaId=' + cinemaId) Xem các đơn cần đối soát →
+        p.refresh-status Mỗi lần thanh toán được đếm riêng với đơn hàng.
+      section#next-shows.panel
+        .panel-heading
+          h2 Suất đang / sắp nhận khách
+          span.badge(data-op-count="upcoming")= operations.pages.upcoming.total
+        +operationWidget('upcoming', operations.pages.upcoming, '/admin/schedule?cinemaId=' + cinemaId)
+      section.panel(data-report-widget="occupancy" data-report-id=reportId)
+        h2 Lấp đầy theo ngày suất chiếu
+        p.muted Vé chưa vào + đã vào / ghế hoạt động. Theo ngày suất, không theo ngày thanh toán.
+        .table-wrap
+          table.management-table
+            thead
+              tr
+                th Phim / Rạp / Phòng
+                th Suất
+                th Vé / Ghế
+            tbody(data-widget-rows)
+              each s in occupancyPage.rows
+                tr
+                  td(data-label="Phim / Rạp / Phòng")
+                    strong= s.movieTitle
+                    small #{s.cinemaName} · #{s.roomName}
+                  td(data-label="Suất")= s.when
+                  td(data-label="Vé / Ghế")= s.occupancy
+        if occupancyPage.rows.size() == 0
+          .empty Không có suất phù hợp.
+        +widgetPager(occupancyPage)
+  .catalog-context
+    strong Danh mục hiện tại · Toàn hệ thống
+    span #{customerCount} khách hàng
+    span #{nowCount} phim đang chiếu
+    span #{comingCount} phim sắp chiếu

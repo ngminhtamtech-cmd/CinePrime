@@ -1,6 +1,16 @@
 extends layout
 block admin
   h1 Ưu đãi #{voucher.code}
+  form.ops-filters(method="get")
+    label Mã đơn / Email
+      input(name="q" value=q)
+    label Trạng thái
+      select(name="state")
+        option(value="") Tất cả
+        option(value="USED" selected=state == 'USED') Đã sử dụng
+        option(value="RESERVED" selected=state == 'RESERVED') Đang giữ
+        option(value="RELEASED" selected=state == 'RELEASED') Đã trả lượt
+    button.button.secondary(type="submit") Lọc lượt dùng
   .stats-grid
     .stat-card
       span Đã sử dụng
@@ -20,10 +30,13 @@ block admin
           th Trạng thái
           th Hạn giữ
       tbody
-        each u in uses
+        each u in rows
           tr
             td
               a(href='/admin/orders/' + u.orderId)= u.orderCode
             td= u.email
             td= u.status
             td= u.when
+    if rows.size() == 0
+      .empty Không có lượt dùng phù hợp.
+    +pagination()

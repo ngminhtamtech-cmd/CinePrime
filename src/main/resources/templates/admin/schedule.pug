@@ -1,34 +1,61 @@
 extends layout
 block admin
-  .section-heading
-    h1 Lịch vận hành theo ngày
-    a.button(href="/admin/manage/showtimes/edit") + TẠO SUẤT
-  form.filters(method="get")
-    input(type="date" name="date" value=day required aria-label="Ngày chiếu")
-    select(name="cinemaId" aria-label="Rạp")
-      option(value="") Tất cả rạp
-      each c in cinemaOptions
-        option(value=c.id)= c.name
-    button.button.secondary(type="submit") XEM LỊCH
-  .panel.table-wrap
-    table
-      thead
-        tr
-          th Phim
-          th Rạp / Phòng
-          th Bắt đầu
-          th Kết thúc
-          th Trạng thái
-          th Thao tác
-      tbody
-        each s in schedule
+  .page-heading
+    div
+      h1 Lịch vận hành theo ngày
+      p.muted #{day} · #{total} suất · 5 dòng mỗi trang
+    .actions
+      a.button(href='/admin/showtimes/new?cinemaId=' + cinemaId + '&date=' + day + '&movieId=' + movieId + '&roomId=' + roomId) + Thêm suất chiếu
+      a.button.secondary(href=schedulePeerLink) Quản lý suất chiếu →
+  .cinema-context
+    span RẠP ĐANG QUẢN LÝ
+    strong= selectedCinemaName
+  form.ops-filters(method="get" data-scope-filters="true")
+    label Rạp
+      select(name="cinemaId")
+        each c in adminCinemas
+          option(value=c.id selected=cinemaId == c.id.toString())= c.name
+    label Ngày chiếu
+      input(type="date" name="date" value=day required)
+    label Phim trong ngày
+      select(name="movieId")
+        option(value="") Tất cả phim trong ngày
+        each m in filterMovies
+          option(value=m.id selected=movieId == m.id.toString())= m.name
+    label Phòng
+      select#schedule-room(name="roomId")
+        option(value="") Tất cả phòng
+        each r in adminRooms
+          option(value=r.id selected=roomId == r.id.toString())= r.name
+    label Phim / Phòng
+      input(name="q" value=q placeholder="Tìm phim hoặc phòng")
+    label Trạng thái
+      select(name="state")
+        option(value="") Tất cả
+        option(value="OPEN" selected=state == 'OPEN') Mở bán
+        option(value="DRAFT" selected=state == 'DRAFT') Nháp
+        option(value="CANCELLED" selected=state == 'CANCELLED') Đã hủy
+    button.button.secondary(type="submit") Xem lịch
+  .panel
+    .table-wrap
+      table.management-table
+        thead
           tr
-            td= s.movieTitle
-            td #{s.cinemaName} · #{s.roomName}
-            td= s.when
-            td= s.ends
-            td= s.status
-            td
-              a(href='/admin/manage/showtimes/edit?id=' + s.id) Sửa suất
-    if schedule.size() == 0
-      .empty Không có lịch trong ngày này.
+            th Phim
+            th Phòng
+            th Bắt đầu–Kết thúc
+            th Trạng thái
+            th Thao tác
+        tbody
+          each s in rows
+            tr
+              td(data-label="Phim")= s.movieTitle
+              td(data-label="Phòng")= s.roomName
+              td(data-label="Giờ")= s.when
+              td(data-label="Trạng thái")
+                span.badge= s.status
+              td
+                a(href='/admin/manage/showtimes/edit?id=' + s.id + '&returnTo=' + returnEncoded) Sửa suất →
+    if rows.size() == 0
+      .empty Không có lịch phù hợp trong ngày này.
+    +pagination()

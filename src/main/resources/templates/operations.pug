@@ -1,0 +1,47 @@
+doctype html
+html(lang="vi")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    meta(name="csrf-token" content=csrfToken)
+    meta(name="csrf-header" content=csrfHeader)
+    title= title
+    link(rel="icon" href="/images/cineprime-mark.svg" type="image/svg+xml")
+    link(rel="stylesheet" href="/css/app.css")
+    link(rel="stylesheet" href="/css/operations.css")
+    script(src="/js/app.js" defer)
+    script(src="/js/operations.js" defer)
+    if navGroups
+      script(src="/js/admin.js" defer)
+      script(src="/js/admin-editor.js" defer)
+      script(src="/js/admin-setup.js" defer)
+      if adminForm
+        script(src="/js/admin-forms.js" defer)
+      if seatWorkspace
+        script(src="/js/admin-workspace.js" defer)
+    block head
+  body.operations(class=navGroups ? (seatWorkspace ? 'admin-compact seat-workspace' : 'admin-compact') : '' data-admin-id=navGroups && viewer ? viewer.id : false)
+    a.skip(href="#main") Đi đến nội dung
+    header.ops-header
+      .ops-brand
+        if navGroups
+          button#open-sidebar.icon-button(type="button" aria-label="Mở điều hướng" aria-expanded="false" aria-controls="ops-sidebar") ☰
+        a.brand(href=navGroups ? '/admin' : '/staff' aria-label="CinePrime điều hành")
+          img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="32" height="32")
+          span Cine
+            strong Prime
+        span.ops-role= operationsRole
+      .ops-account
+        if staffCinema
+          strong.ops-cinema= staffCinema
+        a.ops-site(href="/" target="_blank" rel="noopener") Xem website ↗
+        if viewer
+          span.ops-user= viewer.name
+        form(action="/logout" method="post")
+          input(type="hidden" name=csrfName value=csrfToken)
+          button.text-button(type="submit") Đăng xuất
+    #ops-session.session-banner(role="alert" hidden)
+      span Phiên không còn hợp lệ. Nội dung đang xem được giữ; hãy đăng nhập lại để tiếp tục.
+      a(href="/login") Đăng nhập lại →
+    block content
+    #toast(role="status" aria-live="polite")

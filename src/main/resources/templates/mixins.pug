@@ -1,5 +1,50 @@
 mixin csrf()
   input(type="hidden" name=csrfName value=csrfToken)
+mixin pagination()
+  nav.ops-pagination(aria-label="Phân trang")
+    span Trang #{page + 1} · #{total} kết quả
+    .actions
+      if page > 0
+        a.button.secondary(href='?page=' + (page - 1) data-page=page - 1) ← Trước
+      else
+        button.button.secondary(type="button" disabled) ← Trước
+      if hasMore
+        a.button.secondary(href='?page=' + (page + 1) data-page=page + 1) Sau →
+      else
+        button.button.secondary(type="button" disabled) Sau →
+mixin widgetPager(data, refresh, moreUrl)
+  nav.ops-pagination(aria-label="Phân trang khối")
+    span(data-widget-page) Trang #{data.page + 1} · #{data.total} kết quả
+    .actions
+      button.button.secondary(type="button" data-widget-prev disabled) ← Trước
+      button.button.secondary(type="button" data-widget-next disabled=!data.hasMore) Sau →
+      if refresh
+        button.text-button.widget-refresh(type="button" data-widget-refresh aria-label="Làm mới khối" title="Làm mới khối") ↻
+      if moreUrl
+        a.widget-more(href=moreUrl) Xem đủ →
+  p.refresh-status(data-widget-status role="status")
+mixin operationWidget(name, data, moreUrl)
+  .operation-widget(data-op-widget=name data-cinema=cinemaId data-next=data.nextCursor data-revision=data.revision)
+    .operation-list(data-widget-rows)
+      each item in data.rows
+        a.operation-item(href=(name == 'upcoming' ? '/admin/manage/showtimes/edit?id=' : '/admin/orders/') + item.id data-record-id=item.recordId)
+          strong= item.label
+          small= item.detail
+      if data.rows.size() == 0
+        p.muted Chưa có dữ liệu cần hiển thị.
+    +widgetPager(data, true, moreUrl)
+mixin sectionPagination(data, param)
+  nav.ops-pagination(aria-label="Phân trang chi tiết")
+    span Trang #{data.page + 1} · #{data.total} kết quả
+    .actions
+      if data.page > 0
+        a.button.secondary(href='?' + param + '=' + (data.page - 1) data-page=data.page - 1 data-page-param=param) ← Trước
+      else
+        button.button.secondary(type="button" disabled) ← Trước
+      if data.hasMore
+        a.button.secondary(href='?' + param + '=' + (data.page + 1) data-page=data.page + 1 data-page-param=param) Sau →
+      else
+        button.button.secondary(type="button" disabled) Sau →
 mixin movieCard(m)
   article.movie-card
     a.poster(href='/movies/' + m.slug)
@@ -11,7 +56,7 @@ mixin movieCard(m)
       a(href='/movies/' + m.slug)
         h3= m.title
       p #{m.genres} · #{m.duration} phút
-      a.book-link(href='/movies/' + m.slug)= m.status == 'COMING_SOON' ? 'KHÁM PHÁ →' : 'MUA VÉ →'
+      a.book-link(href='/movies/' + m.slug)= m.hasBookableShows ? 'MUA VÉ →' : 'KHÁM PHÁ →'
 mixin showList(shows)
   if shows.size() == 0
     .empty Không có suất chiếu phù hợp. Hãy chọn ngày hoặc rạp khác.

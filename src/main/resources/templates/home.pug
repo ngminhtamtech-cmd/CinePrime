@@ -2,27 +2,30 @@ extends layout
 include mixins
 block content
   section#hero-carousel.hero
-    .hero-art
-    .container.hero-content
-      .eyebrow CINEPRIME PRESENTS
-      h1 Những câu chuyện lớn.
-        br
-        span Những cảm xúc thật.
-      p Tạm gác nhịp sống. Bước vào thế giới điện ảnh và tìm một cuộc hẹn dành riêng cho bạn.
-      .hero-actions
-        a.button(href="/showtimes") ✦ ĐẶT VÉ NGAY
-        a.button.outline-light(href="/movies") Khám phá phim →
-      .hero-caption MÀN ẢNH LỚN · TRẢI NGHIỆM TRỌN VẸN
-    each m in featured
-      .container.hero-content.hero-slide(hidden)
-        .eyebrow CINEPRIME · #{m.statusLabel}
-        h1= m.title
-        p #{m.genres} · #{m.duration} phút · #{m.ageRating}
-        p Một câu chuyện mới đang chờ bạn trên màn ảnh lớn. Chọn suất phù hợp và tận hưởng khoảnh khắc điện ảnh.
+    if featured.size() == 0
+      .hero-art
+      .container.hero-content.hero-slide
+        .eyebrow CINEPRIME PRESENTS
+        h1 Những câu chuyện lớn.
+          br
+          span Những cảm xúc thật.
+        p Tạm gác nhịp sống. Khám phá phim mới tại CinePrime.
         .hero-actions
-          a.button(href='/movies/' + m.slug) KHÁM PHÁ PHIM →
-          a.button.outline-light(href="/showtimes") Lịch chiếu
-    if featured.size() > 0
+          a.button(href="/movies") Khám phá phim →
+    each m in featured
+      article.hero-slide(hidden)
+        if m.banner
+          img.hero-banner(src=m.banner alt="")
+        .hero-shade
+        .container.hero-content
+          .eyebrow CINEPRIME · #{m.statusLabel}
+          h1= m.title
+          p #{m.genres} · #{m.duration} phút · #{m.ageRating}
+          .hero-actions
+            a.button(href='/movies/' + m.slug) KHÁM PHÁ PHIM →
+            if m.trailer
+              button.button.outline-light(type="button" data-trailer=m.trailer data-trailer-title='Trailer · ' + m.title) ▷ Xem trailer
+    if featured.size() > 1
       .hero-controls
         button#hero-prev(type="button" aria-label="Banner trước") ←
         span#hero-position(aria-live="polite") 01

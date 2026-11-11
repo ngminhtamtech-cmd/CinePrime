@@ -1,47 +1,151 @@
 extends layout
 block admin
-  .section-heading
-    h1= resourceLabel
+  .page-heading
+    div
+      h1= resourceLabel
+      p.muted #{total} kết quả · 5 dòng mỗi trang
     if key != 'reviews'
-      a.button(href='/admin/manage/' + key + '/edit') + THÊM MỚI
-  form.filters(method="get")
-    input(name="q" value=q placeholder="Tìm tên, vai trò, trạng thái hoặc mã…" aria-label="Tìm kiếm")
-    button.button.secondary(type="submit") TÌM KIẾM
+      if key == 'seats'
+        if roomId
+          a.button(href='/admin/setup/rooms/' + roomId) + Thêm / sửa ghế trên sơ đồ
+        else
+          button.button(type="button" disabled title="Chọn phòng trước khi thêm ghế") Chọn phòng để thêm ghế
+      else if key == 'showtimes'
+        a.button(href='/admin/showtimes/new?cinemaId=' + cinemaId + '&date=' + day + '&movieId=' + movieId + '&roomId=' + roomId) + Thêm suất chiếu
+      else
+        a.button(href='/admin/manage/' + key + '/edit?returnTo=' + returnEncoded) + Thêm mới
+  if scopedCinema
+    .cinema-context
+      span RẠP ĐANG QUẢN LÝ
+      strong= selectedCinemaName
+  if key == 'showtimes'
+    p
+      a(href=schedulePeerLink) ← Xem lịch theo ngày với các bộ lọc này
+  if key == 'users'
+    nav.account-tabs(aria-label="Vai trò tài khoản")
+      a(href='?state=CUSTOMER' class=state == 'CUSTOMER' ? 'active' : '' aria-current=state == 'CUSTOMER' ? 'page' : false) User
+      a(href='?state=STAFF' class=state == 'STAFF' ? 'active' : '' aria-current=state == 'STAFF' ? 'page' : false) Staff
+      a(href='?state=ADMIN' class=state == 'ADMIN' ? 'active' : '' aria-current=state == 'ADMIN' ? 'page' : false) Admin
+  form.ops-filters(method="get" data-scope-filters=scopedCinema ? 'true' : false)
+    if key == 'prices' && roomId
+      input(type="hidden" name="roomId" value=roomId)
+    if key == 'users'
+      input(type="hidden" name="state" value=state)
+    if hasCinemaFilter
+      label Rạp
+        select(name="cinemaId")
+          if !scopedCinema
+            option(value="") Tất cả rạp
+          each c in adminCinemas
+            option(value=c.id selected=cinemaId == c.id.toString())= c.name
+    if key == 'showtimes'
+      label Ngày chiếu
+        input(type="date" name="date" value=day required)
+      label Phim trong ngày
+        select(name="movieId")
+          option(value="") Tất cả phim trong ngày
+          each m in filterMovies
+            option(value=m.id selected=movieId == m.id.toString())= m.name
+    label Tìm kiếm
+      input(name="q" value=q placeholder="Tên, mã hoặc thông tin liên quan…")
+    if states.size() > 0 && key != 'users'
+      label Trạng thái / Loại
+        select(name="state")
+          option(value="") Tất cả
+          each s in states
+            option(value=s.value selected=state == s.value)= s.label
+    if hasActivityFilter
+      label Hoạt động
+        select(name="activity")
+          option(value="") Tất cả
+          option(value="true" selected=activity == 'true') Đang hoạt động
+          option(value="false" selected=activity == 'false') Đã khóa / Ngừng
+    if hasRoomFilter
+      label Phòng
+        select(name="roomId")
+          option(value="")= key == 'seats' ? '— Chọn phòng để xem ghế —' : 'Tất cả phòng'
+          each r in adminRooms
+            option(value=r.id selected=roomId == r.id.toString())= r.name
+    if key == 'prices'
+      label Loại ngày
+        select(name="dayType")
+          option(value="") Tất cả
+          option(value="WEEKDAY" selected=dayType == 'WEEKDAY') Thứ 2–6
+          option(value="WEEKEND" selected=dayType == 'WEEKEND') Thứ 7, Chủ nhật
+    button.button.secondary(type="submit") Lọc kết quả
   .panel
-    each row in rows
-      .admin-record
-        div
-          strong ##{row.id}
-          p= row.summary
-        .actions
-          if key == 'rooms'
-            a.button.secondary(href='/admin/layout/' + row.id) SƠ ĐỒ
-          if key == 'users'
-            a.button.secondary(href='/admin/orders?q=' + row.email) LỊCH SỬ
-          if key == 'vouchers'
-            a.button.secondary(href='/admin/voucher-usage/' + row.id) LƯỢT DÙNG
-          a.button.secondary(href='/admin/manage/' + key + '/edit?id=' + row.id) SỬA
-          if key != 'users'
-            form(action='/admin/manage/' + key + '/' + row.id + '/disable' method="post")
-              +csrf()
-              button.text-button(type="submit" data-confirm="Ngừng hoạt động/ẩn dữ liệu này?")= key == 'prices' ? 'Xóa giá' : 'Ngừng / Ẩn'
+    .table-wrap
+      table.management-table
+        thead
+          tr
+            th Mã
+            each column in columns
+              th= column.label
+            th Thao tác
+        tbody
+          each row in rows
+            tr
+              td
+                span.record-id ##{row.id}
+                if row.image
+                  img.record-thumb(src=row.image alt="" loading="lazy")
+              each cell in row.cells
+                td(data-label=cell.label)
+                  if cell.badge
+                    span.badge= cell.value
+                  else if cell.expandable && cell.value.length() > 80
+                    details.cell-details
+                      summary
+                        span.cell-clamp= cell.value
+                        small Xem đầy đủ
+                      p= cell.value
+                  else
+                    span.cell-text= cell.value
+              td
+                .row-actions
+                  if key == 'seats'
+                    a.button.secondary(href='/admin/setup/rooms/' + roomId + '?seatId=' + row.id) Sửa ghế / cặp
+                  else
+                    a.button.secondary(href='/admin/manage/' + key + '/edit?id=' + row.id + '&returnTo=' + returnEncoded)= key == 'reviews' ? 'Duyệt' : 'Sửa'
+                  if key == 'cinemas'
+                    a(href='/admin/manage/rooms/edit?cinemaId=' + row.id) Tạo phòng →
+                  if key == 'rooms'
+                    a(href='/admin/setup/rooms/' + row.id) Tiếp tục thiết lập / Sơ đồ
+                  if key == 'users'
+                    a(href='/admin/orders?q=' + row.email) Lịch sử
+                  if key == 'vouchers'
+                    a(href='/admin/voucher-usage/' + row.id) Lượt dùng
+                  if key == 'movies'
+                    if row.active
+                      form(action='/admin/manage/movies/' + row.id + '/disable' method="post")
+                        +csrf()
+                        input(type="hidden" name="returnTo" value=returnTo)
+                        button.text-button.danger-text(type="submit" data-confirm='Ẩn phim “' + row.name + '” khỏi website và dừng nhận đơn mới? Đơn còn hạn, vé đã thanh toán và check-in vẫn được giữ.') Ẩn khỏi website
+                    else
+                      form(action='/admin/manage/movies/' + row.id + '/restore' method="post")
+                        +csrf()
+                        input(type="hidden" name="returnTo" value=returnTo)
+                        button.button.secondary(type="submit" disabled=row.stopped title=row.stopped ? 'Đổi trạng thái Ngừng chiếu trong form trước khi hiện lại.' : 'Hiện phim trên website' data-confirm='Hiện lại phim “' + row.name + '” trên website?') Hiện lại
+                    if row.canDelete
+                      form(action='/admin/manage/movies/' + row.id + '/delete' method="post")
+                        +csrf()
+                        input(type="hidden" name="returnTo" value=returnTo)
+                        button.text-button.danger-text(type="submit" data-confirm='Xóa vĩnh viễn phim chưa sử dụng “' + row.name + '”? Thao tác xóa bản ghi và liên kết thể loại/đoàn phim, không thể hoàn tác từ website.') Xóa vĩnh viễn
+                    else
+                      small Chỉ được ẩn: phim đã có lịch hoặc dữ liệu khách.
+                  else if key != 'users'
+                    form(action='/admin/manage/' + key + '/' + row.id + '/disable' method="post")
+                      +csrf()
+                      input(type="hidden" name="returnTo" value=returnTo)
+                      button.text-button.danger-text(type="submit" data-confirm=(key == 'prices' ? 'Xóa khung giá ' : key == 'showtimes' ? 'Hủy suất ' : 'Ngừng hoạt động hoặc ẩn ') + row.name + '? Backend sẽ kiểm tra dữ liệu liên quan trước khi thay đổi.')= key == 'prices' ? 'Xóa giá' : key == 'showtimes' ? 'Hủy suất' : 'Ngừng / Ẩn'
     if rows.size() == 0
-      .empty Chưa có dữ liệu phù hợp.
-  .actions
-    if page > 0
-      a.button.secondary(href='?q=' + q + '&page=' + (page - 1)) ← Trang trước
-    if hasMore
-      a.button.secondary(href='?q=' + q + '&page=' + (page + 1)) Trang sau →
-  if key == 'rooms' || key == 'seats'
-    .panel
-      h2 Tạo sơ đồ ghế cho phòng mới
-      p.muted Chỉ dùng khi phòng chưa có ghế và chưa tạo lịch. Hàng cuối được tạo ghế đôi; các hàng giữa là VIP.
-      form.inline-form(action="/admin/layout" method="post")
-        +csrf()
-        label Mã phòng
-          input(type="number" name="roomId" required min="1")
-        label Số hàng
-          input(type="number" name="rows" value="6" min="1" max="20" required)
-        label Ghế mỗi hàng
-          input(type="number" name="columns" value="10" min="2" max="30" required)
-        button.button(type="submit") TẠO SƠ ĐỒ
+      .empty= key == 'seats' && !roomId ? 'Chọn phòng trong rạp ở trên để xem và quản lý ghế.' : 'Không có dữ liệu phù hợp. Thử đổi bộ lọc hoặc thêm bản ghi mới.'
+    +pagination()
+  if key == 'seats' && roomId
+    .panel.actions
+      a.button.secondary(href='/admin/setup/rooms/' + roomId) Sơ đồ / Bảo trì / Giá →
+      a.button.secondary(href='/admin/setup/rooms/' + roomId + '?step=inventory') Trạng thái ghế theo suất →
+  if key == 'prices'
+    p.notice Áp dụng chung cho các phòng trong rạp này · Giá theo ghế vật lý. Không tự tạo giá khi thêm phòng.
+  if key == 'products' || key == 'vouchers'
+    p.notice Toàn hệ thống · Dùng tại bước combo / mã ưu đãi trong đơn hàng.

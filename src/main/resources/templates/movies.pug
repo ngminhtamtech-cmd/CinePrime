@@ -4,7 +4,7 @@ block content
   section.container.section
     .eyebrow KHÁM PHÁ CÂU CHUYỆN MỚI
     h1 Phim tại CinePrime
-    form.filters(action="/movies" method="get")
+    form.filters(action="/movies" method="get" data-auto-movie-filter)
       input(name="q" value=q placeholder="Tên phim" aria-label="Tên phim")
       select(name="status" aria-label="Trạng thái")
         option(value="") Tất cả phim
@@ -20,6 +20,16 @@ block content
           option(value=a selected=selectedAge == a)= a
       input(type="date" name="date" value=selectedDate aria-label="Ngày chiếu")
       button.button(type="submit") TÌM PHIM
+    p.filter-summary(role="status")
+      strong #{movies.size()} phim
+      span  · #{q ? 'Tên: ' + q + ' · ' : ''}#{selectedStatus == 'COMING_SOON' ? 'Sắp chiếu' : selectedStatus == 'NOW_SHOWING' ? 'Đang chiếu' : 'Mọi trạng thái'}
+      each g in genres
+        if selectedGenre == g.id
+          span  · #{g.name}
+      if selectedAge
+        span  · #{selectedAge}
+      if selectedDate
+        span  · #{selectedDate}
     .movie-grid
       each m in movies
         +movieCard(m)
