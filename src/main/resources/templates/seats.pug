@@ -1,5 +1,7 @@
 extends layout
 include mixins
+block head
+  script(src="/js/seat-3d.js" defer)
 block content
   .container.section
     .booking-steps
@@ -12,7 +14,7 @@ block content
         h1 Chọn chỗ ngồi của bạn
         p.muted Ghế được giữ 5 phút sau khi bấm Tiếp tục. Tối đa 8 ghế. Ghế đôi chọn cả cặp, giá hiển thị theo hai chỗ.
         .screen MÀN HÌNH
-        #seat-map.seat-map(data-showtime=show.id aria-label="Sơ đồ ghế")
+        #seat-map.seat-map(data-showtime=show.id data-room=show.cinemaName + ' · ' + show.roomName aria-label="Sơ đồ ghế")
           p Đang tải sơ đồ ghế…
         p.muted Loại ghế
         .legend
@@ -39,5 +41,8 @@ block content
         .total
           span Tạm tính
           strong#seat-total 0 ₫
+        .seat3d-actions
+          button#seat-view-3d.button.secondary(type="button" disabled) Xem góc nhìn từ ghế
+          button#room-view-3d.button.secondary(type="button" disabled) Xem phòng 3D
         button#hold-seats.button.full(type="button" disabled) TIẾP TỤC →
         a.back(href="/showtimes") ← Chọn suất khác

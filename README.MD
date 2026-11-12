@@ -30,7 +30,7 @@
 ### 3. Ngôn ngữ JavaScript
 
 - JavaScript thuần (không framework, không Node ở runtime), nằm trong `static/js`.
-- Dùng cho: sơ đồ ghế và giữ ghế, chọn combo/voucher, trạng thái thanh toán, quét QR check-in, thông báo, màn xếp suất chiếu.
+- Dùng cho: sơ đồ ghế và giữ ghế, chọn combo/voucher, trạng thái thanh toán, quét QR check-in, thông báo, màn xếp suất chiếu, xem phòng 3D (three.js vendor, chỉ tải khi mở).
 - Máy chủ vẫn là nơi kiểm tra cuối cùng; JS chỉ hỗ trợ hiển thị và thao tác.
 - Màn xếp suất chiếu: bảng lịch cả tuần theo phòng, hộp thêm suất, chế độ theo giờ có kéo thả, nhập/xuất Excel.
 
@@ -195,7 +195,7 @@ KPI/biểu đồ/CSV doanh thu sử dụng chung một bản chụp, giữ tối
 
 Khối vận hành Admin tự đọc lại mỗi 30 giây theo rạp và thời gian hiện tại; không làm đổi bản chụp tài chính. Staff tự chọn suất được gợi ý, quét QR hoặc nhập mã, kiểm tra thông tin rồi xác nhận từng vé. Kết quả được giữ đến khi bấm “Quét vé tiếp”; mã đơn nhiều vé vẫn xác nhận riêng từng ghế. Camera không cần bật lại sau mỗi vé. Thống kê/bảng vé đọc server mỗi 5 giây, dừng khi tab ẩn. Nếu mất phản hồi sau xác nhận, phải kiểm tra lại trạng thái, không tự gửi lại check-in. Camera thực cần thiết bị và quyền localhost/HTTPS; chưa coi kiểm tra giao diện là nghiệm thu camera thiết bị thật.
 
-1. **Admin:** tạo rạp → phòng → tạo sơ đồ hàng/cột → chỉnh loại/cặp/bảo trì → thêm giá → phim/thể loại/đoàn phim → suất DRAFT/OPEN. Xem lịch theo ngày, voucher usage, đơn/đối soát, CSV và nhật ký.
+1. **Admin:** tạo rạp → phòng → chọn mẫu phòng rồi tô loại ghế/ghế đôi/bảo trì/lối đi (có hoàn tác, xem 3D) → thêm giá → phim/thể loại/đoàn phim → suất DRAFT/OPEN. Xem lịch theo ngày, voucher usage, đơn/đối soát, CSV và nhật ký.
 2. **Customer:** chọn phim/rạp/ngày/suất → chọn ghế → Tiếp tục → combo/voucher → Cập nhật đơn → MoMo sandbox → xem QR/PDF. Thiếu khóa thì hiển thị rõ chưa cấu hình, không tự thanh toán. Một QR tương ứng một ghế; ghế đôi hai QR.
 3. **Staff:** chọn ngày và đúng suất tại rạp phụ trách → quét QR hoặc nhập T-…/CP-… → kiểm tra thông tin → xác nhận. Camera cần localhost hoặc HTTPS và quyền từ người dùng. Có thể dùng mã thủ công khi không có camera.
 
@@ -253,7 +253,7 @@ Vercel hiện có hướng [Container Functions](https://vercel.com/i/do-you-nee
 
 Pug resolver được đăng ký tường minh vì resolver tên viewResolver mặc định của Boot có thể khiến điều kiện autoconfiguration của spring-pug4j không kích hoạt. Template dùng JEXL, không chạy Node/GraalJS.
 
-Chưa triển khai Google Login, VNPay, hoàn tiền, đổi điểm và gợi ý phim. Các màn quản trị dùng form/bảng chung; chưa có kéo thả sơ đồ ghế hoặc quản lý kho nguyên liệu. Tài liệu/hình tham khảo Galaxy không được dùng để giả mạo thương hiệu hoặc sao chép dữ liệu thực.
+Chưa triển khai Google Login, VNPay, hoàn tiền, đổi điểm và gợi ý phim. Các màn quản trị dùng form/bảng chung; sơ đồ ghế sửa bằng cách tô ghế (không kéo thả di chuyển ghế); chưa có quản lý kho nguyên liệu. Xem 3D là hình minh họa dựng từ hàng/cột, không phải kích thước thật của phòng. Tài liệu/hình tham khảo Galaxy không được dùng để giả mạo thương hiệu hoặc sao chép dữ liệu thực.
 
 ## Xếp suất chiếu trên bảng cả tuần
 

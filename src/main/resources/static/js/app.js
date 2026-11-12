@@ -74,23 +74,29 @@ if(query.has('saved'))toast('Đã lưu thay đổi.');
 
 const seatMap=$('#seat-map');
 if(seatMap){
-  let seats=[],selected=new Set(),loading=false,holding=false;
-  const status=$('#seat-status'),button=$('#hold-seats');
-  function total(){const picked=seats.filter(s=>selected.has(s.id));$('#selected-seats').textContent=picked.length?picked.map(s=>s.label).join(', '):'Chưa chọn';$('#seat-total').textContent=money(picked.reduce((sum,s)=>sum+s.price,0));button.disabled=!picked.length||holding;}
+  let seats=[],selected=new Set(),loading=false,holding=false,lastPicked=null;
+  const status=$('#seat-status'),button=$('#hold-seats'),view3d=$('#seat-view-3d'),room3d=$('#room-view-3d');
+  function total(){const picked=seats.filter(s=>selected.has(s.id));$('#selected-seats').textContent=picked.length?picked.map(s=>s.label).join(', '):'Chưa chọn';$('#seat-total').textContent=money(picked.reduce((sum,s)=>sum+s.price,0));button.disabled=!picked.length||holding;if(view3d)view3d.disabled=!picked.length;if(room3d)room3d.disabled=!seats.length;}
+  function open3d(seatView,trigger){if(!window.Seat3D)return toast('Chưa tải được trình xem 3D.');const picked=seats.filter(s=>selected.has(s.id)),focus=seats.find(s=>s.id===lastPicked&&selected.has(s.id))||picked.at(-1);window.Seat3D.open({seats,title:seatMap.dataset.room,selectedLabels:picked.map(s=>s.label),focusLabel:seatView?focus?.label:null,mode:seatView?'seat':'overview',returnTo:trigger});}
+  view3d?.addEventListener('click',()=>open3d(true,view3d));room3d?.addEventListener('click',()=>open3d(false,room3d));
   function choose(seat){
     const group=seat.type==='COUPLE'?seats.filter(s=>s.coupleGroup===seat.coupleGroup&&s.roomId===seat.roomId):[seat];
     const removing=selected.has(seat.id);
     if(!removing&&group.some(s=>s.state!=='AVAILABLE'))return toast('Cặp ghế không còn đủ chỗ trống.');
     if(!removing&&selected.size+group.filter(s=>!selected.has(s.id)).length>8)return toast('Mỗi đơn tối đa 8 ghế vật lý.');
-    group.forEach(s=>removing?selected.delete(s.id):selected.add(s.id));render();
+    group.forEach(s=>removing?selected.delete(s.id):selected.add(s.id));lastPicked=removing?null:seat.id;render();
   }
   function render(){
     const oldFocus=document.activeElement?.dataset?.seatId;
     seatMap.replaceChildren();
     const rows=new Map();seats.forEach(s=>{if(!rows.has(s.rowLabel))rows.set(s.rowLabel,[]);rows.get(s.rowLabel).push(s);});
+    const firstPosition=Math.min(...seats.map(s=>s.position));
     [...rows].sort(([a],[b])=>a.localeCompare(b)).forEach(([label,row])=>{
       const container=document.createElement('div');container.className='seat-row';const heading=document.createElement('span');heading.textContent=label;container.append(heading);
+      let next=firstPosition;
       row.sort((a,b)=>a.position-b.position).forEach(seat=>{
+        // Missing positions are aisles set by the admin; keep columns aligned across rows.
+        for(;next<seat.position;next++){const gap=document.createElement('i');gap.className='seat seat-gap';gap.setAttribute('aria-hidden','true');container.append(gap);}next=seat.position+1;
         const b=document.createElement('button');b.type='button';b.className='seat '+seat.type.toLowerCase()+' '+seat.state.toLowerCase()+(selected.has(seat.id)?' selected':'');b.dataset.seatId=seat.id;b.textContent=seat.label;
         b.disabled=seat.state!=='AVAILABLE'||holding;b.setAttribute('aria-pressed',String(selected.has(seat.id)));
         const pairPrice=seat.type==='COUPLE'?seats.filter(s=>s.coupleGroup===seat.coupleGroup&&s.roomId===seat.roomId).reduce((sum,s)=>sum+s.price,0):null;

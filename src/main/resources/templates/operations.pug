@@ -21,6 +21,7 @@ html(lang="vi")
       if adminForm
         script(src="/js/admin-forms.js" defer)
       if seatWorkspace
+        script(src="/js/seat-3d.js" defer)
         script(src="/js/admin-workspace.js" defer)
     block head
   body.operations(class=navGroups ? (seatWorkspace ? 'admin-compact seat-workspace' : 'admin-compact') : '' data-admin-id=navGroups && viewer ? viewer.id : false)
