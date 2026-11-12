@@ -9,8 +9,22 @@ block admin
     section.panel
       h2= order.movieTitle
       p #{order.cinemaName} · #{order.roomName} · #{order.when}
-      p #{customer.name} · #{customer.email}
-      a(href='/admin/orders?q=' + customer.email) Lịch sử khách hàng →
+      if customer.email
+        p #{customer.name} · #{customer.email}
+        a(href='/admin/orders?q=' + customer.email) Lịch sử khách hàng →
+      else
+        p= customer.name
+      p
+        span.badge= counter.channelLabel
+      if counter.counter
+        .ranking-row
+          span Nhân viên bán · Ca
+          strong #{counter.seller} · #{counter.shift}
+        .ranking-row
+          span Tiền mặt khách đưa · Tiền thối
+          strong #{counter.received} · #{counter.change}
+        if counter.cancelled
+          p.notice Đã hủy tại quầy lúc #{counter.cancelledAt} bởi #{counter.cancelledBy}. Lý do: #{counter.cancelReason}
       p
         span.badge= order.statusLabel
       .ranking-row

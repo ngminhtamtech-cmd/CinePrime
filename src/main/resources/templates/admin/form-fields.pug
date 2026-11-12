@@ -1,0 +1,37 @@
+//- One field of a pop-up admin form. Same names as admin/edit.pug so /manage/{key}/save reads it unchanged.
+mixin dialogField(field, isRequired)
+  if field.type == 'checkbox'
+    label.check.dialog-check(data-field=field.name)
+      input(type="checkbox" name=field.name value="true" checked=field.checked)
+      span= field.label
+  else
+    .form-field(data-field=field.name class=field.type == 'textarea' || field.media ? 'wide' : '')
+      label(for='dlg-' + field.name)
+        | #{field.label}
+        if isRequired
+          span.required-mark(aria-hidden="true")  *
+      if field.options.size() > 0
+        select(id='dlg-' + field.name name=field.name required=isRequired)
+          option(value="") — Chọn —
+          each option in field.options
+            option(value=option.value selected=field.value == option.value)= option.label
+      else if field.type == 'textarea'
+        textarea(id='dlg-' + field.name name=field.name rows=field.name == 'body' ? '10' : '4' maxlength=field.name == 'body' ? '20000' : '255' required=isRequired)= field.value
+      else if field.media
+        input(id='field-' + field.name type="hidden" name=field.name value=field.value)
+        .media-field.dialog-media(data-target='field-' + field.name data-kind=field.name data-video="false")
+          label.upload-label Chọn ảnh JPG / PNG / WEBP (tối đa 5 MB)
+            input(id='dlg-' + field.name type="file" accept="image/jpeg,image/png,image/webp")
+          .upload-actions
+            button.text-button(type="button" data-upload-retry hidden) Thử lại
+            button.text-button(type="button" data-upload-cancel hidden) Bỏ lựa chọn mới
+          span.upload-status(role="status") Ảnh tự tải khi chọn. Đợi tải xong rồi Lưu.
+          if field.value
+            img.media-preview(src=field.value alt="Ảnh hiện tại")
+      else
+        input(id='dlg-' + field.name type=field.type name=field.name value=field.value required=isRequired maxlength=field.type == 'datetime-local' ? false : '255' pattern=field.name == 'slug' ? '[a-z0-9-]+' : false autocomplete=field.name == 'email' ? 'off' : false)
+      if field.name == 'slug'
+        small Chữ thường không dấu, số và dấu gạch ngang. Tự tạo từ tiêu đề khi thêm mới.
+      if field.name == 'link'
+        small Đường dẫn trong CinePrime, bắt đầu bằng / (có thể để trống).
+      small.field-error(hidden)

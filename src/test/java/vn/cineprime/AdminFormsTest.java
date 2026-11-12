@@ -12,7 +12,7 @@ import vn.cineprime.domain.Store;
 class AdminFormsTest {
     @Test void allAdminFormsRenderUtf8AndKeepNativePayloadWithoutJavaScript()throws Exception{
         Store db=new Store(){@Override public <T> List<T> list(Class<T> type,String where,Object... args){return List.of();}};
-        AdminService service=new AdminService(db,null,null,null,null,null,null,null);AdminPresentation presentation=new AdminPresentation(db,service,java.time.Clock.systemUTC());
+        AdminService service=new AdminService(db,null,null,null,null,null,null,null,null);AdminPresentation presentation=new AdminPresentation(db,service,java.time.Clock.systemUTC());
         PugConfiguration pug=new PugConfiguration();pug.setTemplateLoader(new FileTemplateLoader(Path.of("src/main/resources/templates"),java.nio.charset.StandardCharsets.UTF_8));
         for(String key:AdminService.RESOURCES.keySet()){
             Map<String,Object> model=new HashMap<>();model.put("title","Kiểm thử form");model.put("adminForm",true);model.put("key",key);model.put("resourceLabel",service.resource(key).label());model.put("returnTo","/admin/manage/"+key);model.put("csrfName","_csrf");model.put("csrfToken","test-csrf");model.put("csrfHeader","X-CSRF-TOKEN");model.put("operationsRole","Quản trị");model.put("viewer",Map.of("id",5,"name","Quản trị kiểm thử"));
@@ -30,6 +30,29 @@ class AdminFormsTest {
             }else{html=pug.renderTemplate(pug.getTemplate("admin/edit"),model);assertTrue(html.contains("name=\"_csrf\""),key);assertTrue(html.contains("data-admin-form=\""+key+"\""),key);assertTrue(html.contains("/js/admin-forms.js"),key);}
             Files.createDirectories(Path.of("target/form-fixtures"));Files.writeString(Path.of("target/form-fixtures/"+key+".html"),html);
         }
+    }
+    @SuppressWarnings("unchecked")
+    @Test void popupFormsAndBannerEditorRenderWithTheSamePayloadNames()throws Exception{
+        Store db=new Store(){@Override public <T> List<T> list(Class<T> type,String where,Object... args){return List.of();}};
+        AdminService service=new AdminService(db,null,null,null,null,null,null,null,null);AdminPresentation presentation=new AdminPresentation(db,service,java.time.Clock.systemUTC());
+        PugConfiguration pug=new PugConfiguration();pug.setTemplateLoader(new FileTemplateLoader(Path.of("src/main/resources/templates"),java.nio.charset.StandardCharsets.UTF_8));
+        for(String key:List.of("genres","people","movie-genres","credits","contents","users")){
+            Map<String,Object> model=new HashMap<>();model.put("key",key);model.put("resourceLabel",service.resource(key).label());model.put("returnTo","/admin/manage/"+key);model.put("csrfName","_csrf");model.put("csrfToken","test-csrf");model.put("required",AdminPresentation.required(key));
+            model.put("fields",presentation.groups(key,null,null).stream().flatMap(g->((List<Map<String,Object>>)g.get("fields")).stream()).toList());
+            String html=pug.renderTemplate(pug.getTemplate("admin/form-dialog"),model),text=org.springframework.web.util.HtmlUtils.htmlUnescape(html);
+            assertTrue(html.contains("name=\"_csrf\""),key);assertTrue(html.contains("action=\"/admin/manage/"+key+"/save\""),key);assertTrue(text.contains("Thêm · "),key);
+            for(String name:service.resource(key).fields().split(","))assertTrue(html.contains("name=\""+name+"\""),key+" "+name);
+            for(String name:AdminPresentation.required(key))assertTrue(html.matches("(?s).*name=\""+name+"\"[^>]*required.*")||html.matches("(?s).*required[^>]*name=\""+name+"\".*"),key+" required "+name);
+            if(key.equals("contents"))assertTrue(html.contains("dialog-grid"),"Article pop-up uses two columns");
+            Files.createDirectories(Path.of("target/form-fixtures"));Files.writeString(Path.of("target/form-fixtures/dialog-"+key+".html"),html);
+        }
+        Map<String,Object> model=new HashMap<>();model.put("title","Banner");model.put("csrfName","_csrf");model.put("csrfToken","test-csrf");model.put("csrfHeader","X-CSRF-TOKEN");model.put("operationsRole","Quản trị");model.put("viewer",Map.of("id",5,"name","Quản trị kiểm thử"));model.put("resourceLabel","Banner trang chủ");
+        model.put("navGroups",List.of(Map.of("id","content","label","Nội dung","icon","▧","active",true,"items",List.of(Map.of("href","/admin/banners","label","Banner trang chủ","active",true)))));
+        model.put("banner",Map.of("kind","MOVIE","movieId","2","title","","image","","link","","active",true,"startsAt","","endsAt",""));model.put("bannerMovies",List.of(Map.of("id",2,"title","Phim thử","bannerImage","/media/x.jpg")));model.put("minWidth",1600);model.put("framedWidth",560);
+        String html=pug.renderTemplate(pug.getTemplate("admin/banner-form"),model),text=org.springframework.web.util.HtmlUtils.htmlUnescape(html);
+        for(String name:List.of("kind","movieId","title","image","link","startsAt","endsAt","active","_csrf"))assertTrue(html.contains("name=\""+name+"\""),name);
+        assertTrue(html.contains("/js/admin-banner.js"));assertTrue(html.contains("data-image=\"/media/x.jpg\""));assertTrue(text.contains("Xem trước trên trang chủ"));assertTrue(html.contains("value=\"MOVIE\" checked"),"Saved kind stays selected");
+        Files.writeString(Path.of("target/form-fixtures/banner-form.html"),html);
     }
     @Test void relationIdsRejectMalformedAndDeduplicateWithinEachRole(){assertEquals(Set.of(1L,2L),MovieCredits.parse("1,2,1","actorIds"));assertEquals(Set.of(),MovieCredits.parse(null,"directorIds"));var problem=assertThrows(AdminFormProblem.class,()->MovieCredits.parse("0","actorIds"));assertEquals(List.of("actorIds"),problem.fields());assertThrows(AdminFormProblem.class,()->MovieCredits.parse("1,x","directorIds"));}
     @Test void weekTableRendersAddDialogDayBoardAndFinalConfirmation()throws Exception{

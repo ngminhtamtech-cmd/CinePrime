@@ -2,10 +2,12 @@ extends layout
 block content
   article.container.section.article
     a.more(href="/") ← Về trang chủ
-    .eyebrow CINEPRIME JOURNAL
     h1= content.title
+    if content.dateText
+      p.muted Đăng ngày #{content.dateText}
     if content.image
-      img.article-image(src=content.image alt=content.title)
+      img.article-image(src=content.image alt="")
     .prose= content.body
     if content.link
-      a.button(href=content.link) KHÁM PHÁ THÊM →
+      p
+        a.button(href=content.link) Xem thêm

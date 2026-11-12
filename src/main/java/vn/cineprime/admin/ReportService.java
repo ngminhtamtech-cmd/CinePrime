@@ -38,7 +38,7 @@ public class ReportService {
     }
     private static LocalDate shift(LocalDate d,String period,int n){return switch(period){case "day"->d.plusDays(n);case "week"->d.plusWeeks(n);case "year"->d.plusYears(n);default->d.plusMonths(n);};}
     private List<Object[]> paid(Instant from,Instant end,Long cinemaId){
-        return db.query("select o,s.movieId,r.cinemaId,u.email from %s o, %s s, %s r, %s u where o.showtimeId=s.id and s.roomId=r.id and o.userId=u.id and o.status='PAID' and o.paidAt>=?1 and o.paidAt<?2".formatted(db.entityName(Order.class),db.entityName(Showtime.class),db.entityName(Room.class),db.entityName(User.class))+(cinemaId==null?"":" and r.cinemaId=?3")+" order by o.paidAt,o.id",Object[].class,cinemaId==null?new Object[]{from,end}:new Object[]{from,end,cinemaId});
+        return db.query("select o,s.movieId,r.cinemaId,coalesce(u.email,'') from %s o left join %s u on u.id=o.userId, %s s, %s r where o.showtimeId=s.id and s.roomId=r.id and o.status='PAID' and o.paidAt>=?1 and o.paidAt<?2".formatted(db.entityName(Order.class),db.entityName(User.class),db.entityName(Showtime.class),db.entityName(Room.class))+(cinemaId==null?"":" and r.cinemaId=?3")+" order by o.paidAt,o.id",Object[].class,cinemaId==null?new Object[]{from,end}:new Object[]{from,end,cinemaId});
     }
     private long tickets(Instant from,Instant end,Long cinemaId){
         return db.query("select count(l) from %s l, %s o, %s s, %s r where l.orderId=o.id and o.showtimeId=s.id and s.roomId=r.id and o.status='PAID' and o.paidAt>=?1 and o.paidAt<?2".formatted(db.entityName(OrderSeat.class),db.entityName(Order.class),db.entityName(Showtime.class),db.entityName(Room.class))+(cinemaId==null?"":" and r.cinemaId=?3"),Long.class,cinemaId==null?new Object[]{from,end}:new Object[]{from,end,cinemaId}).getFirst();
@@ -53,12 +53,14 @@ public class ReportService {
         String id=UUID.randomUUID().toString();Map<String,Object> model=new LinkedHashMap<>();
         model.put("reportId",id);model.put("period",period);model.put("reportDate",date.toString());model.put("cinemaId",cinemaId==null?"":cinemaId.toString());model.put("cinemaLabel",cinema);model.put("generatedAt",stamp(now));model.put("range",range.from()+" → "+range.until().minusDays(1));
         model.put("cutoff",range.future()?"Chưa bắt đầu":stamp(range.end()));model.put("comparisonRange",range.future()?"Không so sánh kỳ chưa bắt đầu":"từ 00:00 · "+range.previousFrom().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))+" đến trước "+stamp(range.previousEnd()));
+        long counterRevenue=0;for(Object[] row:rows){Order o=(Order)row[0];if("COUNTER".equals(o.channel))counterRevenue=Math.addExact(counterRevenue,o.total);}
+        model.put("counterRevenue",db.money(counterRevenue));model.put("onlineRevenue",db.money(revenue-counterRevenue));
         model.put("revenue",db.money(revenue));model.put("revenueValue",revenue);model.put("ticketCount",ticketCount);model.put("orderCount",rows.size());
         model.put("revenueChange",change(revenue,oldRevenue,range.future()));model.put("ticketChange",change(ticketCount,oldTickets,range.future()));model.put("orderChange",change(rows.size(),previous.size(),range.future()));
         model.put("chart",chart(range,now,rows));model.put("topMovies",top(rows));model.put("occupancy",occupancy(range,cinemaId));
         model.put("customerCount",db.count(User.class,"where e.role='CUSTOMER'"));model.put("nowCount",db.count(Movie.class,"where e.active=true and "+MovieLifecycle.expression("e","?1")+"='NOW_SHOWING'",MovieLifecycle.today(clock)));model.put("comingCount",db.count(Movie.class,"where e.active=true and "+MovieLifecycle.expression("e","?1")+"='COMING_SOON'",MovieLifecycle.today(clock)));
-        StringBuilder csv=new StringBuilder("\uFEFFMã báo cáo,Kỳ,Rạp,Mốc chốt,Mã đơn,Thanh toán lúc,Phim,Rạp trên đơn,Phòng,Email,Tạm tính VND,Giảm VND,Doanh thu VND\r\n");
-        for(Object[] row:rows){Order o=(Order)row[0];csv.append(csvRow(id,range.from()+" → "+range.until().minusDays(1),cinema,range.end(),o.code,stamp(o.paidAt),o.movieTitle,o.cinemaName,o.roomName,row[3],o.subtotal,o.discount,o.total));}
+        StringBuilder csv=new StringBuilder("\uFEFFMã báo cáo,Kỳ,Rạp,Mốc chốt,Mã đơn,Thanh toán lúc,Phim,Rạp trên đơn,Phòng,Email,Tạm tính VND,Giảm VND,Doanh thu VND,Kênh\r\n");
+        for(Object[] row:rows){Order o=(Order)row[0];csv.append(csvRow(id,range.from()+" → "+range.until().minusDays(1),cinema,range.end(),o.code,stamp(o.paidAt),o.movieTitle,o.cinemaName,o.roomName,row[3],o.subtotal,o.discount,o.total,"COUNTER".equals(o.channel)?"Quầy":"Online"));}
         return new Snapshot(id,now,model,csv.toString().getBytes(StandardCharsets.UTF_8));
     }
     private static String stamp(Instant time){return DateTimeFormatter.ofPattern("HH:mm:ss · dd/MM/yyyy").withZone(ZONE).format(time);}

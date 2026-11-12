@@ -51,7 +51,7 @@ block admin
               td(data-label="Đơn / Khách")
                 a(href='/admin/orders/' + o.id)
                   strong= o.code
-                small= o.customerName
+                small #{o.customerName} · #{o.channelLabel}
                 small= o.email
               td(data-label="Phim / Suất")
                 span.cell-text= o.movieTitle

@@ -15,10 +15,44 @@ async function api(url, options={}) {
   return data;
 }
 $('.menu-toggle')?.addEventListener('click',event=>{const open=$('#navigation').classList.toggle('open');event.currentTarget.setAttribute('aria-expanded',String(open));});
+// Home hero: auto-rotates every data-interval ms; pauses on hover, focus, hidden tab, the pause button and reduced motion.
 const carousel=$('#hero-carousel');
-if(carousel){const slides=[...carousel.querySelectorAll('.hero-slide')];let index=0;function slide(delta){if(!slides.length)return;index=(index+delta+slides.length)%slides.length;slides.forEach((s,i)=>s.hidden=i!==index);if($('#hero-position'))$('#hero-position').textContent=String(index+1).padStart(2,'0')+' / '+String(slides.length).padStart(2,'0');}$('#hero-prev')?.addEventListener('click',()=>slide(-1));$('#hero-next')?.addEventListener('click',()=>slide(1));slide(0);}
+if(carousel){
+  const track=$('.hero-track',carousel),slides=[...track.children],count=slides.length,dots=[...carousel.querySelectorAll('.hero-dot')],toggle=$('[data-hero-toggle]',carousel);
+  const delay=Math.min(10000,Math.max(5000,Number(carousel.dataset.interval)||6000));
+  let index=0,timer=null,hovered=false,focused=false,stopped=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // A copy of the last slide sits before the first and a copy of the first after the last, so both peeks always show a neighbour.
+  if(count>1){const copy=slide=>{const c=slide.cloneNode(true);c.classList.remove('is-active');c.classList.add('is-clone');c.setAttribute('aria-hidden','true');c.inert=true;c.querySelectorAll('img').forEach(i=>i.removeAttribute('fetchpriority'));return c;};track.prepend(copy(slides[count-1]));track.append(copy(slides[0]));}
+  function place(position,animate){if(animate){track.classList.remove('no-anim');void track.offsetWidth;}else track.classList.add('no-anim');track.style.setProperty('--pos',String(position));}
+  place(count>1?1:0,false);
+  track.addEventListener('transitionend',e=>{if(e.target===track)place(index+1,false);});
+  function show(next){
+    if(count<2)return;index=(next%count+count)%count;
+    slides.forEach((s,i)=>{const on=i===index;s.classList.toggle('is-active',on);if(on){s.removeAttribute('aria-hidden');s.removeAttribute('tabindex');}else{s.setAttribute('aria-hidden','true');if(s.tagName==='A')s.tabIndex=-1;}});
+    dots.forEach((d,i)=>d.setAttribute('aria-current',String(i===index)));
+    for(const s of [slides[(index+1)%count],slides[(index+count-1)%count]])s.querySelectorAll('img[loading="lazy"]').forEach(img=>img.loading='eager');
+    track.querySelectorAll('.is-clone img[loading="lazy"]').forEach(img=>img.loading='eager');
+    place(next+1,true);
+  }
+  // Clicking a peeking neighbour brings it to the centre instead of following its link.
+  track.addEventListener('click',e=>{const slide=e.target.closest('.hero-slide');if(!slide||slide.classList.contains('is-active'))return;e.preventDefault();const real=slides.indexOf(slide);show(real>=0?real:(slide===track.firstElementChild?index-1:index+1));schedule();});
+  function schedule(){clearTimeout(timer);timer=null;if(slides.length>1&&!stopped&&!hovered&&!focused&&!document.hidden)timer=setTimeout(()=>{show(index+1);schedule();},delay);}
+  function syncToggle(){if(toggle){toggle.setAttribute('aria-pressed',String(stopped));toggle.setAttribute('aria-label',stopped?'Tiếp tục tự chuyển banner':'Tạm dừng tự chuyển banner');}}
+  $('[data-hero-prev]',carousel)?.addEventListener('click',()=>{show(index-1);schedule();});
+  $('[data-hero-next]',carousel)?.addEventListener('click',()=>{show(index+1);schedule();});
+  dots.forEach((d,i)=>d.addEventListener('click',()=>{show(i);schedule();}));
+  toggle?.addEventListener('click',()=>{stopped=!stopped;syncToggle();schedule();});
+  carousel.addEventListener('mouseenter',()=>{hovered=true;schedule();});carousel.addEventListener('mouseleave',()=>{hovered=false;schedule();});
+  carousel.addEventListener('focusin',e=>{focused=e.target.matches(':focus-visible');schedule();});carousel.addEventListener('focusout',e=>{if(!carousel.contains(e.relatedTarget)){focused=false;schedule();}});
+  carousel.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){show(index-1);e.preventDefault();}else if(e.key==='ArrowRight'){show(index+1);e.preventDefault();}});
+  let startX=null,startY=0;
+  carousel.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;},{passive:true});
+  carousel.addEventListener('touchend',e=>{if(startX===null)return;const dx=e.changedTouches[0].clientX-startX,dy=e.changedTouches[0].clientY-startY;startX=null;if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)){show(index+(dx<0?1:-1));schedule();}},{passive:true});
+  document.addEventListener('visibilitychange',schedule);
+  syncToggle();schedule();
+}
 document.querySelectorAll('[data-movie-tab]').forEach(button=>button.addEventListener('click',()=>{
-  document.querySelectorAll('[data-movie-tab]').forEach(b=>b.classList.toggle('active',b===button));
+  document.querySelectorAll('[data-movie-tab]').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-selected',String(b===button));});
   ['showing','coming'].forEach(id=>$('#'+id).hidden=id!==button.dataset.movieTab);
 }));
 (() => {
@@ -59,9 +93,9 @@ if(quick){
   function option(value,text){const o=document.createElement('option');o.value=value;o.textContent=text;return o;}
   function update(){
     const oldCinema=cinema.value;const matches=options.filter(s=>String(s.movieId)===film.value&&s.canHold);
-    const cinemas=new Map(matches.map(s=>[String(s.cinemaId),s.cinemaName]));cinema.replaceChildren(option('','2. Chọn rạp'));cinemas.forEach((label,id)=>cinema.append(option(id,label)));if(cinemas.has(oldCinema))cinema.value=oldCinema;cinema.disabled=!film.value;
+    const cinemas=new Map(matches.map(s=>[String(s.cinemaId),s.cinemaName]));cinema.replaceChildren(option('','Chọn rạp'));cinemas.forEach((label,id)=>cinema.append(option(id,label)));if(cinemas.has(oldCinema))cinema.value=oldCinema;cinema.disabled=!film.value;
     const dates=matches.filter(s=>String(s.cinemaId)===cinema.value).map(s=>s.date).sort();if(dates.length){day.min=dates[0];day.max=dates.at(-1);if(!dates.includes(day.value))day.value=dates[0];}day.disabled=!cinema.value;
-    const slots=matches.filter(s=>String(s.cinemaId)===cinema.value&&s.date===day.value);show.replaceChildren(option('',slots.length?'4. Chọn suất':'Chưa có suất phù hợp'));slots.forEach(s=>show.append(option(s.id,s.when)));show.disabled=!slots.length;
+    const slots=matches.filter(s=>String(s.cinemaId)===cinema.value&&s.date===day.value);show.replaceChildren(option('',slots.length?'Chọn suất':'Chưa có suất phù hợp'));slots.forEach(s=>show.append(option(s.id,s.when)));show.disabled=!slots.length;
   }
   api('/catalog/showtimes').then(data=>{options=data;show.hidden=false;show.required=true;update();[film,cinema,day].forEach(n=>n.addEventListener('change',update));quick.addEventListener('submit',e=>{if(show.value){e.preventDefault();location.assign('/booking/'+show.value);}});}).catch(()=>{show.hidden=true;});
 }
@@ -112,7 +146,7 @@ if(seatMap){
     let changed=false;for(const id of selected)if(!seats.some(s=>s.id===id&&s.state==='AVAILABLE')){selected.delete(id);changed=true;}
     if(changed)toast('Một số ghế vừa được giữ hoặc bán. Vui lòng kiểm tra lại.');status.textContent='Trạng thái ghế cập nhật mỗi 5 giây.';render();
   }catch(error){status.textContent=error.message+' Chúng tôi sẽ thử tải lại.';button.disabled=true;}finally{loading=false;}}
-  button.addEventListener('click',async()=>{if(holding)return;holding=true;button.disabled=true;button.textContent='ĐANG GIỮ GHẾ…';try{const result=await api('/api/holds',{method:'POST',body:JSON.stringify({showtimeId:Number(seatMap.dataset.showtime),seats:[...selected]})});location.assign(result.url);}catch(error){toast(error.message);holding=false;button.textContent='TIẾP TỤC →';await refresh();}});
+  button.addEventListener('click',async()=>{if(holding)return;holding=true;button.disabled=true;button.textContent='Đang giữ ghế…';try{const result=await api('/api/holds',{method:'POST',body:JSON.stringify({showtimeId:Number(seatMap.dataset.showtime),seats:[...selected]})});location.assign(result.url);}catch(error){toast(error.message);holding=false;button.textContent='Tiếp tục';await refresh();}});
   refresh();setInterval(refresh,5000);
 }
 

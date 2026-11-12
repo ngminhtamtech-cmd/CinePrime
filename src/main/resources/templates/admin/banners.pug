@@ -1,0 +1,64 @@
+extends layout
+block admin
+  .page-heading
+    div
+      h1 Banner trang chủ
+      p.muted Phim mới được lưu (đang hiển thị trên website) tự có một banner phim ở cuối danh sách. Banner đang bật hiển thị trên trang chủ theo thứ tự dưới đây; phim đã kết thúc tự ẩn khỏi trang chủ.
+    a.button(href="/admin/banners/edit") + Thêm banner
+  .panel
+    form.banner-interval(action="/admin/banners/interval" method="post")
+      +csrf()
+      label(for="banner-interval") Tự chuyển banner sau (giây)
+      input#banner-interval(type="number" name="seconds" min=minSeconds max=maxSeconds step="1" value=interval required inputmode="numeric")
+      button.button.secondary(type="submit") Lưu thời gian
+      small Từ #{minSeconds} đến #{maxSeconds} giây. Người xem có thể tạm dừng; banner cũng dừng khi rê chuột.
+  .panel
+    .table-wrap
+      table.management-table
+        thead
+          tr
+            th Thứ tự
+            th Ảnh
+            th Banner
+            th Thời gian hiển thị
+            th Trạng thái
+            th Thao tác
+        tbody
+          each b, i in banners
+            tr
+              td(data-label="Thứ tự")
+                .row-actions
+                  span.record-id= i + 1
+                  form(action='/admin/banners/' + b.id + '/move' method="post")
+                    +csrf()
+                    input(type="hidden" name="direction" value="up")
+                    button.action-btn(type="submit" disabled=b.first aria-label='Đưa “' + b.title + '” lên trên' title="Lên trên") ↑
+                  form(action='/admin/banners/' + b.id + '/move' method="post")
+                    +csrf()
+                    input(type="hidden" name="direction" value="down")
+                    button.action-btn(type="submit" disabled=b.last aria-label='Đưa “' + b.title + '” xuống dưới' title="Xuống dưới") ↓
+              td(data-label="Ảnh")
+                if b.thumb
+                  img.banner-thumb(src=b.thumb alt="" loading="lazy")
+                if b.display
+                  small.banner-warning= b.display
+              td(data-label="Banner")
+                strong= b.title
+                br
+                small #{b.kindLabel} · #{b.target}
+              td(data-label="Thời gian hiển thị")
+                span.cell-text= b.window
+              td(data-label="Trạng thái")
+                span.status-badge(class='tone-' + b.tone)= b.state
+              td.actions-cell
+                .row-actions
+                  a.action-btn.primary(href='/admin/banners/edit?id=' + b.id) Sửa
+                  form(action='/admin/banners/' + b.id + '/toggle' method="post")
+                    +csrf()
+                    button.action-btn(type="submit")= b.active ? 'Tắt' : 'Bật'
+                  form(action='/admin/banners/' + b.id + '/delete' method="post")
+                    +csrf()
+                    button.action-btn.danger(type="submit" data-confirm=b.kind == 'MOVIE' ? 'Xóa banner phim “' + b.title + '”? Banner sẽ tự được tạo lại khi phim được lưu lại. Muốn ẩn lâu dài, hãy chọn Tắt.' : 'Xóa banner “' + b.title + '”? Ảnh đã tải lên vẫn được giữ trong thư mục upload.') Xóa
+    if banners.size() == 0
+      .empty Chưa có banner nào. Trang chủ đang tự dùng phim nổi bật / đang chiếu.
+  p.notice Ảnh banner: ảnh ngang JPG/PNG/WEBP, khuyến nghị 1920×640 (tỉ lệ 3:1). Từ 1600px trở lên: phủ kín banner. Từ 560px (tỉ lệ từ 4:3): hiển thị dạng khung ảnh đúng kích thước, không bị kéo giãn. Nhỏ hơn hoặc ảnh dọc: không nhận. Ảnh khác tỉ lệ 3:1 sẽ bị cắt bớt trên/dưới khi phủ kín, nên giữ chữ và logo ở vùng giữa. Banner khuyến mãi hiển thị nguyên ảnh nên chữ cần nằm sẵn trong ảnh.

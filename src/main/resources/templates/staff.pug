@@ -1,39 +1,41 @@
 extends operations
 include mixins
 block head
+  link(rel="stylesheet" href="/css/staff.css?v=20261112")
+  script(src="/js/staff-nav.js?v=20261112")
   script(src="/js/vendor/zxing-browser.min.js" defer)
+block brandControls
+  +staffNavToggle
 block content
-  main#main.staff-main
-    .page-heading
-      div
-        h1 Soát vé tại rạp
-        p.muted Chọn đúng suất, kiểm tra vé rồi xác nhận khách vào rạp.
-      span.badge= staffCinema
-    form.ops-filters#staff-selection(method="get")
-      label Ngày vận hành
-        input(type="date" name="date" value=day required)
-      label.shrink-select Suất chiếu · ưu tiên suất đang nhận khách
-        select(name="showtimeId")
-          option(value="") — Chọn suất để bắt đầu —
-          each s in shows
-            option(value=s.id selected=selectedShow == s.id) #{s.movieTitle} · #{s.roomName} · #{s.when} · #{s.state}
-      button.button.secondary(type="submit") Chọn suất
-    if shows.size() == 0
-      .empty Không có suất mở vận hành tại rạp phụ trách trong ngày này. Hãy chọn ngày khác.
-    if selectedShow
-      section.selected-show
-        div
-          small SUẤT ĐANG SOÁT
-          h2= selected.movieTitle
-          p #{selected.roomName} · #{selected.cinemaName} · #{selected.when}
-        div
-          span#selected-show-state.badge= selected.state
-          small Khung check-in: #{selected.window}
-    else
-      .notice Chưa chọn suất. Chọn phim, phòng và giờ phía trên trước khi quét vé.
-    #staff-workspace(data-showtime=selectedShow)
-      .scan-grid
-        section.panel
+  .staff-shell
+    +staffTabs('checkin')
+    main#main.staff-main.checkin
+      h1.sr-only Soát vé tại rạp
+      .checkin-bar
+        form.checkin-select#staff-selection(method="get")
+          label.date-field
+            span Ngày
+            input(type="date" name="date" value=day required)
+          label.show-field
+            span Suất chiếu · ưu tiên suất đang nhận khách
+            select(name="showtimeId")
+              option(value="")= shows.size() == 0 ? '— Không có suất trong ngày —' : '— Chọn suất để bắt đầu —'
+              each s in shows
+                option(value=s.id selected=selectedShow == s.id) #{s.movieTitle} · #{s.roomName} · #{s.when} · #{s.state}
+          button.button.secondary(type="submit") Chọn suất
+        if selectedShow
+          section.selected-show(aria-label="Suất đang soát")
+            div
+              small SUẤT ĐANG SOÁT
+              strong(title=selected.movieTitle)= selected.movieTitle
+              span #{selected.roomName} · #{selected.when}
+            div
+              span#selected-show-state.badge= selected.state
+              small Check-in #{selected.window}
+        else
+          p.selected-show.pending= shows.size() == 0 ? 'Không có suất mở vận hành tại rạp phụ trách trong ngày này. Hãy chọn ngày khác.' : 'Chưa chọn suất. Chọn phim, phòng và giờ bên trái trước khi quét vé.'
+      #staff-workspace.checkin-grid(data-showtime=selectedShow)
+        section.panel.scan-panel
           .panel-heading
             h2 Kiểm tra vé
             span#camera-state.badge Chưa bật camera
@@ -51,66 +53,60 @@ block content
             .manual-row
               input#ticket-code(required placeholder="T-… hoặc CP-…" autocomplete="off" disabled=!selectedShow)
               button.button.secondary(type="submit" disabled=!selectedShow) Tra cứu
-          p.muted Có thể dùng camera, máy quét nhập mã hoặc bàn phím. Enter chỉ tra cứu mã.
+          p.muted Dùng camera, máy quét hoặc bàn phím. Enter chỉ tra cứu mã.
         section.panel.scan-results
           .panel-heading
             h2 Kết quả kiểm tra
             button#next-ticket.button.secondary(type="button" disabled=!selectedShow) Quét vé tiếp
           #scan-result(aria-live="polite" aria-atomic="false")
             .empty= selectedShow ? 'Sẵn sàng tra cứu. Kết quả sẽ được giữ để kiểm tra và xác nhận từng vé.' : 'Chọn suất chiếu trước khi tra cứu vé.'
-      .staff-stats
-        article.kpi-card
-          span Vé còn hiệu lực
-          strong(data-stat="total")= selectedShow ? ticketData.summary.total : '—'
-          small Không gồm vé vô hiệu
-        article.kpi-card
-          span Đã vào rạp
-          strong(data-stat="used")= selectedShow ? ticketData.summary.used : '—'
-          small Đã xác nhận check-in
-        article.kpi-card
-          span Chưa vào rạp
-          strong(data-stat="valid")= selectedShow ? ticketData.summary.valid : '—'
-          small Vé còn chờ check-in
-        article.kpi-card
-          span Tỷ lệ check-in
-          strong(data-stat="rate")= selectedShow ? ticketData.summary.rate : '—'
-          small Đã vào / vé còn hiệu lực
-      section.panel
-        .panel-heading
-          h2 Danh sách vé theo suất
-          span#staff-updated.refresh-status(role="status")= selectedShow ? 'Cập nhật: ' + ticketData.updatedAt : 'Chưa chọn suất'
-        form#staff-ticket-filter.ops-filters
-          label Tìm mã vé / đơn / ghế
-            input(name="q" placeholder="Ví dụ A1 hoặc CP-…" disabled=!selectedShow)
-          label Trạng thái vé
-            select(name="state" disabled=!selectedShow)
+        section.panel.ticket-panel
+          .staff-stats
+            article.kpi-card
+              span Còn hiệu lực
+              strong(data-stat="total")= selectedShow ? ticketData.summary.total : '—'
+            article.kpi-card
+              span Đã vào
+              strong(data-stat="used")= selectedShow ? ticketData.summary.used : '—'
+            article.kpi-card
+              span Chưa vào
+              strong(data-stat="valid")= selectedShow ? ticketData.summary.valid : '—'
+            article.kpi-card
+              span Tỷ lệ
+              strong(data-stat="rate")= selectedShow ? ticketData.summary.rate : '—'
+          .panel-heading
+            h2 Vé theo suất
+            span#staff-updated.refresh-status(role="status")= selectedShow ? 'Cập nhật: ' + ticketData.updatedAt : 'Chưa chọn suất'
+          form#staff-ticket-filter.ticket-filter
+            input(name="q" placeholder="Mã vé / đơn / ghế" aria-label="Tìm mã vé, mã đơn hoặc ghế" disabled=!selectedShow)
+            select(name="state" aria-label="Trạng thái vé" disabled=!selectedShow)
               option(value="") Tất cả
               option(value="VALID") Chưa vào
               option(value="USED") Đã vào
               option(value="VOID") Vô hiệu
-          button.button.secondary(type="submit" disabled=!selectedShow) Lọc vé
-        .table-wrap
-          table.staff-ticket-table
-            thead
-              tr
-                th Vé / Đơn
-                th Ghế
-                th Trạng thái
-                th Thời điểm check-in
-            tbody#staff-ticket-rows
-              if selectedShow
-                each t in ticketData.tickets
-                  tr
-                    td
-                      strong= t.code
-                      small= t.orderCode
-                    td= t.seat
-                    td
-                      span.badge= t.statusLabel
-                    td= t.when
-        #staff-ticket-empty.empty(hidden=selectedShow && ticketData.tickets.size() > 0)= selectedShow ? 'Suất này chưa có vé được phát hành.' : 'Danh sách sẽ hiển thị sau khi chọn suất.'
-        .ops-pagination
-          span#staff-page-label= selectedShow ? 'Trang 1 · ' + ticketData.total + ' kết quả' : '—'
-          .actions
-            button#staff-prev.button.secondary(type="button" disabled) ← Trước
-            button#staff-next.button.secondary(type="button" disabled=!selectedShow || !ticketData.hasMore) Sau →
+            button.button.secondary(type="submit" disabled=!selectedShow) Lọc
+          .table-wrap
+            table.staff-ticket-table
+              thead
+                tr
+                  th Vé / Đơn
+                  th Ghế
+                  th Trạng thái
+                  th Check-in
+              tbody#staff-ticket-rows
+                if selectedShow
+                  each t in ticketData.tickets
+                    tr
+                      td
+                        strong= t.code
+                        small= t.orderCode
+                      td= t.seat
+                      td
+                        span.badge= t.statusLabel
+                      td= t.when
+            #staff-ticket-empty.empty(hidden=selectedShow && ticketData.tickets.size() > 0)= selectedShow ? 'Suất này chưa có vé được phát hành.' : 'Danh sách sẽ hiển thị sau khi chọn suất.'
+          .ops-pagination
+            span#staff-page-label= selectedShow ? 'Trang 1 · ' + ticketData.total + ' kết quả' : '—'
+            .actions
+              button#staff-prev.button.secondary(type="button" disabled aria-label="Trang trước") ←
+              button#staff-next.button.secondary(type="button" disabled=!selectedShow || !ticketData.hasMore aria-label="Trang sau") →

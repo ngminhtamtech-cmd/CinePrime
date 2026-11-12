@@ -1,14 +1,11 @@
 extends layout
+include mixins
 block content
   section.container.section
-    .eyebrow CÂU CHUYỆN & TRẢI NGHIỆM
-    h1= title
-    .content-grid
+    h1.page-title= title
+    p.page-lead= kindLabel == 'Ưu đãi' ? 'Chương trình khuyến mãi và quyền lợi thành viên đang áp dụng.' : 'Tin tức, câu chuyện hậu trường và gợi ý xem phim.'
+    .content-grid.section-gap
       each c in contents
-        a.content-card(href='/content/' + c.slug)
-          if c.image
-            img(src=c.image alt=c.title loading="lazy")
-          h2= c.title
-          span.book-link KHÁM PHÁ →
+        +contentCard(c, kindLabel)
     if contents.size() == 0
       .empty Chưa có nội dung mới.

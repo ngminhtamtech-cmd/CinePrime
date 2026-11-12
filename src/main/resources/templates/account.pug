@@ -2,18 +2,17 @@ extends layout
 include mixins
 block content
   .container.section
-    .eyebrow TÀI KHOẢN CINEPRIME
-    .section-heading
+    .account-head
       h1 Xin chào, #{viewer.name}
       span.points #{balance} điểm
-    .account-nav
+    nav.account-nav(aria-label="Mục tài khoản")
       a(href="#orders") Vé của tôi
       a(href="#profile") Hồ sơ
       a(href="#favorites") Yêu thích
       a(href="#notifications") Thông báo
       a(href="#points") Điểm thưởng
     section#orders.panel
-      h2 VÉ & LỊCH SỬ ĐẶT VÉ
+      h2 Vé & lịch sử đặt vé
       each o in orders
         a.order-row(href='/orders/' + o.id)
           div
@@ -25,7 +24,8 @@ block content
             p= o.totalText
       if orders.size() == 0
         .empty Bạn chưa có đơn đặt vé.
-          a(href="/movies") Khám phá phim ngay →
+          br
+          a(href="/movies") Khám phá phim
     .two-columns
       section#profile.panel
         h2 Hồ sơ của tôi
@@ -41,7 +41,7 @@ block content
             input(name="phone" value=viewer.phone maxlength="30")
           label Ảnh đại diện (JPEG/PNG tối đa 5 MB)
             input(type="file" name="avatar" accept="image/jpeg,image/png")
-          button.button(type="submit") LƯU HỒ SƠ
+          button.button(type="submit") Lưu hồ sơ
       section.panel
         h2 Đổi mật khẩu
         p.muted Sau khi đổi mật khẩu, bạn cần đăng nhập lại.
@@ -51,9 +51,10 @@ block content
             input(type="password" name="oldPassword" required autocomplete="current-password")
           label Mật khẩu mới
             input(type="password" name="password" required minlength="10" autocomplete="new-password")
-          button.button.secondary(type="submit") CẬP NHẬT MẬT KHẨU
+          button.button.secondary(type="submit") Cập nhật mật khẩu
     section#favorites.section
-      h2 PHIM YÊU THÍCH
+      .section-heading
+        h2 Phim yêu thích
       .movie-grid
         each m in favorites
           +movieCard(m)

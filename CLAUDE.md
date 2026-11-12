@@ -22,7 +22,7 @@ $env:TEMPLATE_CACHE='false'                        # see .pug edits without rest
 java -jar target\cineprime-1.0.0.jar
 ```
 
-The user normally runs the app from an IntelliJ run configuration named **CinePrime Local** on port 8080. Do not stop that process or touch its `cineprime` database. Use the separate `cineprime_test` schema and another port, such as 8081, for anything you verify.
+The user normally runs the app from an IntelliJ run configuration named **CinePrime Local** on port 8080. Do not stop that process. Use the separate `cineprime_test` schema and another port, such as 8081, for anything you verify first. Once the full suite passes on MySQL (0 failures/errors/skipped), apply the change to the real `cineprime` database right away without asking again: new Flyway migrations and any required config data. If tests fail, do not touch `cineprime`. Never reset or wipe `cineprime`; take a mysqldump backup before a DDL migration or bulk data change, and record what was applied in Plan.md/README.
 
 Tests:
 
@@ -61,4 +61,5 @@ Code style is dense: long single-line methods, public entity fields, and Vietnam
 - **Security**: role and ownership checks happen in the backend. Use sessions, CSRF and password hashing. Locking an account or changing its role invalidates existing sessions through `authVersion`. Keep secrets out of the repo and out of logs.
 - **Time**: business logic uses the Asia/Ho_Chi_Minh zone, and the DB/JDBC layer uses UTC. Inject `Clock`; do not call `now()` directly.
 - **Uploads**: runtime data lives under `UPLOAD_DIR` (default `./uploads`) and is never written into the source tree or JAR.
-- **Verification** of Pug UTF-8 must be done from the executable JAR, on desktop and mobile, along with Vietnamese PDF output.
+- **Verification** of Pug UTF-8 must be done from the executable JAR, along with Vietnamese PDF output.
+- **Responsive scope** (user decision 12/11/2026): only the customer-facing (User) UI must be responsive and checked on desktop and mobile. Admin and Staff screens are desktop-only (1366×768 and up); do not build or verify mobile/breakpoint layouts for them.

@@ -19,7 +19,17 @@ class MediaServiceTest {
     @Test void jpegPngAndWebpDecodeAndReferencesSurviveServiceRestart()throws Exception{
         var media=new MediaService(root.toString());
         for(String format:List.of("png","jpeg")){var out=new ByteArrayOutputStream();javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(4,3,java.awt.image.BufferedImage.TYPE_INT_RGB),format,out);String url=media.upload(new MockMultipartFile("file","test."+format,"image/"+format,out.toByteArray()),"poster");assertEquals(url,media.image(url));assertEquals(url,new MediaService(root.toString()).image(url));assertThrows(IllegalArgumentException.class,()->media.trailer(url));}
-        String webp=media.upload(new MockMultipartFile("file","test.webp","image/webp",webp()),"banner");assertTrue(webp.endsWith(".webp"));assertEquals(webp,media.image(webp));assertNotNull(javax.imageio.ImageIO.read(media.read(webp.substring(7)).getFile()));
+        String webp=media.upload(new MockMultipartFile("file","test.webp","image/webp",webp()),"image");assertTrue(webp.endsWith(".webp"));assertEquals(webp,media.image(webp));assertNotNull(javax.imageio.ImageIO.read(media.read(webp.substring(7)).getFile()));
+    }
+    static byte[] png(int width,int height)throws IOException{var out=new ByteArrayOutputStream();javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(width,height,java.awt.image.BufferedImage.TYPE_INT_RGB),"png",out);return out.toByteArray();}
+    @Test void bannerUploadsMustBeLandscapeAndWideEnoughForTheHero()throws Exception{
+        var media=new MediaService(root.toString());
+        for(int[] size:new int[][]{{559,300},{500,300},{1920,2400},{800,700}}){var error=assertThrows(IllegalArgumentException.class,()->media.upload(new MockMultipartFile("file","small.png","image/png",png(size[0],size[1])),"banner"));assertTrue(error.getMessage().contains(size[0]+"×"+size[1]),error.getMessage());}
+        String wide=media.upload(new MockMultipartFile("file","wide.png","image/png",png(1920,720)),"banner");assertTrue(media.wide(wide));assertArrayEquals(new int[]{1920,720},media.size(wide));assertEquals("wide",media.bannerMode(wide));assertEquals("",media.bannerWarning(wide));
+        String hd=media.upload(new MockMultipartFile("file","hd.png","image/png",png(1920,1080)),"banner");assertTrue(media.wide(hd));
+        for(int[] size:new int[][]{{880,348},{599,433},{1599,600},{1600,1000}}){String small=media.upload(new MockMultipartFile("file","small.png","image/png",png(size[0],size[1])),"banner");assertFalse(media.wide(small));assertTrue(media.framed(small));assertEquals("framed",media.bannerMode(small),"Smaller landscape images are kept and shown in a frame");assertTrue(media.bannerWarning(small).contains(size[0]+"×"+size[1]));}
+        String poster=media.upload(new MockMultipartFile("file","poster.png","image/png",png(600,900)),"poster");assertFalse(media.wide(poster),"Other kinds keep accepting any size, but are never treated as hero-ready");assertEquals("",media.bannerMode(poster),"A portrait image falls back to the poster slide");
+        assertFalse(media.wide("/images/poster-1.svg"));assertFalse(media.wide("/media/00000000-0000-0000-0000-000000000000.png"));assertNull(media.size(""));
     }
     @Test void missingWrongTypeAndOversizedMediaNeverBecomeAnotherMoviePoster()throws Exception{
         var media=new MediaService(root.toString());assertEquals(MediaService.PLACEHOLDER,media.imageOrPlaceholder(""));assertEquals(MediaService.PLACEHOLDER,media.imageOrPlaceholder("/media/00000000-0000-0000-0000-000000000000.png"));assertEquals("",media.bannerOrEmpty("/media/missing.png"));

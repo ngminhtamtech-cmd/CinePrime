@@ -8,7 +8,7 @@ html(lang="vi")
     title= title
     link(rel="icon" href="/images/cineprime-mark.svg" type="image/svg+xml")
     link(rel="stylesheet" href="/css/app.css")
-    link(rel="stylesheet" href="/css/operations.css")
+    link(rel="stylesheet" href="/css/operations.css?v=20261112")
     if navGroups
       link(rel="stylesheet" href="/css/admin-ui.css")
       script(src="/js/admin-nav-pref.js")
@@ -17,6 +17,7 @@ html(lang="vi")
     if navGroups
       script(src="/js/admin.js" defer)
       script(src="/js/admin-editor.js" defer)
+      script(src="/js/admin-dialog.js" defer)
       script(src="/js/admin-setup.js" defer)
       if adminForm
         script(src="/js/admin-forms.js" defer)
@@ -40,6 +41,7 @@ html(lang="vi")
             button#nav-forward.nav-control.nav-history(type="button" aria-label="Tới trang sau" title="Tới (Alt + →)")
               svg(viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false")
                 path(d="M9 18l6-6-6-6")
+        block brandControls
         a.brand(href=navGroups ? '/admin' : '/staff' aria-label="CinePrime điều hành")
           img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="32" height="32")
           span Cine

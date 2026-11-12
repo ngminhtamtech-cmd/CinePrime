@@ -2,21 +2,14 @@ extends layout
 include mixins
 block content
   .auth-shell.container
-    .auth-art
-      .eyebrow YOUR NEXT STORY STARTS HERE
-      h1 Một tài khoản.
-        br
-        | Ngàn trải nghiệm.
-      p Vé của bạn, phim yêu thích và những cuộc hẹn điện ảnh đều ở đây.
-      .orbit
     .auth-card
       .brand
-        img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="44" height="44" aria-hidden="true")
+        img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="40" height="40" aria-hidden="true")
         span Cine
           strong Prime
-      h2= title
+      h1= title
       if mode == 'login'
-        p.muted Đăng nhập để đặt vé và lưu những trải nghiệm của bạn.
+        p Đăng nhập để đặt vé, xem vé đã mua và lưu phim yêu thích.
         form(action="/login" method="post")
           +csrf()
           label Email
@@ -24,10 +17,11 @@ block content
           label Mật khẩu
             input(type="password" name="password" required autocomplete="current-password")
           a.forgot(href="/forgot-password") Quên mật khẩu?
-          button.button.full(type="submit") ĐĂNG NHẬP
-        p Chưa có tài khoản? 
-          a(href="/register") Đăng ký ngay
+          button.button.full(type="submit") Đăng nhập
+        p.switch Chưa có tài khoản?
+          a(href="/register") Đăng ký
       else if mode == 'register'
+        p Tạo tài khoản để đặt vé và tích điểm sau mỗi giao dịch.
         form(action="/register" method="post")
           +csrf()
           label Họ tên
@@ -36,20 +30,22 @@ block content
             input(type="email" name="email" required maxlength="254" autocomplete="email")
           label Mật khẩu (ít nhất 10 ký tự)
             input(type="password" name="password" required minlength="10" autocomplete="new-password")
-          button.button.full(type="submit") TẠO TÀI KHOẢN
-        a(href="/login") Đã có tài khoản? Đăng nhập
+          button.button.full(type="submit") Tạo tài khoản
+        p.switch Đã có tài khoản?
+          a(href="/login") Đăng nhập
       else if mode == 'forgot-password'
         p Nhập email tài khoản. Nếu thông tin phù hợp, bạn sẽ nhận liên kết đặt lại mật khẩu.
         form(action="/forgot-password" method="post")
           +csrf()
           label Email
             input(type="email" name="email" required autocomplete="email")
-          button.button.full(type="submit") GỬI LIÊN KẾT
-        a(href="/login") Quay lại đăng nhập
+          button.button.full(type="submit") Gửi liên kết
+        p.switch
+          a(href="/login") Quay lại đăng nhập
       else
         form(action="/reset-password" method="post")
           +csrf()
           input(type="hidden" name="token" value=resetToken)
           label Mật khẩu mới
             input(type="password" name="password" required minlength="10" autocomplete="new-password")
-          button.button.full(type="submit") ĐẶT LẠI MẬT KHẨU
+          button.button.full(type="submit") Đặt lại mật khẩu

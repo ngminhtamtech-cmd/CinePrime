@@ -1,0 +1,213 @@
+extends operations
+include mixins
+block head
+  link(rel="stylesheet" href="/css/staff.css?v=20261112")
+  script(src="/js/staff-nav.js?v=20261112")
+  link(rel="stylesheet" href="/css/counter.css?v=20261112")
+  script(src="/js/counter.js?v=20261112" defer)
+block brandControls
+  +staffNavToggle
+block content
+  .staff-shell
+    +staffTabs('counter')
+    main#main.staff-main.counter
+      h1.sr-only Bán vé tại quầy
+      if notice
+        p.action-notice(role="status")= notice
+      if actionError
+        p.form-error(role="alert")= actionError
+      if !hasShift
+        section.panel.shift-open
+          h2 Mở ca bán vé
+          p Đếm tiền lẻ có sẵn trong két rồi nhập số tiền đầu ca. Hệ thống cộng tiền mặt thu được trong ca để đối chiếu khi đóng ca.
+          form(action="/staff/counter/shift/open" method="post")
+            +csrf()
+            label(for="opening-cash") Tiền đầu ca (VND)
+            .cash-row
+              input#opening-cash(name="openingCash" inputmode="numeric" pattern="[0-9]*" required placeholder="Ví dụ 500000" autocomplete="off")
+              button.button(type="submit") Mở ca
+          if lastClosed
+            p.muted
+              | Ca gần nhất đóng lúc #{lastClosed.closed} · Chênh lệch #{lastClosed.difference} ·
+              a(href='/staff/counter/shifts/' + lastClosed.id)  Xem phiếu tổng kết
+      else
+        section.shift-bar(aria-label="Ca đang mở")
+          div
+            small CA ĐANG MỞ · ##{shift.id}
+            strong Mở lúc #{shift.opened}
+          div
+            small Đơn đã bán
+            strong#shift-orders= shift.orders
+          div
+            small Vé đã bán
+            strong#shift-tickets= shift.tickets
+          div
+            small Tiền mặt dự kiến trong két
+            strong#shift-expected= shift.expected
+          button#orders-open.button.secondary.orders-open(type="button" aria-controls="orders-drawer" aria-haspopup="dialog")
+            | Đơn trong ca
+            span.count= orders.size()
+          details#close-shift.close-shift(open=closeCounted ? true : false)
+            summary.button.secondary Đóng ca
+            form(action="/staff/counter/shift/close" method="post")
+              +csrf()
+              p Đếm toàn bộ tiền trong két (gồm tiền đầu ca #{shift.openingCash}). Hệ thống dự kiến #{shift.expected}.
+              label(for="counted-cash") Tiền đếm được (VND)
+              input#counted-cash(name="countedCash" inputmode="numeric" pattern="[0-9]*" required autocomplete="off" value=closeCounted)
+              label(for="close-note") Ghi chú · bắt buộc khi lệch tiền
+              textarea#close-note(name="note" maxlength="500" rows="2")= closeNote
+              button.button(type="submit") Xác nhận đóng ca
+        .counter-grid#counter(data-active-order=activeOrder ? activeOrder.id : '' data-day=day)
+          section.panel.counter-shows
+            .panel-heading
+              h2 1 · Chọn suất
+              form.counter-day(method="get")
+                label(for="counter-date") Ngày chiếu
+                input#counter-date(type="date" name="date" value=day min=today)
+            if shows.size() == 0
+              .empty Không có suất mở bán tại rạp trong ngày này. Chọn ngày khác.
+            .show-list
+              each s in shows
+                button.show-card(type="button" data-showtime=s.id disabled=!s.sellable aria-pressed="false")
+                  span.show-time= s.time
+                  span.show-info
+                    strong= s.movieTitle
+                    small #{s.roomName} · #{s.format} · #{s.ageRating}
+                  span.show-state(class=s.sellable ? 'ok' : 'off')= s.state
+          section.panel.counter-seats
+            .panel-heading
+              h2 2 · Chọn ghế
+              span#counter-show-label.muted Chưa chọn suất
+            .screen MÀN HÌNH
+            #counter-seat-map.seat-map(aria-label="Sơ đồ ghế")
+              p.empty Chọn suất bên trái để xem sơ đồ ghế.
+            .legend
+              span Còn trống
+              span.selected Đang chọn
+              span.mine Quầy đang giữ
+              span.held Nơi khác giữ
+              span.sold Đã bán
+              span.maintenance Bảo trì
+            p#counter-seat-status.muted(role="status" aria-live="polite")
+          aside.panel.counter-cart(aria-label="Đơn hiện tại")
+            h2 3 · Đơn hiện tại
+            #cart-select
+              .line
+                span Ghế chọn
+                strong#cart-picked Chưa chọn
+              .line
+                span Tạm tính ghế
+                strong#cart-picked-total 0 ₫
+              button#cart-hold.button.full(type="button" disabled) Giữ ghế 5 phút
+            #cart-held(hidden)
+              .hold-timer
+                span Giữ ghế còn
+                strong#cart-countdown(aria-live="off") 05:00
+              p#cart-order-code.muted
+              #cart-seat-lines
+              h3 Combo
+              if products.size() == 0
+                p.muted Chưa có combo đang bán.
+              #cart-products
+                each p in products
+                  .product-row(data-product=p.id data-price=p.price)
+                    span
+                      strong= p.name
+                      small= p.priceText
+                    .stepper
+                      button.step(type="button" data-step="-1" aria-label='Bớt ' + p.name) −
+                      output(data-quantity) 0
+                      button.step(type="button" data-step="1" aria-label='Thêm ' + p.name) +
+              h3 Khách hàng
+              #cart-customer
+                p#customer-selected.muted Khách vãng lai · không tích điểm
+                form#customer-search.customer-search
+                  label(for="customer-q") SĐT hoặc email tài khoản
+                  .cash-row
+                    input#customer-q(autocomplete="off" placeholder="0901234567 hoặc email")
+                    button.button.secondary(type="submit") Tìm
+                #customer-results
+              h3 Thu tiền mặt
+              label(for="cash-received") Khách đưa (VND)
+              input#cash-received(inputmode="numeric" pattern="[0-9]*" autocomplete="off")
+              .quick-cash
+                button(type="button" data-cash="exact") Đúng tiền
+                button(type="button" data-cash="50000") 50.000
+                button(type="button" data-cash="100000") 100.000
+                button(type="button" data-cash="200000") 200.000
+                button(type="button" data-cash="500000") 500.000
+                button(type="button" data-cash="clear") Nhập lại
+              p.muted Mỗi lần bấm mệnh giá cộng thêm một tờ vào số tiền khách đưa.
+              .line.change-line
+                span Tiền thối
+                strong#cash-change —
+              .cart-footer
+                .total
+                  span Tổng thu
+                  strong#cart-total 0 ₫
+                button#cart-pay.button.full(type="button" disabled) Thu tiền & phát vé
+                button#cart-release.button.secondary.full(type="button") Hủy giữ ghế
+            #cart-done(hidden)
+              p.done-title Đã thu tiền · phát vé thành công
+              p#done-summary
+              .line
+                span Khách đưa
+                strong#done-received
+              .line
+                span Tiền thối
+                strong#done-change
+              a#done-print.button.full(href="#" target="_blank" rel="noopener") In vé
+              button#done-checkin.button.secondary.full(type="button") Check-in luôn
+              #done-checkin-result(aria-live="polite")
+              button#done-next.button.secondary.full(type="button") Bán đơn mới
+        dialog#orders-drawer.orders-drawer(aria-labelledby="orders-title")
+          .panel-heading
+            div
+              h2#orders-title Đơn đã bán trong ca
+              span.muted Hủy được trong 15 phút sau khi bán, khi chưa ai check-in và trước giờ chiếu.
+            button.drawer-close(type="button" data-drawer-close aria-label="Đóng danh sách đơn") ×
+          if orders.size() == 0
+            .empty Chưa có đơn nào trong ca.
+          else
+            .table-wrap
+              table.counter-order-table
+                thead
+                  tr
+                    th Đơn / lúc bán
+                    th Suất
+                    th Ghế
+                    th Khách
+                    th Tổng
+                    th Trạng thái
+                    th Thao tác
+                tbody
+                  each o in orders
+                    tr
+                      td
+                        strong= o.code
+                        small= o.paid
+                      td
+                        span= o.movieTitle
+                        small #{o.roomName} · #{o.when}
+                      td= o.seats
+                      td= o.customer
+                      td= o.totalText
+                      td
+                        span.badge= o.statusLabel
+                        if o.cancelReason
+                          small Lý do: #{o.cancelReason}
+                      td.actions
+                        if o.status == 'PAID'
+                          a.button.secondary(href='/staff/counter/orders/' + o.id + '/print' target="_blank" rel="noopener") In lại
+                        if o.cancellable
+                          button.button.secondary.cancel-order(type="button" data-order=o.id data-code=o.code) Hủy đơn
+        dialog#cancel-dialog.counter-dialog
+          form#cancel-form(method="dialog")
+            h2 Hủy đơn
+            p#cancel-text
+            label(for="cancel-reason") Lý do hủy (bắt buộc)
+            textarea#cancel-reason(maxlength="500" rows="3" required)
+            p.muted Vé bị vô hiệu, ghế trở lại trống và tiền mặt hoàn cho khách được trừ khỏi két.
+            .dialog-actions
+              button.button.secondary(type="button" value="cancel" data-close) Không hủy
+              button.button(type="submit" value="confirm") Xác nhận hủy và hoàn tiền

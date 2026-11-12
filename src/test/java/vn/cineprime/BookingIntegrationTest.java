@@ -292,7 +292,7 @@ class BookingIntegrationTest {
         try(var c=source.getConnection();var statement=c.createStatement()){
             assertTrue(c.getCatalog().equals("cineprime_test"),"Refuse to reset a non-test schema");
             statement.execute("SET FOREIGN_KEY_CHECKS=0");
-            try{for(String table:List.of("showtime_batch_results","mail_jobs","audit_logs","contents","notifications","subscriptions","reviews","favorites","point_ledger","tickets","payments","voucher_uses","order_products","order_seats","inventory","orders","vouchers","products","prices","showtimes","seats","rooms","credits","movie_genres","movies","people","genres","reset_tokens","users","cinemas"))statement.execute("TRUNCATE TABLE "+table);}finally{statement.execute("SET FOREIGN_KEY_CHECKS=1");}
+            try{for(String table:List.of("shifts","banners","settings","showtime_batch_results","mail_jobs","audit_logs","contents","notifications","subscriptions","reviews","favorites","point_ledger","tickets","payments","voucher_uses","order_products","order_seats","inventory","orders","vouchers","products","prices","showtimes","seats","rooms","credits","movie_genres","movies","people","genres","reset_tokens","users","cinemas"))statement.execute("TRUNCATE TABLE "+table);}finally{statement.execute("SET FOREIGN_KEY_CHECKS=1");}
         }
         tx.executeWithoutResult(status->{
             Cinema c=new Cinema();c.name="Rạp kiểm thử";c.city="TP. Hồ Chí Minh";db.save(c);cinema=c.id;
@@ -385,7 +385,7 @@ class BookingIntegrationTest {
         assertEquals(403,post(guest,"/register","email=x").statusCode());
         HttpClient customer=client();login(customer,"one@example.test");assertEquals(200,get(customer,"/account").statusCode());String bookingPage=get(customer,"/booking/"+show).body();assertTrue(bookingPage.contains("seat-view-3d")&&bookingPage.contains("/js/seat-3d.js"));for(String asset:List.of("/js/seat-3d.js","/js/vendor/three.module.js","/js/vendor/three.core.js"))assertEquals(200,get(customer,asset).statusCode(),asset);assertEquals(403,get(customer,"/admin").statusCode());assertEquals(403,get(customer,"/staff").statusCode());
         Order o=booking.hold(user1,show,List.of(seat1));assertEquals(200,get(customer,"/orders/"+o.id).statusCode());HttpClient other=client();login(other,"two@example.test");assertEquals(403,get(other,"/orders/"+o.id).statusCode());
-        HttpClient administrator=client();login(administrator,"admin@example.test");for(String path:List.of("/admin","/admin/orders","/admin/orders/"+o.id,"/admin/upload","/admin/audit")){assertEquals(200,get(administrator,path).statusCode(),path);}for(String key:AdminService.RESOURCES.keySet()){assertEquals(200,getFollowing(administrator,"/admin/manage/"+key).statusCode(),key);if(!key.equals("reviews"))assertEquals(200,get(administrator,"/admin/manage/"+key+"/edit"+(key.equals("showtimes")?"?id="+show:"")).statusCode(),key+" edit");}
+        HttpClient administrator=client();login(administrator,"admin@example.test");for(String path:List.of("/admin","/admin/orders","/admin/orders/"+o.id,"/admin/audit")){assertEquals(200,get(administrator,path).statusCode(),path);}assertEquals(404,get(administrator,"/admin/upload").statusCode(),"The standalone upload page was removed");for(String key:AdminService.RESOURCES.keySet()){assertEquals(200,getFollowing(administrator,"/admin/manage/"+key).statusCode(),key);if(!key.equals("reviews"))assertEquals(200,get(administrator,"/admin/manage/"+key+"/edit"+(key.equals("showtimes")?"?id="+show:"")).statusCode(),key+" edit");}
         HttpClient st=client();login(st,"staff@example.test");assertEquals(200,get(st,"/staff?date=2026-12-01&showtimeId="+show).statusCode());
     }
     @Test void lockedAccountInvalidatesExistingSession()throws Exception{HttpClient c=client();login(c,"one@example.test");assertEquals(200,get(c,"/account").statusCode());tx.executeWithoutResult(status->db.get(User.class,user1).enabled=false);assertEquals(302,get(c,"/account").statusCode());}
@@ -403,7 +403,7 @@ class BookingIntegrationTest {
         var snapshot=reports.create("day",LocalDate.of(2026,12,1),cinema);assertEquals(expected,snapshot.model().get("revenueValue"));assertEquals(2,snapshot.model().get("orderCount"));assertEquals(3L,snapshot.model().get("ticketCount"));
         assertEquals(expected,((List<?>)snapshot.model().get("chart")).stream().mapToLong(v->((Number)((Map<?,?>)v).get("value")).longValue()).sum());
         assertEquals(expected,((List<?>)snapshot.model().get("topMovies")).stream().mapToLong(v->((Number)((Map<?,?>)v).get("value")).longValue()).sum());
-        String csv=new String(snapshot.csv(),java.nio.charset.StandardCharsets.UTF_8);assertEquals(3,csv.lines().count());assertTrue(csv.contains("\""+first.code+"\""));assertTrue(csv.contains("\""+free.code+"\""));assertFalse(csv.contains(late.code));assertTrue(csv.contains(",\""+expected+"\"\r\n"));
+        String csv=new String(snapshot.csv(),java.nio.charset.StandardCharsets.UTF_8);assertEquals(3,csv.lines().count());assertTrue(csv.contains("\""+first.code+"\""));assertTrue(csv.contains("\""+free.code+"\""));assertFalse(csv.contains(late.code));assertTrue(csv.contains(",\""+expected+"\",\"Online\"\r\n"));assertTrue(csv.lines().findFirst().orElse("").endsWith("Doanh thu VND,Kênh"));
         tx.executeWithoutResult(status->{db.get(Cinema.class,cinema).active=false;db.get(Cinema.class,cinema).name="Đổi tên rạp";db.get(Movie.class,db.get(Showtime.class,show).movieId).title="Tên mới";});
         assertEquals(expected,reports.create("day",LocalDate.of(2026,12,1),cinema).model().get("revenueValue"));assertTrue(new String(snapshot.csv(),java.nio.charset.StandardCharsets.UTF_8).contains("Phim kiểm thử tiếng Việt"));
         Long other=db.get(User.class,otherStaff).cinemaId;assertEquals(0L,reports.create("day",LocalDate.of(2026,12,1),other).model().get("revenueValue"));
@@ -454,8 +454,8 @@ class BookingIntegrationTest {
         tx.executeWithoutResult(status->{Showtime s=db.get(Showtime.class,show);s.startsAt=s.startsAt.plusSeconds(37);s.endsAt=s.endsAt.plusSeconds(37);});Order o=booking.hold(user1,show,List.of(seat1));paid(o);Showtime s=db.get(Showtime.class,show);HttpClient c=client();login(c,"admin@example.test");String html=get(c,"/admin/manage/showtimes/edit?id="+show).body();assertTrue(html.contains("value=\"2026-12-01T18:00:37\""));assertTrue(html.contains("readonly"));String token=csrf(html);String values="id="+show+"&movieId="+s.movieId+"&roomId="+room+"&startsAt=2026-12-01T18%3A00%3A37&language=Test&format=2D&status=OPEN&surcharge=0&_csrf="+URLEncoder.encode(token,java.nio.charset.StandardCharsets.UTF_8);assertEquals(302,post(c,"/admin/manage/showtimes/save",values).statusCode());assertEquals(s.startsAt,db.get(Showtime.class,show).startsAt);assertEquals("Test",db.get(Showtime.class,show).language);
     }
     @Test void inlineUploadChecksCsrfAndServesRuntimeImage()throws Exception{
-        HttpClient c=client();login(c,"admin@example.test");String token=csrf(get(c,"/admin/manage/movies/edit").body());var buffer=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(2,2,java.awt.image.BufferedImage.TYPE_INT_RGB),"png",buffer);String boundary="CinePrimeImageBoundary";var body=new java.io.ByteArrayOutputStream();body.write(("--"+boundary+"\r\nContent-Disposition: form-data; name=\"video\"\r\n\r\nfalse\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"fixture.png\"\r\nContent-Type: image/png\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));body.write(buffer.toByteArray());body.write(("\r\n--"+boundary+"--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/admin/media")).header("Content-Type","multipart/form-data; boundary="+boundary).POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()));assertEquals(403,c.send(request.build(),HttpResponse.BodyHandlers.ofString()).statusCode());var response=c.send(request.header("X-CSRF-TOKEN",token).build(),HttpResponse.BodyHandlers.ofString());assertEquals(200,response.statusCode());Matcher url=Pattern.compile("/media/([a-f0-9-]{36}\\.png)").matcher(response.body());assertTrue(url.find());assertEquals(200,get(c,url.group()).statusCode());java.nio.file.Path root=java.nio.file.Path.of("uploads").toAbsolutePath().normalize(),file=root.resolve(url.group(1)).normalize();assertTrue(file.startsWith(root));java.nio.file.Files.deleteIfExists(file);
+        HttpClient c=client();login(c,"admin@example.test");String token=csrf(get(c,"/admin/manage/movies/edit").body());var buffer=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(2,2,java.awt.image.BufferedImage.TYPE_INT_RGB),"png",buffer);String boundary="CinePrimeImageBoundary";var body=new java.io.ByteArrayOutputStream();body.write(("--"+boundary+"\r\nContent-Disposition: form-data; name=\"kind\"\r\n\r\nimage\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"fixture.png\"\r\nContent-Type: image/png\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));body.write(buffer.toByteArray());body.write(("\r\n--"+boundary+"--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/admin/media")).header("Content-Type","multipart/form-data; boundary="+boundary).POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()));assertEquals(403,c.send(request.build(),HttpResponse.BodyHandlers.ofString()).statusCode());var response=c.send(request.header("X-CSRF-TOKEN",token).build(),HttpResponse.BodyHandlers.ofString());assertEquals(200,response.statusCode(),response.body());assertEquals(400,uploadImage(c,token,"","image/png",buffer.toByteArray()).statusCode(),"Upload kind is required");Matcher url=Pattern.compile("/media/([a-f0-9-]{36}\\.png)").matcher(response.body());assertTrue(url.find());assertEquals(200,get(c,url.group()).statusCode());java.nio.file.Path root=java.nio.file.Path.of("uploads").toAbsolutePath().normalize(),file=root.resolve(url.group(1)).normalize();assertTrue(file.startsWith(root));java.nio.file.Files.deleteIfExists(file);
     }
     @Test void loginResumesSelectedBooking()throws Exception{HttpClient c=client();assertEquals(302,get(c,"/booking/"+show).statusCode());String token=csrf(get(c,"/login").body());var result=post(c,"/login","email=one%40example.test&password=CinePrimeTest2026!&_csrf="+URLEncoder.encode(token,java.nio.charset.StandardCharsets.UTF_8));assertEquals(302,result.statusCode());assertTrue(result.headers().firstValue("location").orElseThrow().contains("/booking/"+show));assertEquals(200,get(c,"/booking/"+show).statusCode());}
     @Test void adminPagesHandleZeroOneFiveSixElevenAndDatabaseFilters(){
@@ -523,6 +523,59 @@ class BookingIntegrationTest {
         assertEquals("ADMIN",db.get(User.class,administrator).role);assertTrue(db.get(User.class,administrator).enabled);assertEquals(200,get(c,"/admin/manage/users?state=ADMIN").statusCode());
         String path="/admin/manage/genres?q=Gi%E1%BB%AF&state=true&page=1";String form=get(c,"/admin/manage/genres/edit?returnTo="+URLEncoder.encode(path,java.nio.charset.StandardCharsets.UTF_8)).body();String token=csrf(form);var saved=post(c,"/admin/manage/genres/save","name=Gi%E1%BB%AF&active=true&returnTo="+URLEncoder.encode(path,java.nio.charset.StandardCharsets.UTF_8)+"&_csrf="+URLEncoder.encode(token,java.nio.charset.StandardCharsets.UTF_8));assertEquals(302,saved.statusCode());assertTrue(saved.headers().firstValue("location").orElseThrow().contains("state=true&page=1"));
     }
+    static String enc(String value){return URLEncoder.encode(value,java.nio.charset.StandardCharsets.UTF_8);}
+    @Test void shortRecordsAddAndEditInPopupThroughTheSameSaveEndpoint()throws Exception{
+        HttpClient c=client();login(c,"admin@example.test");
+        for(String key:List.of("genres","people","movie-genres","credits","contents","users")){
+            assertTrue(get(c,"/admin/manage/"+key).body().contains("data-dialog-form=\"/admin/manage/"+key+"/dialog"),key+" list opens a pop-up");
+            var dialog=get(c,"/admin/manage/"+key+"/dialog?returnTo=%2Fadmin%2Fmanage%2F"+key);assertEquals(200,dialog.statusCode(),key);String html=dialog.body();
+            assertTrue(html.contains("dialog-shell"),key);assertTrue(html.contains("name=\"_csrf\""),key);assertTrue(html.contains("action=\"/admin/manage/"+key+"/save\""),key);assertFalse(html.contains("ops-sidebar"),key+" fragment has no page chrome");assertFalse(html.contains("<html"),key);
+        }
+        assertTrue(get(c,"/admin/manage/users/dialog").body().contains("name=\"initialPassword\""),"New user asks for a first password");
+        assertEquals(400,get(c,"/admin/manage/movies/dialog").statusCode(),"Long forms keep their own page");
+        assertFalse(get(c,"/admin/manage/movies").body().contains("data-dialog-form"));
+        String token=csrf(get(c,"/admin/manage/genres/dialog").body());
+        var saved=wizardPost(c,"/admin/manage/genres/save","name="+enc("Hài hước")+"&active=true&returnTo=%2Fadmin%2Fmanage%2Fgenres%3Fpage%3D0&_csrf="+enc(token));assertEquals(200,saved.statusCode(),saved.body());assertTrue(saved.body().contains("\"redirect\":\"/admin/manage/genres?page=0&saved\""),saved.body());
+        Genre genre=db.first(Genre.class,"where e.name=?1","Hài hước").orElseThrow();
+        String edit=org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/manage/genres/dialog?id="+genre.id).body());assertTrue(edit.contains("value=\"Hài hước\""));assertTrue(edit.contains("name=\"id\" value=\""+genre.id+"\""));assertTrue(edit.contains("Xem phim đang dùng thể loại này"));
+        assertEquals(200,wizardPost(c,"/admin/manage/genres/save","id="+genre.id+"&name="+enc("Hài")+"&active=true&returnTo=%2Fadmin%2Fmanage%2Fgenres&_csrf="+enc(token)).statusCode());assertEquals("Hài",db.get(Genre.class,genre.id).name);
+        var invalid=wizardPost(c,"/admin/manage/contents/save","kind=ARTICLE&title=&slug=bai-viet&returnTo=%2Fadmin%2Fmanage%2Fcontents&_csrf="+enc(token));assertEquals(400,invalid.statusCode());assertTrue(invalid.body().contains("\"message\""));assertTrue(invalid.body().contains("\"fields\""));
+        assertEquals(403,wizardPost(c,"/admin/manage/genres/save","name=x&active=true").statusCode(),"CSRF is still required");
+        HttpClient customer=client();login(customer,"one@example.test");assertEquals(403,get(customer,"/admin/manage/genres/dialog").statusCode());
+    }
+    @Test void adminBannersDriveHomeHeroOrderScheduleAndInterval()throws Exception{
+        String home=get(client(),"/").body();assertFalse(home.contains("id=\"hero-carousel\""),"No banner and no movie with a landscape image: no hero, quick booking stays");assertTrue(home.contains("id=\"quick-book\""));
+        HttpClient c=client();login(c,"admin@example.test");String token=csrf(get(c,"/admin/banners").body());
+        assertEquals(400,uploadImage(c,token,"banner","image/png",MediaServiceTest.png(500,300)).statusCode());assertEquals(400,uploadImage(c,token,"banner","image/png",MediaServiceTest.png(1920,2400)).statusCode());
+        var uploaded=uploadImage(c,token,"banner","image/png",MediaServiceTest.png(1920,720));assertEquals(200,uploaded.statusCode(),uploaded.body());Matcher found=Pattern.compile("/media/[a-f0-9-]{36}\\.png").matcher(uploaded.body());assertTrue(found.find());String url=found.group();assertTrue(uploaded.body().contains("\"warning\":\"\""),uploaded.body());
+        var smallUpload=uploadImage(c,token,"banner","image/png",MediaServiceTest.png(880,348));assertEquals(200,smallUpload.statusCode(),smallUpload.body());assertTrue(smallUpload.body().contains("880×348"),"Accepted with a warning");Matcher smallFound=Pattern.compile("/media/[a-f0-9-]{36}\\.png").matcher(smallUpload.body());assertTrue(smallFound.find());String small=smallFound.group();
+        try{
+            assertEquals(403,post(c,"/admin/banners/save","kind=PROMO&title=x&image="+enc(url)+"&active=true").statusCode(),"CSRF is required");
+            HttpClient customer=client();login(customer,"one@example.test");assertEquals(403,get(customer,"/admin/banners").statusCode());
+            var external=post(c,"/admin/banners/save","kind=PROMO&title=x&image="+enc(url)+"&link="+enc("https://evil.example/")+"&active=true&_csrf="+enc(token));assertEquals(400,external.statusCode());assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(external.body()).contains("Liên kết phải là đường dẫn trong CinePrime"));
+            assertEquals(400,post(c,"/admin/banners/save","kind=MOVIE&active=true&_csrf="+enc(token)).statusCode(),"Movie banners need a movie");
+            assertEquals(302,post(c,"/admin/banners/save","kind=PROMO&title="+enc("Ưu đãi tháng 12")+"&image="+enc(url)+"&link=%2Foffers&active=true&_csrf="+enc(token)).statusCode());
+            Long movie=db.first(Movie.class,"where e.slug='phim-kiem-thu'").orElseThrow().id;
+            assertEquals(302,post(c,"/admin/banners/save","kind=MOVIE&movieId="+movie+"&active=true&_csrf="+enc(token)).statusCode());
+            Banner promo=db.first(Banner.class,"where e.kind='PROMO'").orElseThrow(),film=db.first(Banner.class,"where e.kind='MOVIE'").orElseThrow();assertEquals("Phim kiểm thử tiếng Việt",film.title);assertTrue(promo.sortOrder<film.sortOrder);
+            home=get(client(),"/").body();assertEquals(3,home.split("href=\"/offers\"",-1).length-1,"Menu link, 'Tất cả ưu đãi' and the promo slide link");assertTrue(home.contains("data-interval=\"6000\""),"Default rotation 6 s");assertEquals(1,home.split("class=\"hero-banner\"",-1).length-1,"A movie without a landscape image stays off the image-only hero");
+            assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/banners").body()).contains("Thiếu ảnh ngang"));
+            assertEquals(302,post(c,"/admin/banners/save","id="+film.id+"&kind=MOVIE&movieId="+movie+"&image="+enc(small)+"&active=true&_csrf="+enc(token)).statusCode());
+            home=get(client(),"/").body();assertTrue(home.contains("class=\"hero-banner\" src=\""+small+"\""));assertTrue(home.contains("is-framed"),"A smaller landscape banner is centred, not stretched");assertTrue(home.indexOf("src=\""+url+"\"")<home.indexOf("src=\""+small+"\""),"Promo is first");
+            assertEquals(302,post(c,"/admin/banners/"+film.id+"/move","direction=up&_csrf="+enc(token)).statusCode());
+            home=get(client(),"/").body();assertTrue(home.indexOf("src=\""+small+"\"")<home.indexOf("src=\""+url+"\""),"Movie moved first");
+            assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/banners").body()).contains("hiển thị giữa khung"));
+            assertEquals(302,post(c,"/admin/banners/"+promo.id+"/toggle","_csrf="+enc(token)).statusCode());assertFalse(get(client(),"/").body().contains(url));
+            String tomorrow=clock.instant().plusSeconds(86400).atZone(vn.cineprime.admin.ReportService.ZONE).toLocalDateTime().withSecond(0).withNano(0).toString();
+            assertEquals(302,post(c,"/admin/banners/save","id="+promo.id+"&kind=PROMO&title=Lich&image="+enc(url)+"&startsAt="+enc(tomorrow)+"&active=true&_csrf="+enc(token)).statusCode());
+            assertFalse(get(client(),"/").body().contains(url),"Scheduled banner waits for its start");clock.advance(2*86400);assertTrue(get(client(),"/").body().contains(url));
+            assertEquals(302,post(c,"/admin/banners/interval","seconds=30&_csrf="+enc(token)).statusCode());assertTrue(get(client(),"/").body().contains("data-interval=\"10000\""));
+            assertEquals(302,post(c,"/admin/banners/interval","seconds=2&_csrf="+enc(token)).statusCode());assertTrue(get(client(),"/").body().contains("data-interval=\"5000\""));
+            String list=org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/banners").body());assertTrue(list.contains("Lich"));assertTrue(list.contains("Đang hiển thị"));
+            assertEquals(302,post(c,"/admin/banners/"+promo.id+"/delete","_csrf="+enc(token)).statusCode());assertEquals(1,db.list(Banner.class,"").size());
+            assertTrue(db.list(Audit.class,"where e.action like '%BANNER%'").size()>=6);
+        }finally{java.nio.file.Files.deleteIfExists(media.read(url.substring(7)).getFile().toPath());java.nio.file.Files.deleteIfExists(media.read(small.substring(7)).getFile().toPath());}
+    }
     HttpResponse<String> uploadImage(HttpClient c,String token,String kind,String mime,byte[] bytes)throws Exception{
         String boundary="MovieUploadBoundary";var body=new java.io.ByteArrayOutputStream();body.write(("--"+boundary+"\r\nContent-Disposition: form-data; name=\"kind\"\r\n\r\n"+kind+"\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"fixture\"\r\nContent-Type: "+mime+"\r\n\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));body.write(bytes);body.write(("\r\n--"+boundary+"--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
         var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/admin/media")).header("Content-Type","multipart/form-data; boundary="+boundary).header("X-CSRF-TOKEN",token).POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())).build();return c.send(request,HttpResponse.BodyHandlers.ofString());
@@ -534,11 +587,15 @@ class BookingIntegrationTest {
             assertTrue(get(c,url).headers().firstValue("Content-Type").orElseThrow().contains("image/webp"));
             String data="genresPresent=true&genreIds="+genre+"&title=Phim+upload&slug=phim-upload&description=Test&duration=100&ageRating=P&releaseDate=2026-11-01&endDate=2027-01-31&active=true&featured=true&poster="+URLEncoder.encode(url,java.nio.charset.StandardCharsets.UTF_8)+"&banner="+URLEncoder.encode(url,java.nio.charset.StandardCharsets.UTF_8)+"&trailer="+URLEncoder.encode("https://youtu.be/M7lc1UVf-VE?si=test",java.nio.charset.StandardCharsets.UTF_8)+"&_csrf="+URLEncoder.encode(token,java.nio.charset.StandardCharsets.UTF_8);
             assertEquals(302,post(c,"/admin/manage/movies/save",data).statusCode());Movie movie=db.first(Movie.class,"where e.slug='phim-upload'").orElseThrow();assertEquals(url,movie.poster);assertEquals(url,movie.banner);assertEquals("https://www.youtube-nocookie.com/embed/M7lc1UVf-VE",movie.trailer);
-            assertTrue(get(c,"/admin/manage/movies/edit?id="+movie.id).body().contains(url));assertTrue(get(c,"/movies/phim-upload").body().contains(url));assertTrue(get(c,"/").body().contains("class=\"hero-banner\" src=\""+url+"\""));assertFalse(get(c,"/movies/phim-upload").body().contains("<iframe"),"Player must be loaded only on request");
+            assertTrue(get(c,"/admin/manage/movies/edit?id="+movie.id).body().contains(url));assertTrue(get(c,"/movies/phim-upload").body().contains(url));String hero=get(c,"/").body();assertFalse(hero.contains("class=\"hero-banner\" src=\""+url+"\""),"A tiny banner is never put on the image-only hero");assertTrue(hero.contains("/movies/phim-upload"));assertFalse(get(c,"/movies/phim-upload").body().contains("<iframe"),"Player must be loaded only on request");
             tx.executeWithoutResult(status->{for(int n=0;n<4;n++){Movie m=dated(new Movie());m.title="Banner "+n;m.slug="banner-"+n;m.featured=true;m.status="NOW_SHOWING";db.save(m);}});
             String home=get(c,"/").body();for(int n=0;n<4;n++)assertTrue(home.contains("/movies/banner-"+n));assertTrue(home.contains("/movies/phim-upload"));
             var invalid=post(c,"/admin/manage/movies/save",data.replace("slug=phim-upload","slug=phim-invalid").replace("poster="+URLEncoder.encode(url,java.nio.charset.StandardCharsets.UTF_8),"poster=https%3A%2F%2Fwww.youtube.com%2Fembed%2FM7lc1UVf-VE"));assertEquals(400,invalid.statusCode());assertTrue(invalid.body().contains("value=\"phim-invalid\""));
             assertEquals(400,uploadImage(c,token,"poster","video/mp4",new byte[]{0,0,0,20,'f','t','y','p','i','s','o','m'}).statusCode());
+            List<Banner> auto=db.list(Banner.class,"where e.movieId=?1",movie.id);assertEquals(1,auto.size(),"Saving a movie adds its home banner once");assertEquals("MOVIE",auto.getFirst().kind);assertTrue(auto.getFirst().active);
+            assertEquals(302,post(c,"/admin/manage/movies/save",data.replace("genresPresent=true","id="+movie.id+"&genresPresent=true")).statusCode());assertEquals(1,db.list(Banner.class,"where e.movieId=?1",movie.id).size(),"Re-saving does not duplicate the banner");
+            assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/banners").body()).contains("Phim upload"));
+            assertEquals(302,post(c,"/admin/manage/movies/"+movie.id+"/delete","returnTo=%2Fadmin%2Fmanage%2Fmovies&_csrf="+enc(token)).statusCode());assertTrue(db.first(Movie.class,"where e.slug='phim-upload'").isEmpty(),"An unused movie with an auto banner can still be deleted");assertTrue(db.list(Banner.class,"where e.movieId=?1",movie.id).isEmpty());
         }finally{java.nio.file.Files.deleteIfExists(media.read(url.substring(7)).getFile().toPath());}
     }
     @Test void hideMovieStopsNewBookingsButRetainsHeldPaidAndStaffTickets()throws Exception{
@@ -695,5 +752,88 @@ class BookingIntegrationTest {
         Map<String,String> fields=movieFields(movie);fields.put("creditsPresent","true");fields.put("directorIds",people.getFirst().toString());fields.put("actorIds",people.stream().map(Object::toString).collect(java.util.stream.Collectors.joining(",")));assertEquals(2L,race(()->admin.save(5L,"movies",movie,fields),()->admin.save(5L,"movies",movie,fields)).stream().filter(Boolean::booleanValue).count());assertEquals(12L,db.count(Credit.class,"where e.movieId=?1",movie));
         var stats=entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();stats.setStatisticsEnabled(true);try{stats.clear();get(client(),"/movies/"+db.get(Movie.class,movie).slug);long count=stats.getPrepareStatementCount();assertTrue(count<23,"Credits are batch-read; queries="+count);}finally{stats.setStatisticsEnabled(false);}
         HttpClient staffClient=client();login(staffClient,"staff@example.test");assertEquals(403,get(staffClient,"/api/admin/form-options?kind=people").statusCode());HttpClient customer=client();login(customer,"one@example.test");assertEquals(403,get(customer,"/api/admin/form-options?kind=genres").statusCode());
+    }
+    // ---- Box-office (counter) cash sales ----
+    @Autowired vn.cineprime.staff.CounterService counter;@Autowired vn.cineprime.staff.CounterReadService counterReads;
+    Long combo(){return tx.execute(s->{Product p=new Product();p.name="Combo bắp nước";p.price=60000;db.save(p);return p.id;});}
+    Order counterSale(Long seat,Long customer){Order o=counter.hold(staff,show,List.of(seat));return counter.pay(staff,o.id,o.total,customer,UUID.randomUUID().toString());}
+    @Test void counterShiftSaleAndCloseKeepCashTotals(){
+        assertThrows(IllegalArgumentException.class,()->counter.hold(staff,show,List.of(seat1)),"No sale before opening a shift");
+        Shift shift=counter.open(staff,500000L);assertThrows(IllegalArgumentException.class,()->counter.open(staff,1L),"One open shift per staff");
+        Long product=combo();Order o=counter.hold(staff,show,List.of(seat1,seat2));assertEquals("COUNTER",o.channel);assertNull(o.userId);assertEquals(clock.instant().plusSeconds(300),o.expiresAt);
+        counter.combos(staff,o.id,Map.of(product,2));assertEquals(170000+120000,db.get(Order.class,o.id).total);
+        counter.combos(staff,o.id,Map.of(product,2));assertEquals(1,db.count(OrderProduct.class,"where e.orderId=?1",o.id),"Re-saving the same combo replaces the line");
+        assertThrows(IllegalArgumentException.class,()->counter.pay(staff,o.id,289999L,null,"key-00000001"),"Short cash is refused");
+        counter.pay(staff,o.id,300000L,null,"key-00000001");Order paid=db.get(Order.class,o.id);assertEquals("PAID",paid.status);assertNull(paid.userId);
+        Payment p=db.first(Payment.class,"where e.orderId=?1",o.id).orElseThrow();assertEquals("CASH",p.provider);assertEquals(290000,p.amount);assertEquals(300000L,p.received);assertEquals(shift.id,p.shiftId);
+        assertEquals(2,db.count(Ticket.class,"where e.orderId=?1 and e.status='VALID'",o.id));assertEquals(0,db.count(Point.class,""),"Walk-in customers earn no points");assertEquals(0,db.count(MailJob.class,""));
+        assertEquals(790000,counter.expected(db.get(Shift.class,shift.id)));
+        assertThrows(IllegalArgumentException.class,()->counter.close(staff,780000L,""),"A mismatch needs a note");
+        Order pending=counter.hold(staff,show,List.of(seat3));assertThrows(IllegalArgumentException.class,()->counter.close(staff,790000L,null),"Active hold blocks closing");
+        clock.advance(300);Shift closed=counter.close(staff,780000L,"Thiếu 10.000 do thối nhầm");assertEquals("CLOSED",closed.status);assertEquals(790000L,closed.expectedCash);assertEquals("EXPIRED",db.get(Order.class,pending.id).status);
+        assertEquals("AVAILABLE",db.first(Inventory.class,"where e.seatId=?1",seat3).orElseThrow().status);
+        assertThrows(IllegalArgumentException.class,()->counter.hold(staff,show,List.of(seat3)),"Closed shift stops sales");
+        var model=reports.create("day",LocalDate.of(2026,12,1),null).model();assertEquals(290000L,model.get("revenueValue"));assertEquals(db.money(290000),model.get("counterRevenue"));
+    }
+    @Test void counterAndOnlineRaceForOneSeatHasOneWinnerAndNewHoldReplacesOld()throws Exception{
+        counter.open(staff,0L);var results=race(()->counter.hold(staff,show,List.of(seat1)),()->booking.hold(user1,show,List.of(seat1)));assertEquals(1,results.stream().filter(Boolean::booleanValue).count());
+        assertEquals(1,db.count(Inventory.class,"where e.seatId=?1 and e.status='HELD'",seat1));
+        Order first=counter.hold(staff,show,List.of(seat2));Order second=counter.hold(staff,show,List.of(seat3));assertEquals("CANCELLED",db.get(Order.class,first.id).status);assertEquals("AVAILABLE",db.first(Inventory.class,"where e.seatId=?1",seat2).orElseThrow().status);assertEquals("PENDING_PAYMENT",db.get(Order.class,second.id).status);
+        assertThrows(IllegalArgumentException.class,()->counter.hold(staff,show,List.of(pair1)),"Couple seats are sold as a pair");
+        counter.open(otherStaff,0L);assertThrows(org.springframework.security.access.AccessDeniedException.class,()->counter.hold(otherStaff,show,List.of(seat2)),"Other cinema");
+        booking.expire(second.id);clock.advance(300);booking.expire(second.id);assertEquals("EXPIRED",db.get(Order.class,second.id).status,"Expiry job handles walk-in holds");
+    }
+    @Test void repeatedCashSubmitChargesOnceAndOtherKeyIsRefused()throws Exception{
+        counter.open(staff,0L);Order o=counter.hold(staff,show,List.of(seat1));String key=UUID.randomUUID().toString();
+        var results=race(()->counter.pay(staff,o.id,100000L,null,key),()->counter.pay(staff,o.id,100000L,null,key));assertEquals(List.of(true,true),results);
+        assertEquals(1,db.count(Payment.class,"where e.orderId=?1",o.id));assertEquals(1,db.count(Ticket.class,"where e.orderId=?1",o.id));assertEquals(1,db.count(Audit.class,"where e.action='COUNTER_SALE'"));
+        assertThrows(IllegalArgumentException.class,()->counter.pay(staff,o.id,100000L,null,UUID.randomUUID().toString()));
+        assertThrows(IllegalArgumentException.class,()->counter.pay(staff,o.id,100000L,null,"x"),"Malformed request key");
+    }
+    @Test void counterSellsUntilStartAndHoldsOnlyWithFiveMinutesLeft(){
+        counter.open(staff,0L);Instant start=db.get(Showtime.class,show).startsAt;
+        clock.value.set(start.minusSeconds(1000));assertThrows(IllegalArgumentException.class,()->booking.hold(user1,show,List.of(seat2)),"Online already closed 20 minutes before");
+        clock.value.set(start.minusSeconds(299));assertThrows(IllegalArgumentException.class,()->counter.hold(staff,show,List.of(seat1)));
+        clock.value.set(start.minusSeconds(300));Order o=counter.hold(staff,show,List.of(seat1));clock.value.set(start.minusSeconds(1));counter.pay(staff,o.id,85000L,null,"late-sale-1");assertEquals("PAID",db.get(Order.class,o.id).status);
+        List<?> shows=(List<?>)counterReads.page(staff,null).get("shows");assertEquals(1,shows.size());assertEquals(false,((Map<?,?>)shows.getFirst()).get("sellable"));
+    }
+    @Test void linkedCustomerEarnsPointsAndCancelRulesReleaseSeatForResale()throws Exception{
+        counter.open(staff,100000L);tx.executeWithoutResult(s->db.get(User.class,user1).phone="0901234567");
+        var found=counterReads.customers(staff,"0901 234 567");assertEquals(1,found.size());assertFalse(found.getFirst().toString().contains("Khách Một"),"Names are masked");assertEquals(user1,found.getFirst().get("id"));
+        assertThrows(IllegalArgumentException.class,()->counterReads.customers(staff,"one"),"Partial search is refused");
+        Order o=counterSale(seat1,user1);assertEquals(user1,db.get(Order.class,o.id).userId);assertEquals(85L,db.first(Point.class,"where e.orderId=?1",o.id).orElseThrow().points);assertEquals(1,db.count(MailJob.class,""));
+        assertEquals(1,db.list(Order.class,"where e.userId=?1",user1).size(),"Shows in the customer's tickets");
+        assertThrows(IllegalArgumentException.class,()->counter.cancel(staff,o.id," "),"Reason required");
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,()->counter.cancel(otherStaff,o.id,"x"));
+        clock.advance(60);counter.cancel(staff,o.id,"Khách đổi ý");Order cancelled=db.get(Order.class,o.id);assertEquals("CANCELLED",cancelled.status);assertEquals(staff,cancelled.cancelledBy);
+        assertEquals(0,db.count(Ticket.class,"where e.orderId=?1 and e.status<>'VOID'",o.id));assertEquals("AVAILABLE",db.first(Inventory.class,"where e.seatId=?1",seat1).orElseThrow().status);
+        assertEquals("REFUNDED",db.first(Payment.class,"where e.orderId=?1",o.id).orElseThrow().status);assertEquals(0L,db.query("select sum(p.points) from "+db.entityName(Point.class)+" p where p.userId=?1",Long.class,user1).getFirst());
+        assertEquals(100000,counter.expected(counter.openShift(staff).orElseThrow()),"Refund leaves the drawer");
+        Order resold=counterSale(seat1,null);assertEquals("PAID",db.get(Order.class,resold.id).status,"A voided ticket frees the seat");assertEquals(2,db.count(Ticket.class,"where e.seatId=?1",seat1));
+        clock.advance(vn.cineprime.staff.CounterService.CANCEL_WINDOW+1);assertThrows(IllegalArgumentException.class,()->counter.cancel(staff,resold.id,"Quá hạn"),"Fifteen minute window");
+        Order used=counterSale(seat2,null);Ticket t=db.first(Ticket.class,"where e.orderId=?1",used.id).orElseThrow();checkin.checkIn(staff,t.id,show);
+        assertThrows(IllegalArgumentException.class,()->counter.cancel(staff,used.id,"Đã vào"),"Checked-in tickets cannot be cancelled");
+        assertEquals(1,db.count(Audit.class,"where e.action='COUNTER_CANCEL'"));
+    }
+    @Test void counterPagesApiPrintAndAdminViews()throws Exception{
+        HttpClient c=client();login(c,"staff@example.test");var page=get(c,"/staff/counter");assertEquals(200,page.statusCode());String html=org.springframework.web.util.HtmlUtils.htmlUnescape(page.body());assertTrue(html.contains("Mở ca bán vé"));assertTrue(html.contains("Bán vé tại quầy"));String token=csrf(page.body());
+        assertEquals(302,post(c,"/staff/counter/shift/open","openingCash=200000&_csrf="+URLEncoder.encode(token,java.nio.charset.StandardCharsets.UTF_8)).statusCode());
+        html=org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/staff/counter").body());assertTrue(html.contains("CA ĐANG MỞ"),html);assertTrue(html.contains("Phim kiểm thử tiếng Việt"));assertTrue(html.contains("/js/counter.js"));
+        var seats=get(c,"/api/staff/counter/showtimes/"+show+"/seats");assertEquals(200,seats.statusCode());assertTrue(seats.body().contains("\"sellable\":true"));
+        var held=staffJson(c,"/api/staff/counter/holds","{\"showtimeId\":"+show+",\"seats\":["+seat1+"]}",token);assertEquals(200,held.statusCode(),held.body());Long id=db.first(Order.class,"where e.channel='COUNTER'").orElseThrow().id;
+        var shortCash=staffJson(c,"/api/staff/counter/orders/"+id+"/pay","{\"received\":1000,\"requestKey\":\"abcdef12-key\"}",token);assertEquals(400,shortCash.statusCode());assertTrue(shortCash.body().contains("chưa đủ"));
+        var paid=staffJson(c,"/api/staff/counter/orders/"+id+"/pay","{\"received\":100000,\"requestKey\":\"abcdef12-key\"}",token);assertEquals(200,paid.statusCode(),paid.body());assertTrue(paid.body().contains("\"status\":\"PAID\""));
+        var print=get(c,"/staff/counter/orders/"+id+"/print");assertEquals(200,print.statusCode());String receipt=org.springframework.web.util.HtmlUtils.htmlUnescape(print.body());assertTrue(receipt.contains("Phim kiểm thử tiếng Việt"));assertTrue(receipt.contains("Tiền thối"));
+        Ticket ticket=db.first(Ticket.class,"where e.orderId=?1",id).orElseThrow();var qr=c.send(HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/staff/counter/tickets/"+ticket.id+"/qr.png")).GET().build(),HttpResponse.BodyHandlers.ofByteArray());assertEquals(200,qr.statusCode());assertEquals("image/png",qr.headers().firstValue("content-type").orElse(""));
+        var checked=staffJson(c,"/api/staff/counter/orders/"+id+"/check-in","{}",token);assertEquals(200,checked.statusCode());assertTrue(checked.body().contains("\"ok\":true"));assertEquals("USED",db.get(Ticket.class,ticket.id).status);
+        HttpClient other=client();login(other,"other@example.test");assertEquals(403,get(other,"/staff/counter/orders/"+id+"/print").statusCode());assertEquals(403,get(other,"/api/staff/counter/showtimes/"+show+"/seats").statusCode());
+        HttpClient customer=client();login(customer,"one@example.test");assertEquals(403,get(customer,"/staff/counter").statusCode());assertEquals(403,get(customer,"/api/staff/counter/orders/"+id).statusCode());assertEquals(403,get(customer,"/orders/"+id).statusCode(),"Walk-in order belongs to nobody online");
+        token=csrf(get(c,"/staff/counter").body());var closed=post(c,"/staff/counter/shift/close","countedCash=285000&note=&_csrf="+URLEncoder.encode(token,java.nio.charset.StandardCharsets.UTF_8));assertEquals(302,closed.statusCode());String location=closed.headers().firstValue("location").orElse("");assertTrue(location.contains("/staff/counter/shifts/"),location);
+        var summary=get(c,location.replaceFirst("^https?://[^/]+",""));assertEquals(200,summary.statusCode());assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(summary.body()).contains("Phiếu tổng kết ca"));
+        HttpClient administrator=client();login(administrator,"admin@example.test");
+        for(String path:List.of("/admin/shifts","/admin/shifts?state=CLOSED&cinemaId="+cinema,"/admin/orders","/admin/orders?q=CP-","/admin/orders/"+id,"/admin")){var r=get(administrator,path);assertEquals(200,r.statusCode(),path);}
+        String detail=org.springframework.web.util.HtmlUtils.htmlUnescape(get(administrator,"/admin/orders/"+id).body());assertTrue(detail.contains("Khách vãng lai"));assertTrue(detail.contains("Bán tại quầy"));
+        assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(get(administrator,"/admin/shifts").body()).contains("285.000"));
+        var csv=get(administrator,"/admin/transactions.csv");assertEquals(200,csv.statusCode());assertTrue(csv.body().contains("Quầy"));
     }
 }

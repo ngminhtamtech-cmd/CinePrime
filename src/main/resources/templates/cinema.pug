@@ -1,18 +1,20 @@
 extends layout
 include mixins
 block content
-  section.cinema-heading
+  section.page-header
     .container
       .eyebrow= cinema.city
       h1= cinema.name
-      p= cinema.address
-      p Hotline: #{cinema.phone}
+      p #{cinema.address} · Hotline #{cinema.phone}
   section.container.section
-    h2 LỊCH CHIẾU TẠI RẠP
+    .section-heading
+      h2 Lịch chiếu tại rạp
     +dateStrip()
-    +showList(shows)
+    .show-list
+      +showList(shows)
   section.container.section
-    h2 GIÁ VÉ
+    .section-heading
+      h2 Giá vé
     p.muted Giá theo một ghế vật lý. Ghế đôi bắt buộc mua cả cặp; tổng giá cặp bằng giá hai ghế. Phụ thu riêng của suất hiển thị khi chọn ghế.
     .table-wrap
       table
@@ -29,6 +31,8 @@ block content
               td= p.dayType == 'WEEKEND' ? 'Thứ Bảy / Chủ nhật' : 'Thứ Hai – Thứ Sáu'
               td= p.time
               td= p.amountText
-  section.container.section
-    h2 THÔNG TIN RẠP
-    p.prose= cinema.description
+  if cinema.description
+    section.container.section
+      .section-heading
+        h2 Thông tin rạp
+      p.prose= cinema.description

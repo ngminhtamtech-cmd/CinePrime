@@ -1,7 +1,8 @@
 'use strict';
 (() => {
   const one=(s,r=document)=>r.querySelector(s),all=(s,r=document)=>[...r.querySelectorAll(s)];
-  const form=one('.ops-edit-form');if(!form)return;
+  // Shared by full-page forms and pop-up forms (admin-dialog.js): auto-upload, retry/cancel, preview, and block saving while busy.
+  function bindMedia(form){
   const states=new Map();
   function updateSave(){const blocked=[...states.values()].some(s=>s.busy||s.failed);form.dataset.uploadBlocked=String(blocked);for(const [field,state] of states)field.dataset.uploadState=state.busy?'busy':state.failed?'failed':'ready';all('button[type="submit"]',form).forEach(save=>{if(!save.dataset.initiallyLocked)save.dataset.initiallyLocked=String(save.disabled);if(!form.dataset.submitting)save.disabled=blocked||save.dataset.initiallyLocked==='true';});form.dispatchEvent(new Event('upload-state'));}
   all('.media-field',form).forEach(field=>{
@@ -19,7 +20,7 @@
         const data=await response.json().catch(()=>({message:'Không đọc được phản hồi upload.'}));
         if(!response.ok)throw new Error(data.message||'Không tải được file.');
         if(generation!==state.generation)return;
-        target.value=data.url;target.dispatchEvent(new Event('input',{bubbles:true}));preview();status.textContent='Đã tải '+selected.name+'. Bấm Lưu thay đổi để áp dụng.';
+        target.value=data.url;target.dispatchEvent(new Event('input',{bubbles:true}));preview();status.textContent='Đã tải '+selected.name+'. '+(data.warning?data.warning+' ':'')+'Bấm Lưu thay đổi để áp dụng.';
       }catch(error){if(generation!==state.generation)return;state.failed=true;retry.hidden=false;status.textContent=error.message+' Có thể Thử lại hoặc Bỏ lựa chọn mới để giữ dữ liệu cũ.';}
       finally{if(generation===state.generation){state.busy=false;updateSave();}}
     }
@@ -28,6 +29,11 @@
     if(field.dataset.video!=='true')preview();
   });
   form.addEventListener('submit',event=>{if([...states.values()].some(s=>s.busy||s.failed)){event.preventDefault();if(!form.dataset.adminForm)one('.upload-status',form)?.scrollIntoView({block:'center'});}},true);
+  return {blocked:()=>[...states.values()].some(s=>s.busy||s.failed)};
+  }
+  window.AdminMedia={bind:bindMedia};
+  const form=one('.ops-edit-form:not(.dialog-form)');if(!form)return;
+  bindMedia(form);
   const title=form.dataset.movieForm==='true'?one('#field-title',form):null,slug=one('#field-slug');
   if(title&&slug){let manual=!!one('input[name="id"]',form)||!!slug.value;slug.addEventListener('input',()=>manual=true);title.addEventListener('input',()=>{if(!manual)slug.value=title.value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');});}
   all('[data-trailer-preview]',form).forEach(button=>button.addEventListener('click',()=>{try{openTrailer(document.getElementById(button.dataset.trailerTarget).value, 'Xem thử trailer');}catch(error){toast(error.message);}}));

@@ -139,7 +139,7 @@ block admin
             span.mf-step 4
             div
               h2#mf-media-title Hình ảnh và trailer
-              p Ảnh JPG, PNG, WEBP tối đa 5 MB. Poster dọc 2:3, banner ngang 16:9.
+              p Ảnh JPG, PNG, WEBP tối đa 5 MB. Poster dọc 2:3. Banner ngang rộng tối thiểu 1600px, khuyến nghị 1920×640.
           .mf-media-grid
             each kind in ['poster', 'banner']
               .mf-field(data-field=kind)
@@ -202,7 +202,7 @@ block admin
               span.mf-switch-track
               span
                 strong Nổi bật trên trang chủ
-                small Dùng banner ở đầu trang chủ.
+                small Lên banner trang chủ khi chưa có banner nào đang bật (quản lý tại Banner trang chủ).
 
     .mf-savebar
       span#mf-save-state.muted Chưa có thay đổi

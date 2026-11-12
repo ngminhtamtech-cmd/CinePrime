@@ -25,13 +25,13 @@ public class AdminService {
         add("prices","Bảng giá",Price.class,"cinemaId,seatType,dayType,fromMinute,toMinute,amount");
         add("products","Bắp nước / Combo",Product.class,"name,kind,image,description,price,active");
         add("vouchers","Voucher",Voucher.class,"code,description,kind,value,minimum,maximum,quota,perUser,startsAt,endsAt,active");
-        add("contents","Nội dung / Banner / Chính sách",Content.class,"kind,title,slug,image,link,body,active,publishedAt");
+        add("contents","Bài viết / Ưu đãi / Chính sách",Content.class,"kind,title,slug,image,link,body,active,publishedAt");
         add("users","Người dùng",User.class,"email,name,phone,role,cinemaId,enabled");
         add("reviews","Duyệt bình luận",Review.class,"visible");
     }
     private static void add(String key,String label,Class<? extends Row> type,String fields){RESOURCES.put(key,new Resource(label,type,fields));}
-    private final Store db;private final BookingService booking;private final PasswordEncoder passwords;private final Clock clock;private final vn.cineprime.media.MediaService media;private final MovieGenres genres;private final RoomSetup setup;private final MovieCredits credits;
-    public AdminService(Store db,BookingService booking,PasswordEncoder passwords,Clock clock,vn.cineprime.media.MediaService media,MovieGenres genres,RoomSetup setup,MovieCredits credits){this.db=db;this.booking=booking;this.passwords=passwords;this.clock=clock;this.media=media;this.genres=genres;this.setup=setup;this.credits=credits;}
+    private final Store db;private final BookingService booking;private final PasswordEncoder passwords;private final Clock clock;private final vn.cineprime.media.MediaService media;private final MovieGenres genres;private final RoomSetup setup;private final MovieCredits credits;private final vn.cineprime.web.BannerService banners;
+    public AdminService(Store db,BookingService booking,PasswordEncoder passwords,Clock clock,vn.cineprime.media.MediaService media,MovieGenres genres,RoomSetup setup,MovieCredits credits,vn.cineprime.web.BannerService banners){this.db=db;this.booking=booking;this.passwords=passwords;this.clock=clock;this.media=media;this.genres=genres;this.setup=setup;this.credits=credits;this.banners=banners;}
     public Resource resource(String key){Resource r=RESOURCES.get(key);if(r==null)throw new IllegalArgumentException("Mục quản lý không tồn tại.");return r;}
     public Row save(Long actor,String key,Long id,Map<String,String> values){
         if("showtimes".equals(key)&&id==null)throw new ShowtimeBatch.Failure(409,"SINGLE_CREATE_REMOVED","Hãy thêm suất chiếu bằng lịch tuần.",null);
@@ -89,6 +89,7 @@ public class AdminService {
         db.save(row);
         if(row instanceof Movie m)genres.replace(m,selectedGenres);
         if(row instanceof Movie m)credits.replace(m,selectedCredits);
+        if(row instanceof Movie m)banners.ensureMovie(actor,m);
         if(row instanceof MovieGenre link){db.entityManager().flush();genres.requireVisible(db.get(Movie.class,link.movieId));if(originalLinkMovie!=null&&!originalLinkMovie.equals(link.movieId))genres.requireVisible(db.get(Movie.class,originalLinkMovie));}
         if(row instanceof Seat seat){db.entityManager().flush();setup.validateCurrent(seat.roomId);if(originalRoom!=null&&!originalRoom.equals(seat.roomId))setup.validateCurrent(originalRoom);}
         if(row instanceof Price)for(Showtime s:db.list(Showtime.class,"where e.status='OPEN' and e.startsAt>?1",clock.instant()))if(priceCinemas.contains(db.get(Room.class,s.roomId).cinemaId))for(Seat seat:db.list(Seat.class,"where e.roomId=?1 and e.active=true",s.roomId))booking.price(s,seat);
@@ -120,7 +121,7 @@ public class AdminService {
         if(row instanceof Price p){db.lock(Cinema.class,p.cinemaId);choice(p.seatType,"STANDARD","VIP","COUPLE");choice(p.dayType,"WEEKDAY","WEEKEND");require(p.amount>0&&p.fromMinute>=0&&p.toMinute<=1440&&p.fromMinute<p.toMinute,"Giá hoặc khung phút không hợp lệ.");for(Price old:db.list(Price.class,"where e.cinemaId=?1 and e.seatType=?2 and e.dayType=?3",p.cinemaId,p.seatType,p.dayType))if(!Objects.equals(old.id,p.id)&&p.fromMinute<old.toMinute&&p.toMinute>old.fromMinute)throw new IllegalArgumentException("Trùng khung giá.");}
         if(row instanceof Product p){require(!p.name.isBlank()&&p.price>=0,"Tên/giá sản phẩm không hợp lệ.");choice(p.kind,"FOOD","DRINK","COMBO");p.image=media.image(p.image);}
         if(row instanceof Voucher v){v.code=v.code.toUpperCase(Locale.ROOT);choice(v.kind,"FIXED","PERCENT");require(v.code.matches("[A-Z0-9_-]{2,40}")&&v.value>0&&v.minimum>=0&&v.maximum>=0&&v.quota>0&&v.perUser>0&&v.startsAt!=null&&v.endsAt!=null&&v.startsAt.isBefore(v.endsAt),"Thông tin voucher không hợp lệ.");require(!v.kind.equals("PERCENT")||v.value<=100,"Phần trăm không vượt 100.");}
-        if(row instanceof Content c){choice(c.kind,"BANNER","ARTICLE","OFFER","POLICY","ABOUT","CONTACT","NOTICE");require(!c.title.isBlank()&&c.slug.matches("[a-z0-9-]+"),"Tiêu đề/slug không hợp lệ.");c.image=media.image(c.image);require(c.link.isBlank()||c.link.startsWith("/")&&!c.link.startsWith("//"),"Liên kết nội dung phải nằm trong CinePrime.");}
+        if(row instanceof Content c){choice(c.kind,"ARTICLE","OFFER","POLICY","ABOUT","CONTACT","NOTICE");require(!c.title.isBlank()&&c.slug.matches("[a-z0-9-]+"),"Tiêu đề/slug không hợp lệ.");c.image=media.image(c.image);require(c.link.isBlank()||c.link.startsWith("/")&&!c.link.startsWith("//"),"Liên kết nội dung phải nằm trong CinePrime.");}
         if(row instanceof User u){choice(u.role,"ADMIN","STAFF","CUSTOMER");u.email=u.email.toLowerCase(Locale.ROOT);require(u.email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")&&!u.name.isBlank(),"Thông tin người dùng không hợp lệ.");if(u.role.equals("STAFF"))db.get(Cinema.class,u.cinemaId);else u.cinemaId=null;
             // Lock all admins in ID order, preventing two concurrent demotions of the last administrators.
             List<User> admins=db.list(User.class,"where e.role='ADMIN' and e.enabled=true order by e.id");for(User a:admins)db.lock(User.class,a.id);
@@ -146,11 +147,12 @@ public class AdminService {
         genres.lockCatalog();
         Movie movie=db.lock(Movie.class,id);String name=movie.title;
         switch(action){
-            case "restore"->{movie.active=true;genres.requireVisible(movie);}
+            case "restore"->{movie.active=true;genres.requireVisible(movie);banners.ensureMovie(actor,movie);}
             case "delete"->{
                 require(db.count(Showtime.class,"where e.movieId=?1",id)==0&&db.count(Favorite.class,"where e.movieId=?1",id)==0&&db.count(Review.class,"where e.movieId=?1",id)==0&&db.count(Subscription.class,"where e.movieId=?1",id)==0,"Phim đã có suất hoặc dữ liệu khách. Chỉ được ẩn để giữ lịch sử.");
                 for(MovieGenre link:db.list(MovieGenre.class,"where e.movieId=?1",id))db.delete(link);
                 for(Credit link:db.list(Credit.class,"where e.movieId=?1",id))db.delete(link);
+                for(Banner banner:db.list(Banner.class,"where e.movieId=?1",id))db.delete(banner);
                 db.delete(movie);db.entityManager().flush();
             }
             default->throw new IllegalArgumentException("Thao tác phim không hợp lệ.");

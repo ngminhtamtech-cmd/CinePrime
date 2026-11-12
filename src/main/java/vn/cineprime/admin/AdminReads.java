@@ -58,15 +58,25 @@ public class AdminReads {
         return mapped(p,p.rows().stream().map(row->{var s=(Showtime)row[0];return Map.<String,Object>of("id",s.id,"movieTitle",row[1],"roomName",row[2],"cinemaName",row[3],"when",interval(s.startsAt,s.endsAt),"status",AdminPresentation.text(s.status));}).toList());
     }
     public Map<String,Object> orders(String q,String state,String paymentState,Long cinema,LocalDate day,int requested){
-        String from=" from "+entity(Order.class)+" o, "+entity(User.class)+" u, "+entity(Showtime.class)+" s, "+entity(Room.class)+" r where o.userId=u.id and o.showtimeId=s.id and s.roomId=r.id";
+        String from=" from "+entity(Order.class)+" o left join "+entity(User.class)+" u on u.id=o.userId, "+entity(Showtime.class)+" s, "+entity(Room.class)+" r where o.showtimeId=s.id and s.roomId=r.id";
         Map<String,Object> args=new HashMap<>();
         if(!q.isBlank()){from+=" and (lower(o.code) like :q escape '!' or lower(o.movieTitle) like :q escape '!' or lower(u.email) like :q escape '!' or lower(u.name) like :q escape '!')";args.put("q",search(q));}
         if(!state.isBlank()){from+=" and o.status=:state";args.put("state",state);}if(cinema!=null){from+=" and r.cinemaId=:cinema";args.put("cinema",cinema);}
         if(day!=null){from+=" and o.createdAt>=:from and o.createdAt<:until";args.put("from",day.atStartOfDay(ReportService.ZONE).toInstant());args.put("until",day.plusDays(1).atStartOfDay(ReportService.ZONE).toInstant());}
         if(!paymentState.isBlank()){from+=" and exists (select p.id from "+entity(Payment.class)+" p where p.orderId=o.id and "+(paymentState.equals("RECONCILIATION")?"p.reconciliation=true)":"p.status=:payment)");if(!paymentState.equals("RECONCILIATION"))args.put("payment",paymentState);}
-        var p=page("select o,u.email,u.name",from," order by o.createdAt desc,o.id desc",args,requested);
+        var p=page("select o,coalesce(u.email,''),coalesce(u.name,'Khách vãng lai')",from," order by o.createdAt desc,o.id desc",args,requested);
         Map<Long,List<Payment>> payments=new HashMap<>();if(!p.rows().isEmpty())db.list(Payment.class,"where e.orderId in ?1 order by e.id desc",p.rows().stream().map(r->((Order)r[0]).id).toList()).forEach(a->payments.computeIfAbsent(a.orderId,n->new ArrayList<>()).add(a));
-        return mapped(p,p.rows().stream().map(row->{Order o=(Order)row[0];var v=catalog.order(o);v.put("email",row[1]);v.put("customerName",row[2]);v.put("created",db.date(o.createdAt));v.put("statusLabel",AdminPresentation.text(o.status));var ps=payments.getOrDefault(o.id,List.of());v.put("paymentLabel",ps.isEmpty()?"Chưa tạo thanh toán":AdminPresentation.text(ps.getFirst().status)+(ps.stream().anyMatch(a->a.reconciliation)?" · Cần đối soát":""));return v;}).toList());
+        return mapped(p,p.rows().stream().map(row->{Order o=(Order)row[0];var v=catalog.order(o);v.put("email",row[1]);v.put("customerName",row[2]);v.put("channelLabel",o.channel.equals("COUNTER")?"Quầy":"Online");v.put("created",db.date(o.createdAt));v.put("statusLabel",AdminPresentation.text(o.status));var ps=payments.getOrDefault(o.id,List.of());v.put("paymentLabel",ps.isEmpty()?"Chưa tạo thanh toán":AdminPresentation.text(ps.getFirst().status)+(ps.stream().anyMatch(a->a.reconciliation)?" · Cần đối soát":""));return v;}).toList());
+    }
+    /** Counter cash shifts; expected cash of open shifts is read live, closed shifts use their snapshot. */
+    public Map<String,Object> shifts(Long cinema,LocalDate day,String state,int requested){
+        String from=" from "+entity(Shift.class)+" s, "+entity(User.class)+" u, "+entity(Cinema.class)+" c where s.staffId=u.id and s.cinemaId=c.id";Map<String,Object> args=new HashMap<>();
+        if(cinema!=null){from+=" and s.cinemaId=:cinema";args.put("cinema",cinema);}if(!state.isBlank()){from+=" and s.status=:state";args.put("state",state);}
+        if(day!=null){from+=" and s.openedAt>=:from and s.openedAt<:until";args.put("from",day.atStartOfDay(ReportService.ZONE).toInstant());args.put("until",day.plusDays(1).atStartOfDay(ReportService.ZONE).toInstant());}
+        var p=page("select s,u.name,c.name",from," order by s.openedAt desc,s.id desc",args,requested);
+        return mapped(p,p.rows().stream().map(row->{Shift s=(Shift)row[0];long cashIn=query("select coalesce(sum(p.amount),0) from "+entity(Payment.class)+" p where p.shiftId=:id and p.provider='CASH' and p.status='SUCCEEDED'",Long.class,Map.of("id",s.id)).getSingleResult();long expected=s.expectedCash!=null?s.expectedCash:s.openingCash+cashIn;
+            Map<String,Object> v=new LinkedHashMap<>();v.put("id",s.id);v.put("staff",row[1]);v.put("cinema",row[2]);v.put("opened",db.date(s.openedAt));v.put("closed",s.closedAt==null?"Đang mở":db.date(s.closedAt));v.put("status",AdminPresentation.text(s.status));v.put("opening",db.money(s.openingCash));v.put("cashIn",db.money(expected-s.openingCash));v.put("expected",db.money(expected));v.put("counted",s.countedCash==null?"—":db.money(s.countedCash));
+            v.put("difference",s.countedCash==null?"—":(s.countedCash>expected?"+":"")+db.money(s.countedCash-expected));v.put("mismatch",s.countedCash!=null&&s.countedCash!=expected);v.put("orders",db.count(Order.class,"where e.shiftId=?1 and e.status='PAID'",s.id));v.put("cancelled",db.count(Order.class,"where e.shiftId=?1 and e.cancelledAt is not null",s.id));v.put("note",Objects.toString(s.note,""));return v;}).toList());
     }
     public Map<String,Object> audit(String q,int requested){
         String from=" from "+entity(Audit.class)+" a left join "+entity(User.class)+" u on u.id=a.actorId where 1=1";Map<String,Object> args=new HashMap<>();

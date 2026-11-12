@@ -2,25 +2,22 @@ extends layout
 include mixins
 block content
   .container.section
-    .booking-steps
-      span 01 · Chọn suất
-      span 02 · Chọn ghế
-      strong 03 · Combo & Thanh toán
-      span 04 · Nhận vé
+    +bookingSteps(order.status == 'PAID' ? 4 : 3)
     .section-heading
       h1 Đơn #{order.code}
       span.badge= order.statusLabel
     #order-status(data-order-id=order.id data-status=order.status)
     if order.status == 'PENDING_PAYMENT' && !order.expired
-      .hold-clock(role="status") Thời gian giữ ghế còn lại 
+      .hold-clock(role="status")
+        span Thời gian giữ ghế còn lại
         strong#countdown(data-deadline=order.deadline) --:--
-        span · Không gia hạn khi tải lại trang hoặc chuyển sang MoMo.
+        span Không gia hạn khi tải lại trang hoặc chuyển sang MoMo.
     .booking-grid
       div
         .panel
           h2= order.movieTitle
           p #{order.cinemaName} · #{order.roomName}
-          p= order.when
+          p.muted= order.when
           each l in seatLines
             .line
               span Ghế #{l.label} · #{l.seatType}
@@ -28,11 +25,11 @@ block content
         if order.status == 'PENDING_PAYMENT' && !order.expired && !order.frozen
           form.panel(action='/orders/' + order.id + '/cart' method="post")
             +csrf()
-            h2 Thêm vị ngon cho buổi phim
+            h2 Bắp nước & mã ưu đãi
             each p in products
               .product-line
                 if p.image
-                  img(src=p.image alt=p.name)
+                  img(src=p.image alt="")
                 div
                   strong= p.name
                   p= p.description
@@ -41,7 +38,7 @@ block content
                   input(type="number" name='product_' + p.id min="0" max="20" value=p.quantity)
             label Mã ưu đãi (một mã/đơn)
               input(name="voucher" value=voucherCode placeholder="Nhập mã ưu đãi")
-            button.button.secondary(type="submit") ÁP DỤNG COMBO / MÃ ƯU ĐÃI
+            button.button.secondary(type="submit") Áp dụng combo / mã ưu đãi
         if order.frozen && order.status == 'PENDING_PAYMENT'
           .notice Đơn đã gửi sang thanh toán. Nội dung được giữ nguyên để đối chiếu. Hãy kiểm tra trạng thái nếu bạn đã thanh toán.
         if order.status == 'PAID'
@@ -49,12 +46,12 @@ block content
           .ticket-grid
             each t in tickets
               article.panel.e-ticket
-                .eyebrow CINEPRIME E-TICKET
+                .eyebrow Vé điện tử CinePrime
                 h2 Ghế #{t.seat}
                 img.qr(src='/tickets/' + t.id + '/qr.png' alt='QR vé ' + t.code)
                 strong= t.code
-                p= t.status
-                a.button.secondary(href='/tickets/' + t.id + '/download') TẢI VÉ PDF ↓
+                p.muted= t.status
+                a.button.secondary(href='/tickets/' + t.id + '/download') Tải vé PDF
         each p in payments
           .panel
             h3 Giao dịch #{p.externalOrderId}
@@ -83,11 +80,11 @@ block content
           if order.total == 0
             form(action='/orders/' + order.id + '/pay' method="post")
               +csrf()
-              button.button.full(type="submit") XÁC NHẬN VÉ MIỄN PHÍ
+              button.button.full(type="submit") Xác nhận vé miễn phí
           else if momoConfigured
             form(action='/orders/' + order.id + '/pay' method="post")
               +csrf()
-              button.button.full(type="submit") THANH TOÁN MOMO SANDBOX
+              button.button.full(type="submit") Thanh toán MoMo (sandbox)
           else
             p.notice MoMo sandbox chưa được cấu hình. Không phát sinh thanh toán và không tự phát vé.
           form(action='/orders/' + order.id + '/cancel' method="post")
@@ -96,5 +93,5 @@ block content
         if canVerify
           form(action='/orders/' + order.id + '/verify' method="post")
             +csrf()
-            button.button.secondary.full(type="submit") KIỂM TRA THANH TOÁN
+            button.button.secondary.full(type="submit") Kiểm tra thanh toán
         a.back(href="/account") ← Vé và lịch sử của tôi

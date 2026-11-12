@@ -1,0 +1,49 @@
+include ../mixins
+include form-fields
+//- Fragment loaded into a <dialog> on the list page by /js/admin-dialog.js. No page chrome.
+.dialog-shell(class='dialog-' + key)
+  header.dialog-head
+    h2#admin-dialog-title #{rowId ? 'Sửa' : 'Thêm'} · #{resourceLabel}
+    button.dialog-close(type="button" data-dialog-close aria-label="Đóng")
+      svg(viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false")
+        path(d="M6 6l12 12M18 6L6 18")
+  p.form-error.dialog-error(role="alert" hidden data-dialog-error)
+  form.ops-edit-form.dialog-form(action='/admin/manage/' + key + '/save' method="post" data-dialog-form-key=key data-editing=rowId ? 'true' : 'false' novalidate)
+    +csrf()
+    input(type="hidden" name="returnTo" value=returnTo)
+    if rowId
+      input(type="hidden" name="id" value=rowId)
+    .dialog-content
+      if key == 'contents'
+        .dialog-grid
+          .dialog-col
+            each f in fields
+              if f.name == 'kind' || f.name == 'title' || f.name == 'body'
+                +dialogField(f, required.contains(f.name))
+          .dialog-col
+            each f in fields
+              if f.name == 'image' || f.name == 'link' || f.name == 'publishedAt' || f.name == 'active'
+                +dialogField(f, required.contains(f.name))
+            details.dialog-advanced(open=rowId ? 'open' : false)
+              summary Đường dẫn bài viết
+              each f in fields
+                if f.name == 'slug'
+                  +dialogField(f, required.contains(f.name))
+      else
+        .dialog-fields
+          each f in fields
+            +dialogField(f, required.contains(f.name))
+          if key == 'users' && !rowId
+            .form-field(data-field="initialPassword")
+              label(for="dlg-initialPassword")
+                | Mật khẩu ban đầu
+                span.required-mark(aria-hidden="true")  *
+              input#dlg-initialPassword(type="password" name="initialPassword" minlength="10" required autocomplete="new-password")
+              small Ít nhất 10 ký tự. Người dùng nên đổi sau lần đăng nhập đầu.
+              small.field-error(hidden)
+          if key == 'genres' && rowId
+            a.dialog-link(href='/admin/manage/genres/edit?id=' + rowId) Xem phim đang dùng thể loại này →
+    footer.dialog-actions
+      span.dialog-state(role="status") #{rowId ? 'Chỉnh sửa rồi bấm Lưu.' : 'Điền thông tin rồi bấm Thêm.'}
+      button.button.secondary(type="button" data-dialog-close) Hủy
+      button.button(type="submit")= rowId ? 'Lưu thay đổi' : 'Thêm mới'

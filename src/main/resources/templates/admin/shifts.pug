@@ -1,0 +1,58 @@
+extends layout
+block admin
+  .page-heading
+    div
+      h1 Ca bán vé tại quầy
+      p.muted Tiền mặt dự kiến = tiền đầu ca + tiền mặt thu trong ca, đã trừ đơn hủy. Ca đã đóng giữ số liệu lúc đóng.
+  form.ops-filters(method="get")
+    label Rạp
+      select(name="cinemaId")
+        option(value="") Tất cả rạp
+        each c in adminCinemas
+          option(value=c.id selected=cinemaId == c.id.toString())= c.name
+    label Ngày mở ca
+      input(type="date" name="date" value=day)
+    label Trạng thái
+      select(name="state")
+        option(value="") Tất cả
+        option(value="OPEN" selected=state == 'OPEN') Đang mở
+        option(value="CLOSED" selected=state == 'CLOSED') Đã đóng
+    button.button.secondary(type="submit") Lọc
+  .panel.table-wrap
+    table
+      thead
+        tr
+          th Ca / Nhân viên
+          th Rạp
+          th Mở · Đóng
+          th Đơn bán · hủy
+          th Tiền đầu ca
+          th Thu trong ca
+          th Dự kiến
+          th Đếm được
+          th Chênh lệch
+      tbody
+        each s in rows
+          tr
+            td
+              strong ##{s.id} · #{s.staff}
+              small= s.status
+            td= s.cinema
+            td
+              span= s.opened
+              small= s.closed
+            td #{s.orders} · #{s.cancelled}
+            td= s.opening
+            td= s.cashIn
+            td= s.expected
+            td= s.counted
+            td
+              if s.mismatch
+                strong.form-error= s.difference
+              else
+                span= s.difference
+              if s.note
+                small Ghi chú: #{s.note}
+    if rows.size() == 0
+      .empty Chưa có ca phù hợp.
+    +pagination()

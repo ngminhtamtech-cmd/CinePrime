@@ -2,8 +2,8 @@ extends layout
 include mixins
 block content
   section.container.section
-    .eyebrow LÊN LỊCH CHO CUỘC HẸN CỦA BẠN
-    h1 Lịch chiếu phim
+    h1.page-title Lịch chiếu
+    p.page-lead Chọn ngày, phim hoặc rạp để xem suất còn nhận đặt vé.
     form.filters(method="get")
       select(name="movieId" aria-label="Phim")
         option(value="") Tất cả phim
@@ -14,6 +14,7 @@ block content
         each c in cinemaOptions
           option(value=c.id selected=selectedCinema == c.id)= c.city + ' · ' + c.name
       input(type="date" name="date" value=selectedDate aria-label="Ngày chiếu")
-      button.button(type="submit") TÌM SUẤT CHIẾU
+      button.button(type="submit") Tìm suất chiếu
     +dateStrip()
-    +showList(shows)
+    .show-list
+      +showList(shows)

@@ -33,6 +33,11 @@ public class BookingService {
         }
         Showtime show=db.lock(Showtime.class,showtimeId);
         if(!show.status.equals("OPEN")||now().plusSeconds(1200).isAfter(show.startsAt))throw new IllegalArgumentException("Suất đã ngừng nhận đặt vé.");
+        Order o=new Order();o.userId=userId;return reserve(show,requested,o);
+    }
+    /** Allocates seats for an already locked OPEN showtime; caller has checked its own sales cutoff and hold limits. */
+    public Order reserve(Showtime show,List<Long> requested,Order o){
+        if(requested==null||requested.isEmpty()||requested.size()>8||new HashSet<>(requested).size()!=requested.size())throw new IllegalArgumentException("Chọn từ 1 đến 8 ghế, không lặp.");
         Movie movie=db.lockRead(Movie.class,show.movieId);Room room=db.get(Room.class,show.roomId);Cinema cinema=db.get(Cinema.class,room.cinemaId);
         if(!movie.active||vn.cineprime.domain.MovieLifecycle.afterEnd(movie,show.startsAt)||!room.active||!cinema.active)throw new IllegalArgumentException("Suất không còn mở bán.");
         db.lock(Cinema.class,cinema.id);
@@ -53,7 +58,7 @@ public class BookingService {
             if(inv.status.equals("SOLD")||(inv.status.equals("HELD")&&now().isBefore(inv.expiresAt)))throw new IllegalArgumentException("Ghế "+seat.label+" vừa được người khác giữ hoặc mua. Hãy chọn lại.");
             inventories.add(inv);
         }
-        Order o=new Order();o.userId=userId;o.showtimeId=show.id;o.code="CP-"+UUID.randomUUID().toString().substring(0,12).toUpperCase(Locale.ROOT);
+        o.showtimeId=show.id;o.code="CP-"+UUID.randomUUID().toString().substring(0,12).toUpperCase(Locale.ROOT);
         o.createdAt=now();o.expiresAt=now().plusSeconds(300);o.movieTitle=movie.title;o.cinemaName=cinema.name;o.roomName=room.name;o.showStartsAt=show.startsAt;db.save(o);
         for(int i=0;i<seats.size();i++){
             Seat seat=seats.get(i);OrderSeat line=new OrderSeat();line.orderId=o.id;line.seatId=seat.id;line.label=seat.label;line.seatType=seat.type;line.price=price(show,seat);db.save(line);o.subtotal=Math.addExact(o.subtotal,line.price);
@@ -61,8 +66,9 @@ public class BookingService {
         }
         o.total=o.subtotal;return o;
     }
-    public Order owned(Long userId,Long id){Order o=db.get(Order.class,id);if(!o.userId.equals(userId))throw new org.springframework.security.access.AccessDeniedException("Không được truy cập đơn này.");return o;}
-    private Order lockOrder(Long id){Order snapshot=db.get(Order.class,id);db.lock(User.class,snapshot.userId);db.lock(Showtime.class,snapshot.showtimeId);return db.lock(Order.class,id);}
+    public Order owned(Long userId,Long id){Order o=db.get(Order.class,id);if(o.userId==null||!o.userId.equals(userId))throw new org.springframework.security.access.AccessDeniedException("Không được truy cập đơn này.");return o;}
+    /** Online orders: customer → showtime → order. Counter orders: seller → showtime → order (same order as CounterService). */
+    public Order lockOrder(Long id){Order snapshot=db.get(Order.class,id);Long owner=snapshot.channel.equals("COUNTER")?snapshot.soldBy:snapshot.userId;if(owner!=null)db.lock(User.class,owner);db.lock(Showtime.class,snapshot.showtimeId);return db.lock(Order.class,id);}
     private void editable(Order o){if(!o.status.equals("PENDING_PAYMENT")||!now().isBefore(o.expiresAt))throw new IllegalArgumentException("Đơn đã hết hạn hoặc đã hoàn tất.");if(o.frozen)throw new IllegalArgumentException("Đơn đã chuyển sang thanh toán, không thể sửa nội dung.");}
     public void updateCart(Long userId,Long id,Map<Long,Integer> quantities,String voucherCode){
         owned(userId,id);Order o=lockOrder(id);editable(o);
@@ -87,10 +93,12 @@ public class BookingService {
         }
         o.total=o.subtotal-o.discount;
     }
+    /** Admin cancel of an unpaid order of any channel. */
+    public void cancelUnpaid(Long id){Order o=lockOrder(id);if(!o.status.equals("PENDING_PAYMENT"))throw new IllegalArgumentException("Chỉ hủy được đơn chưa thanh toán.");release(o,"CANCELLED");}
     public void cancel(Long userId,Long id){owned(userId,id);Order o=lockOrder(id);if(!o.status.equals("PENDING_PAYMENT"))throw new IllegalArgumentException("Chỉ hủy được đơn chưa thanh toán.");release(o,"CANCELLED");}
     public void expire(Long id){Order o=lockOrder(id);if(o.status.equals("PENDING_PAYMENT")&&!now().isBefore(o.expiresAt))release(o,"EXPIRED");}
     private void expireLocked(Order o){db.lock(Showtime.class,o.showtimeId);db.lock(Order.class,o.id);if(o.status.equals("PENDING_PAYMENT")&&!now().isBefore(o.expiresAt))release(o,"EXPIRED");}
-    private void release(Order o,String status){
+    public void release(Order o,String status){
         o.status=status;
         for(Inventory i:db.list(Inventory.class,"where e.orderId=?1 and e.status='HELD' order by e.seatId",o.id)){i.status="AVAILABLE";i.orderId=null;i.expiresAt=null;}
         db.first(VoucherUse.class,"where e.orderId=?1",o.id).ifPresent(use->{db.lock(Voucher.class,use.voucherId);if(use.status.equals("RESERVED"))use.status="RELEASED";});
@@ -126,11 +134,15 @@ public class BookingService {
         }
         List<Inventory> seats=db.list(Inventory.class,"where e.orderId=?1 order by e.seatId",o.id);
         if(seats.size()!=db.list(OrderSeat.class,"where e.orderId=?1",o.id).size()||seats.stream().anyMatch(i->!i.status.equals("HELD"))){p.reconciliation=true;release(o,"EXPIRED");return;}
-        for(Inventory inv:seats){inv.status="SOLD";inv.expiresAt=null;Ticket t=new Ticket();t.orderId=o.id;t.showtimeId=o.showtimeId;t.seatId=inv.seatId;t.code="T-"+UUID.randomUUID().toString().substring(0,12).toUpperCase(Locale.ROOT);t.token=AccountService.token();db.save(t);}
-        o.status="PAID";o.paidAt=now();
+        issue(o,seats);
         db.first(VoucherUse.class,"where e.orderId=?1",o.id).ifPresent(use->{db.lock(Voucher.class,use.voucherId);use.status="USED";});
         Point points=new Point();points.userId=o.userId;points.orderId=o.id;points.points=o.total/1000;points.createdAt=now();db.save(points);
         User u=db.get(User.class,o.userId);notices.notify(u,"paid:"+o.id,"Đặt vé thành công · "+o.code,"Phim: "+o.movieTitle+"\nRạp: "+o.cinemaName+" · "+o.roomName+"\nSuất: "+db.date(o.showStartsAt)+"\nMở Vé của tôi trên CinePrime để xem QR và tải PDF.",true);
         db.audit(o.userId,"PAYMENT_CONFIRMED",o.code);
+    }
+    /** Sells the order's HELD inventory rows (locked by the caller) and issues one ticket per seat. */
+    public void issue(Order o,List<Inventory> seats){
+        for(Inventory inv:seats){inv.status="SOLD";inv.expiresAt=null;Ticket t=new Ticket();t.orderId=o.id;t.showtimeId=o.showtimeId;t.seatId=inv.seatId;t.code="T-"+UUID.randomUUID().toString().substring(0,12).toUpperCase(Locale.ROOT);t.token=AccountService.token();db.save(t);}
+        o.status="PAID";o.paidAt=now();
     }
 }

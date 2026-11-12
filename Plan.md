@@ -32,15 +32,19 @@ Ba tài liệu gốc: Plan.md (đặc tả và nghiệm thu), README.MD (cách c
 - Login riêng; danh sách suất tại rạp phụ trách; camera QR hoặc tra mã đơn/vé.
 - Xem phim/phòng/suất/ghế/trạng thái rồi xác nhận; một lần check-in/QR.
 - Danh sách đã/chưa vào và số lượng. Không sửa giá/doanh thu/tài khoản.
+- Bán vé tại quầy: mở/đóng ca tiền mặt, chọn suất/ghế/combo, gắn tài khoản khách tùy chọn, thu tiền mặt, in vé 80mm, check-in luôn, hủy đơn của mình trong 15 phút (xem mục 8).
 
 ## 3. UI và nguồn tham khảo
 
-UI-Template.md làm chuẩn: trắng, xanh #1459A5, navy #111827, cam #F47B20; max-width 1232px; poster 2:3; grid 4/3/2; breakpoints 1090/850/620. Pug layout/include/mixin; thao tác mobile không phụ thuộc hover. Có loading/empty/error/expired/conflict/camera-denied. Không dựng nút giả.
+UI-Template.md làm chuẩn (cập nhật 12/11/2026 cho giao diện khách): nền trắng/xám nhạt, chữ gần đen, navy #111827 cho menu/footer, cam #F47B20 là màu nhấn duy nhất; font Be Vietnam Pro tự host; không gradient trang trí, không hình minh họa tự tạo; max-width 1232px; poster 2:3; grid 4/3/2; breakpoints 1090/850/620. Admin/Staff giữ token cũ (app.css + operations.css). Pug layout/include/mixin; thao tác mobile không phụ thuộc hover. Có loading/empty/error/expired/conflict/camera-denied. Không dựng nút giả.
+
+Quyết định 12/11/2026: chỉ giao diện khách cần responsive (desktop + mobile, breakpoint 1090/850/620). Admin và Staff chỉ hỗ trợ desktop (1366×768 trở lên); không làm thêm hoặc nghiệm thu mobile/breakpoint cho màn điều hành. Kết quả mobile Admin/Staff ghi ở các mốc trước là lịch sử, không còn là yêu cầu.
 
 Luồng: phim/rạp/ngày/suất → ghế → combo → xác nhận/voucher → MoMo → xác minh → vé.
 
 | Ngày | URL Galaxy | Đã quan sát | Giới hạn |
 |---|---|---|---|
+| 12/11/2026 | https://www.galaxycine.vn/ | Hero là băng banner chỉ có ảnh (ảnh gốc 2048×682, tỉ lệ 3:1, hiển thị đúng tỉ lệ, không kéo giãn), xen kẽ phim và khuyến mãi; trong 7 giây theo dõi không thấy tự chuyển; font Nunito Sans | Chỉ đọc DOM ở viewport 1024px, không xem mobile; không sao chép ảnh, chữ hay mã. CinePrime giữ chữ + nút trên banner phim theo yêu cầu người dùng |
 | 06/11/2026 | https://www.galaxycine.vn/lich-chieu/ | Phần công khai chọn vị trí/phim/suất, các bước đặt vé, menu và footer qua nội dung trang | Không khảo sát khu vực sau đăng nhập; không có tham chiếu Admin/Staff công khai. Admin/Staff thiết kế theo nghiệp vụ CinePrime |
 | 05/11/2026 | https://www.galaxycine.vn/ | header, hero, tab phim, mobile menu | Nội dung tham khảo, không sao chép thương hiệu |
 | 05/11/2026 | https://www.galaxycine.vn/phim-dang-chieu/ | poster, tuổi, điểm, danh sách | Không dùng dữ liệu/phim thực làm seed |
@@ -101,7 +105,9 @@ Email outbox retry; lỗi mail không rollback paid hoặc mất vé. Account xe
 - [x] 5: Profile/favorite/review/points/notifications/content/dashboard/CSV.
 - [ ] 6: Seed/JAR/tests/README local đã có; HTTPS được người dùng hoãn, ưu tiên test local trước.
 
-Test bắt buộc: race ghế và atomic multi-seat; TTL đúng 5 phút/đóng trang/reload; giả/sai tiền/duplicate/reorder/mất IPN/late success; race check-in/sai rạp/suất/time; overlap với đệm và sửa suất/layout; last voucher race/release/points once; snapshot giá; mail lỗi vẫn có vé; IDOR/RBAC/CSRF; PDF tiếng Việt/QR; desktop/mobile. Concurrency tests trên MySQL riêng, không dùng H2 để chứng minh locks. Không bắt buộc Docker.
+Test bắt buộc: race ghế và atomic multi-seat; TTL đúng 5 phút/đóng trang/reload; giả/sai tiền/duplicate/reorder/mất IPN/late success; race check-in/sai rạp/suất/time; overlap với đệm và sửa suất/layout; last voucher race/release/points once; snapshot giá; mail lỗi vẫn có vé; IDOR/RBAC/CSRF; PDF tiếng Việt/QR; desktop/mobile cho giao diện khách, desktop cho Admin/Staff. Concurrency tests trên MySQL riêng, không dùng H2 để chứng minh locks. Không bắt buộc Docker.
+
+Quy trình database (12/11/2026): test và thử GUI trên `cineprime_test` trước; khi bộ test MySQL đầy đủ qua (0 failures/errors/skipped) thì áp dụng luôn thay đổi (migration Flyway mới, dữ liệu cấu hình cần thiết) vào database chuẩn `cineprime`, không cần hỏi lại. Test thất bại thì không đụng `cineprime`. Không reset/xóa dữ liệu thật; mysqldump trước migration có DDL hoặc sửa dữ liệu hàng loạt và ghi lại việc đã áp dụng.
 
 Demo đủ phim tự tạo/rạp/ghế/suất/combo/voucher/3 role. JAR + MySQL + SMTP + HTTPS, env config. Cần MoMo test credentials/wallet và máy chủ/domain khi triển khai; không tuyên bố E2E/deploy khi chưa kiểm chứng.
 
@@ -509,3 +515,51 @@ Bổ sung ngày 12/11/2026 (theo phản hồi của người dùng sau khi thử
 - [x] Luồng thiết lập còn **2 bước** (1 · Sơ đồ ghế → 2 · Giá vé). Tab "Theo suất" cũ không phải bước thiết lập mà là màn theo dõi, nên tách thành tab riêng không đánh số **"Tình trạng bán vé"** (mobile: "Bán vé") ở bên phải thanh bước; vẫn dùng `?step=inventory`. Phòng chưa có suất: ẩn ô chọn suất, giải thích công dụng và có nút "Thêm suất chiếu ↗".
 - [x] Nút Lưu sơ đồ chỉ hiện ở bước 1, hoặc ở màn khác khi sơ đồ còn thay đổi chưa lưu; thông báo thanh dưới theo từng màn. Thanh chọn suất không gãy dòng ở 1366 và 1920.
 - Kiểm chứng: **125 tests, 0 failures/errors/skipped**; GUI trên JAR/`cineprime_test` cổng 8081: phòng trống không có suất đi trọn luồng mẫu phòng → Lưu → Kế tiếp → Giá vé (Kế tiếp khóa) → Tình trạng bán vé (màn trống, link thêm suất đúng rạp/phòng) ở 1920×910; phòng có suất chọn suất hiện đủ 60 ghế, thanh công cụ một dòng ở 1920 và 1366; sửa sơ đồ chưa lưu rồi sang Giá vé vẫn giữ bản nháp và hiện nút Lưu, hoàn tác về bản đã lưu thì nút tự ẩn; mobile 390×844.
+
+### Bán vé tại quầy (Staff) — trao đổi và triển khai 12/11/2026
+
+Staff trước đây chỉ soát vé. Nay Staff bán vé + combo cho khách mua trực tiếp, thu tiền mặt theo ca, dùng lại giữ ghế/giá/phát vé hiện có và giữ mọi invariant (giữ ghế 5 phút do server, tiền VND tính ở backend, snapshot, phạm vi rạp, audit). Không khảo sát Galaxy: màn quầy thuộc khu vực sau đăng nhập, thiết kế từ nghiệp vụ CinePrime.
+
+Quyết định đã chốt:
+
+| Chủ đề | Chốt |
+|---|---|
+| Thanh toán | Chỉ tiền mặt (`Payment.provider=CASH`); không MoMo QR tại quầy, không chuyển khoản ghi tay |
+| Khách | Mặc định vãng lai; tùy chọn tìm tài khoản theo SĐT/email để gắn đơn, tích điểm, hiện trong Vé của tôi |
+| Giờ bán | Quầy bán đến đúng giờ chiếu; online giữ đóng bán như cũ; giữ ghế quầy chỉ tạo khi còn ≥ 5 phút |
+| Giao vé | In vé khổ 80mm có QR; nút tùy chọn "Check-in luôn" dùng lại quy tắc check-in |
+| Ca/két | Mở ca (tiền đầu ca) → bán → đóng ca (tiền đếm được, hiện chênh lệch); Admin xem báo cáo ca |
+| Hủy | Chỉ đơn tiền mặt của chính Staff, chưa check-in, ca còn mở, trước giờ chiếu, ≤ 15 phút sau bán; lý do bắt buộc, audit |
+| Phạm vi | Vé + combo kèm vé; không voucher tại quầy, không bán combo lẻ |
+
+Triển khai: `V7__counter_sales.sql` (bảng `shifts` với cột sinh `open_staff_id` UNIQUE = một ca mở/Staff; `orders.user_id` NULL được, `channel` ONLINE/COUNTER, `sold_by`, `shift_id`, thông tin hủy; `payments.received`, `shift_id`; vé chỉ giữ ghế khi VALID/USED qua cột sinh `active_seat_id` thay cho UNIQUE(showtime, seat) cũ; sổ điểm UNIQUE(order, kind) với EARN/REVERSAL). `BookingService` tách `reserve`/`issue`/`release`/`cancelUnpaid` dùng chung; `staff/CounterService`, `CounterReadService`, `CounterController`; khóa theo thứ tự Staff → Shift → Showtime → Cinema → Inventory → Order → Payment → Ticket. Admin/báo cáo/worker đã xử lý đơn không có khách (left join, "Khách vãng lai").
+
+- [x] A · Ca: `/staff/counter` mở ca với tiền đầu ca, chặn bán khi chưa mở; thanh ca hiện số đơn, vé, tiền dự kiến; đóng ca nhập tiền đếm, bắt buộc ghi chú khi lệch (giữ lại số đã nhập khi lỗi), chặn khi còn đơn đang giữ và tự đóng đơn giữ đã hết hạn; phiếu tổng kết ca `/staff/counter/shifts/{id}` in được.
+- [x] B · Chọn suất: suất OPEN trong ngày của rạp Staff xếp theo giờ, có số ghế trống, suất còn < 5 phút hoặc hết ghế bị khóa; chọn ngày khác để bán trước (không cho ngày đã qua). Chưa có ô lọc theo phim — danh sách theo giờ.
+- [x] C · Chọn ghế: sơ đồ tự làm mới 5 giây, ghế đôi theo cặp, tối đa 8, giữ 5 phút đếm ngược theo giờ server, ghế quầy đang giữ tô màu riêng; mỗi Staff một đơn giữ, giữ mới thì nhả đơn cũ; quầy/online tranh ghế chỉ một bên thắng.
+- [x] D · Combo: +/− số lượng 0–20, lưu sau 350 ms, giá snapshot, tổng do server tính.
+- [x] E · Khách: chỉ tìm đúng SĐT/email đầy đủ, hiện tên/liên hệ che bớt; gắn/bỏ gắn trước khi thu; đơn gắn khách có điểm, mail/thông báo, nằm trong Vé của tôi. Khách vãng lai không có điểm/thông báo; khách không mở được đơn quầy vãng lai.
+- [x] F · Thu tiền mặt: ô tiền khách đưa, phím mệnh giá cộng dồn từng tờ + Đúng tiền + Nhập lại, tiền thối/thiếu; mã yêu cầu idempotent (bấm đúp hay mất phản hồi không thu 2 lần, mã khác bị từ chối); từ chối khi hết giữ ghế, quá giờ chiếu, ca đóng, tiền thiếu.
+- [x] G · Giao vé: trang in 80mm mỗi vé một phiếu QR + hóa đơn (ghế, combo, tổng, tiền nhận/thối, thu ngân); "Check-in luôn" từng vé theo quy tắc −60/+30 phút; in lại từ danh sách đơn trong ca. QR chỉ phát cho Staff đã bán đơn.
+- [x] H · Hủy: dialog lý do bắt buộc; vé VOID, ghế trống bán lại được, thanh toán REFUNDED, điểm trừ bằng dòng REVERSAL, tiền dự kiến của ca giảm, audit `COUNTER_CANCEL`; chặn sau 15 phút, sau check-in, ngoài ca, đơn của Staff khác.
+- [x] I · Admin: `/admin/shifts` (lọc rạp/ngày/trạng thái, chênh lệch tô đỏ, ghi chú); danh sách đơn có kênh + "Khách vãng lai"; chi tiết đơn có người bán, ca, tiền nhận/thối, thông tin hủy; Tổng quan tách doanh thu Online/Quầy; CSV giao dịch và CSV doanh thu thêm cột "Kênh" (cuối dòng); đơn đã hủy không tính doanh thu.
+- [x] J · Bảo mật: chỉ STAFF đang bật, có rạp; quyền rạp/chủ đơn kiểm tra ở backend trước mọi kiểm tra khác; CSRF cho form và JSON; Staff rạp khác/khách nhận 403.
+- [x] K · Kiểm thử: 6 ca mới trên MySQL `cineprime_test` (ca/tiền két/combo thay dòng, đua quầy–online và giữ mới nhả cũ, thu tiền đồng thời cùng mã, biên 5 phút/1 giây trước giờ chiếu, gắn khách/điểm/hủy/bán lại/15 phút/check-in, HTTP trang–API–in–QR–Admin–CSV). Ca CSV doanh thu cũ cập nhật cho cột "Kênh".
+
+Kết quả kiểm chứng ngày 12/11/2026:
+
+- Hồi quy đầy đủ: **135 tests, 0 failures/errors/skipped** (105 MySQL/HTTP, 30 unit/render/Excel/HMAC), log `target/counter-full.log`.
+- Trình duyệt trên JAR/`cineprime_test` cổng 8081 (dữ liệu demo, 1366×768 và 390×844): mở ca → chọn suất → C5, C6 VIP → giữ ghế (đếm 05:00) → thêm combo (tổng 245.000 ₫) → tìm khách theo email, gắn → thu 300.000 ₫, thối 55.000 ₫ → trang in tiếng Việt có QR từng vé và hóa đơn → hủy qua dialog (két về 500.000 ₫, ghế 60/60) → bán vãng lai A1 đúng tiền → Check-in luôn → đóng ca lệch không ghi chú bị chặn, có ghi chú → phiếu tổng kết đúng (dự kiến 585.000 ₫, đếm 580.000 ₫, lệch −5.000 ₫). Admin: danh sách ca, chi tiết đơn quầy/vãng lai, Tổng quan "Online 0 ₫ · Quầy 85.000 ₫". Mobile không tràn ngang. Thao tác trên sơ đồ ghế được kích hoạt bằng script trong trang vì sơ đồ làm mới liên tục.
+- Bổ sung theo phản hồi người dùng (12/11/2026): trên trang Soát vé, liên kết sang bán vé hiện thành chữ dính liền vì CSS chỉ nạp ở trang quầy. Nay cả hai trang Staff có hai thẻ chức năng lớn "Soát vé vào rạp" / "Bán vé & bắp nước tại quầy" (mixin `staffTabs`, CSS trong `operations.css`); `operations.css`, `counter.css`, `counter.js`, `counter-print.js` thêm `?v=20261112` để trình duyệt không dùng bản cũ trong cache. Kiểm chứng: 135 tests 0 failures/errors/skipped (`target/staff-tabs-full.log`); trình duyệt 1366×768 và 390×844 thấy đủ hai thẻ, không tràn ngang.
+- Chưa xem lại bằng trình duyệt sau hai sửa nhỏ cuối (khung Đóng ca tự mở lại khi lỗi; phím mệnh giá cộng dồn) — đã qua render/HTTP test. Chưa in thử máy in nhiệt thật, chưa quét QR in ra bằng camera thật. Migration V7 chưa chạy trên database `cineprime` (sẽ chạy khi khởi động lại CinePrime Local).
+
+### Pop-up Admin, form banner mới, bỏ trang Upload — được duyệt 12/11/2026
+
+Không khảo sát Galaxy ở lượt này: phần sửa là Admin, thiết kế từ nghiệp vụ CinePrime.
+
+- [x] Thể loại, Diễn viên / Đạo diễn, Thể loại của phim, Đoàn phim, Bài viết / Ưu đãi / Chính sách và Người dùng: "+ Thêm mới" và "Sửa" mở pop-up trên danh sách (`GET /admin/manage/{key}/dialog`, `admin/form-dialog.pug`, `admin-dialog.js`). Lưu qua `/admin/manage/{key}/save` cũ (JSON `steps`); lỗi hiện tại trường và giữ nội dung; đóng khi còn thay đổi thì hỏi lại; không JS thì mở trang form cũ. Bài viết dùng pop-up rộng 2 cột, đường dẫn tự tạo từ tiêu đề.
+- [x] Form banner hai cột: thẻ chọn loại, phim/liên kết, kéo-thả ảnh, gỡ ảnh riêng, công tắc bật, lịch thu gọn; khung xem trước 3:1 cho biết phủ kín / nằm giữa khung / chưa dùng được.
+- [x] Bỏ trang `/admin/upload`, mục menu và kiểu upload `legacy`; `/admin/media` bắt buộc `kind`. Ảnh đại diện dùng kiểu `image`.
+- Hồi quy đầy đủ **129 tests, 0 failures/errors/skipped** trên `cineprime_test` (log `%TEMP%\cineprime-test8.log`).
+- Trình duyệt (JAR cổng 8081, schema test, 1600×900 và 375×812): thêm thể loại qua pop-up → danh sách tải lại, giữ bộ lọc, có thông báo; bỏ trống tên → lỗi tại ô; sửa → dữ liệu đúng, đóng dở → hỏi lại, "Tiếp tục nhập" giữ nội dung; bài viết 940px 2 cột, slug tự tạo; người dùng email trùng → lỗi ở pop-up, giữ tên, xoá mật khẩu. Form banner: xem trước đúng ba trạng thái với ảnh 1920×640, 880×348 và phim không ảnh; kéo-thả ảnh tải lên được; đặt lịch → "Chờ tới lịch" trong danh sách; menu không còn Upload; mobile không tràn ngang.
+- Chưa kiểm tra lại bằng trình duyệt sau sửa nhỏ cuối cùng: trả focus về nút đã mở pop-up khi đóng (`admin-dialog.js`).

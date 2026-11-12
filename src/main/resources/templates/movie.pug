@@ -1,76 +1,133 @@
 extends layout
 include mixins
 block content
-  section.movie-detail-hero
-    .container.detail-grid
-      img.detail-poster(src=movie.poster alt=movie.title)
-      div
-        .eyebrow #{movie.statusLabel}#{movie.ended ? ' · Không còn nhận đặt vé' : movie.hasBookableShows ? (movie.comingSoon ? ' · Đang mở đặt trước' : '') : ' · Chưa có lịch mở bán'}
-        h1= movie.title
-        .metadata
-          span.badge= movie.ageRating
-          span #{movie.duration} phút
-          span Lịch chiếu #{movie.windowText}
-          span ★ #{movie.score} / 5 · #{movie.reviewCount} đánh giá
-        p= movie.genres
-        p.description= movie.description
-        .credits
-          each c in credits
-            span #{c.kind == 'DIRECTOR' ? 'Đạo diễn' : 'Diễn viên'}: #{c.name}
-        .actions
-          if movie.hasBookableShows
-            a.button(href="#schedule")= movie.comingSoon ? 'ĐẶT VÉ TRƯỚC →' : 'CHỌN SUẤT CHIẾU →'
-          else if !movie.ended
-            a.button.secondary(href="#schedule") XEM THÔNG TIN LỊCH CHIẾU →
-          if viewer
-            form(action='/account/favorites/' + movie.id method="post")
+  if backdrop
+    section.movie-backdrop
+      img.backdrop-image(src=backdrop alt="")
+      if movie.trailer
+        button.backdrop-play(type="button" data-trailer=movie.trailer data-trailer-title='Trailer · ' + movie.title aria-label='Xem trailer ' + movie.title)
+          svg(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+            path(d="M8 5l11 7-11 7z")
+  .container.movie-page(class=backdrop ? 'has-backdrop' : '')
+    .movie-main
+      .movie-head
+        img.detail-poster(src=movie.poster alt=movie.title)
+        .movie-info
+          nav.breadcrumb(aria-label="Đường dẫn")
+            a(href="/") Trang chủ
+            span(aria-hidden="true") /
+            a(href='/movies?status=' + movie.status)= movie.statusLabel
+            span(aria-hidden="true") /
+            span(aria-current="page")= movie.title
+          .movie-title-row
+            h1= movie.title
+            span.age-badge(class='age-' + movie.ageRating)= movie.ageRating
+          p.movie-status #{movie.statusLabel}#{movie.ended ? ' · Không còn nhận đặt vé' : movie.hasBookableShows ? (movie.comingSoon ? ' · Đang mở đặt trước' : '') : ' · Chưa có lịch mở bán'}
+          .metadata
+            span.meta-item
+              svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                circle(cx="12" cy="12" r="9")
+                path(d="M12 7v5l3 2")
+              | #{movie.duration} phút
+            if movie.releaseText
+              span.meta-item
+                svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                  rect(x="3" y="5" width="18" height="16" rx="2")
+                  path(d="M3 10h18M8 3v4M16 3v4")
+                | #{movie.releaseText}
+            span.meta-item.rating
+              span.star(aria-hidden="true") ★
+              strong= movie.score
+              span.muted (#{movie.reviewCount} đánh giá)
+          dl.movie-facts
+            if genreList.size() > 0
+              .fact
+                dt Thể loại:
+                dd
+                  each g in genreList
+                    span.chip= g
+            if directors.size() > 0
+              .fact
+                dt Đạo diễn:
+                dd
+                  each d in directors
+                    span.chip= d
+            if actors.size() > 0
+              .fact
+                dt Diễn viên:
+                dd
+                  each a in actors
+                    span.chip= a
+            .fact
+              dt Lịch chiếu:
+              dd= movie.windowText
+          .actions
+            if movie.hasBookableShows
+              a.button(href="#schedule")= movie.comingSoon ? 'Đặt vé trước' : 'Chọn suất chiếu'
+            else if !movie.ended
+              a.button.secondary(href="#schedule") Xem thông tin lịch chiếu
+            if movie.trailer && !backdrop
+              button.button.secondary(type="button" data-trailer=movie.trailer data-trailer-title='Trailer · ' + movie.title) Xem trailer
+            if viewer
+              form(action='/account/favorites/' + movie.id method="post")
+                +csrf()
+                button.button.secondary(type="submit")= favorite ? '♥ Đã yêu thích' : '♡ Yêu thích'
+            else
+              a.button.secondary(href="/login") ♡ Yêu thích
+          if (!movie.hasBookableShows && !movie.ended) || subscribed
+            form.inline-form(action='/account/subscriptions/' + movie.id method="post")
               +csrf()
-              button.button.secondary(type="submit")= favorite ? '♥ Đã yêu thích' : '♡ Yêu thích'
-          else
-            a.button.secondary(href="/login") ♡ Yêu thích
-        if (!movie.hasBookableShows && !movie.ended) || subscribed
-          form.inline-form(action='/account/subscriptions/' + movie.id method="post")
-            +csrf()
-            label.check
-              input(type="checkbox" name="email" value="true" checked)
-              | Nhận thêm email khi mở bán
-            button.button.secondary(type="submit")= subscribed ? 'Hủy nhắc phim' : 'Nhắc tôi khi mở bán'
-  section#schedule.container.section
-    .section-heading
-      h2 LỊCH CHIẾU
-    form.filters(method="get")
-      select(name="cinemaId" aria-label="Rạp")
-        option(value="") Tất cả rạp
-        each c in cinemaOptions
-          option(value=c.id)= c.city + ' · ' + c.name
-      input(type="date" name="date" aria-label="Ngày chiếu")
-      button.button(type="submit") XEM SUẤT
-    +showList(shows)
-  if movie.trailer
-    section.container.section
-      h2 TRAILER PHIM
-      button.button.secondary(type="button" data-trailer=movie.trailer data-trailer-title='Trailer · ' + movie.title) ▷ Xem trailer
-  section#reviews.soft.section
-    .container
-      h2 KHÁN GIẢ CHIA SẺ
-      .review-layout
-        .reviews
-          each r in reviews
-            article.review
-              strong= r.name
-              span.stars #{r.stars} / 5 ★
-              p= r.comment
-          if reviews.size() == 0
-            .empty Chưa có đánh giá. Hãy chia sẻ sau khi bạn xem phim.
-        .panel
-          h3 Trải nghiệm của bạn
-          p.muted Dành cho khách đã check-in và suất chiếu đã kết thúc. Gửi lại để sửa đánh giá của bạn.
-          form(action='/account/reviews/' + movie.id method="post")
-            +csrf()
-            label Số sao
-              select(name="stars" required)
-                each n in [5,4,3,2,1]
-                  option(value=n) #{n} ★
-            label Nhận xét
-              textarea(name="comment" required maxlength="2000" rows="5")
-            button.button(type="submit") GỬI ĐÁNH GIÁ
+              label.check
+                input(type="checkbox" name="email" value="true" checked)
+                | Nhận thêm email khi mở bán
+              button.button.secondary(type="submit")= subscribed ? 'Hủy nhắc phim' : 'Nhắc tôi khi mở bán'
+      section.movie-section
+        h2.section-title Nội dung phim
+        p.description= movie.description
+      section#schedule.movie-section
+        h2.section-title Lịch chiếu
+        form.filters(method="get")
+          select(name="cinemaId" aria-label="Rạp")
+            option(value="") Tất cả rạp
+            each c in cinemaOptions
+              option(value=c.id)= c.city + ' · ' + c.name
+          input(type="date" name="date" aria-label="Ngày chiếu")
+          button.button(type="submit") Xem suất
+        .show-list
+          +showList(shows)
+      section#reviews.movie-section
+        h2.section-title Khán giả chia sẻ
+        .review-layout
+          .reviews
+            each r in reviews
+              article.review
+                .review-head
+                  strong= r.name
+                  span.stars ★ #{r.stars} / 5
+                p= r.comment
+            if reviews.size() == 0
+              .empty Chưa có đánh giá. Hãy chia sẻ sau khi bạn xem phim.
+          .panel
+            h3 Đánh giá của bạn
+            p.muted Dành cho khách đã check-in và suất chiếu đã kết thúc. Gửi lại để sửa đánh giá của bạn.
+            form(action='/account/reviews/' + movie.id method="post")
+              +csrf()
+              label Số sao
+                select(name="stars" required)
+                  each n in [5,4,3,2,1]
+                    option(value=n) #{n} ★
+              label Nhận xét
+                textarea(name="comment" required maxlength="2000" rows="5")
+              button.button(type="submit") Gửi đánh giá
+    aside.movie-aside(aria-label="Phim đang chiếu")
+      h2.section-title Phim đang chiếu
+      each m in nowShowing
+        a.aside-movie(href='/movies/' + m.slug)
+          span.aside-thumb(class=m.wideImage ? '' : 'is-poster')
+            img(src=m.wideImage ? m.wideImage : m.poster alt="" loading="lazy")
+            span.aside-score ★ #{m.score}
+            span.age(class='age-' + m.ageRating)= m.ageRating
+          span.aside-title= m.title
+      if nowShowing.size() == 0
+        p.muted Chưa có phim khác đang chiếu.
+      a.button.secondary.full(href="/movies?status=NOW_SHOWING") Xem thêm phim

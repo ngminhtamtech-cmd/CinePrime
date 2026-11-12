@@ -1,15 +1,14 @@
 extends layout
 block content
   section.container.section
-    .eyebrow MỘT TRẢI NGHIỆM GẦN BẠN
-    h1 Hệ thống rạp
+    h1.page-title Hệ thống rạp
+    p.page-lead Xem lịch chiếu, giá vé và địa chỉ từng rạp.
     .content-grid
       each c in cinemas
-        article.panel
-          .cinema-art ✦
-          small= c.city
+        article.panel.cinema-card
+          span.city= c.city
           h2= c.name
           p= c.address
-          a.button.secondary(href='/cinemas/' + c.id) LỊCH CHIẾU & GIÁ VÉ →
+          a.button.secondary(href='/cinemas/' + c.id) Lịch chiếu & giá vé
     if cinemas.size() == 0
       .empty Chưa có rạp đang hoạt động.

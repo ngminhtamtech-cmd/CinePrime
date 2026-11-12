@@ -1,0 +1,125 @@
+/* Staff workspace (desktop-only, >=1366x768): collapsible function rail + one-screen pages with no document scroll. */
+body.operations:has(.staff-shell){height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+body.operations:has(.staff-shell)>.ops-header,body.operations:has(.staff-shell)>.session-banner{flex:none;position:relative;top:0}
+
+/* Header toggle, modelled on a chat app's "hide sidebar" button. */
+.staff-nav-toggle{display:grid;place-items:center;width:36px;height:36px;margin-right:-4px;border:0;border-radius:8px;background:transparent;color:#475569;cursor:pointer;transition:background .15s,color .15s}
+.staff-nav-toggle:hover{background:#eef2f7;color:var(--navy)}.staff-nav-toggle:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.staff-nav-toggle svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.staff-nav-toggle path{transition:transform .28s cubic-bezier(.2,.8,.2,1);transform-origin:9px 12px}
+
+/* Rail: 236px expanded, 64px icon-only when collapsed. The grid column animates. */
+.staff-shell{--nav-w:236px;flex:1;min-height:0;display:grid;grid-template-columns:var(--nav-w) minmax(0,1fr);transition:grid-template-columns .28s cubic-bezier(.2,.8,.2,1)}
+html.staff-nav-collapsed .staff-shell{--nav-w:64px}
+html.staff-nav-instant .staff-shell,html.staff-nav-instant .staff-nav *{transition:none!important}
+.staff-nav{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding:14px 10px;background:white;border-right:1px solid var(--line)}
+.staff-nav-label{padding:2px 10px 8px;font-size:10px;font-weight:700;letter-spacing:1px;color:#94a3b8;white-space:nowrap;transition:opacity .2s}
+.staff-tab{position:relative;display:flex;align-items:center;gap:12px;min-height:52px;padding:6px 8px;border-radius:9px;color:var(--ink);text-decoration:none;white-space:nowrap;transition:background .15s}
+.staff-tab:hover{background:#f1f5f9}.staff-tab[aria-current=page]{background:#eaf2fb}
+.staff-tab[aria-current=page]:before{content:"";position:absolute;left:-10px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--orange)}
+.staff-tab-icon{flex:none;width:28px;height:28px;margin-left:2px;display:grid;place-items:center;border-radius:8px;color:#475569}
+.staff-tab-icon svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.staff-tab[aria-current=page] .staff-tab-icon{color:var(--blue)}
+.staff-tab-text{display:flex;flex-direction:column;min-width:0;transition:opacity .2s .06s,transform .28s cubic-bezier(.2,.8,.2,1)}
+.staff-tab-text strong{font-size:13px;color:var(--navy);overflow:hidden;text-overflow:ellipsis}.staff-tab-text small{font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis}
+.staff-tab[aria-current=page] .staff-tab-text strong{color:var(--blue)}
+.staff-nav-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:10px 4px 0;border-top:1px solid var(--line);white-space:nowrap;transition:opacity .2s}
+.staff-nav-cinema{display:flex;flex-direction:column;min-width:0;padding:8px 10px;border-radius:8px;background:var(--soft)}
+.staff-nav-cinema small{font-size:9px;letter-spacing:1px;color:#94a3b8;font-weight:700}.staff-nav-cinema strong{font-size:13px;color:var(--blue);overflow:hidden;text-overflow:ellipsis}
+.staff-nav-key{font-size:11px;color:#94a3b8;padding:0 6px}
+html.staff-nav-collapsed .staff-tab-text,html.staff-nav-collapsed .staff-nav-label,html.staff-nav-collapsed .staff-nav-foot{opacity:0;pointer-events:none;transition-delay:0s}
+html.staff-nav-collapsed .staff-tab-text{transform:translateX(-6px)}
+html.staff-nav-collapsed .staff-nav-toggle path{transform:scaleX(.5)}
+
+/* Page frame: content owns the remaining height; only inner lists scroll. */
+.staff-main{max-width:none;margin:0;padding:12px 16px;min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.staff-main>*{flex:none;margin:0}
+.staff-main .panel{display:flex;flex-direction:column;min-height:0;padding:14px;margin:0;overflow:hidden}
+.staff-main .panel-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 10px}
+.staff-main .panel-heading h2{margin:0;font-size:15px;white-space:nowrap}
+.staff-main .refresh-status{font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Check-in: selector bar, then scanner | result | ticket list. */
+.checkin-bar{display:flex;gap:12px;align-items:stretch}
+.checkin-select{display:flex;align-items:flex-end;gap:10px;flex:1 1 auto;min-width:0;padding:10px 12px;background:white;border:1px solid var(--line);border-radius:10px}
+.checkin-select label{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.checkin-select label>span{font-size:11px;font-weight:600;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.checkin-select input,.checkin-select select{margin:0;height:40px;padding:0 10px}
+.checkin-select .date-field{flex:0 0 160px}.checkin-select .show-field{flex:1 1 auto}
+.checkin-select .button{min-height:40px;padding:8px 16px;white-space:nowrap}
+.staff-main .panel-heading .button{min-height:36px;padding:6px 12px;white-space:nowrap}
+.checkin .selected-show{display:flex;justify-content:space-between;flex:0 1 500px;min-width:360px;margin:0;padding:8px 14px;gap:12px;align-items:center;border-radius:10px}
+.checkin .selected-show>div:first-child{display:flex;flex-direction:column;min-width:0}
+.checkin .selected-show strong{font-size:15px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.checkin .selected-show span{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.checkin .selected-show>div:last-child small{white-space:nowrap;font-size:11px}
+.checkin .selected-show>div:last-child{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;text-align:right}
+.checkin .selected-show .badge{margin:0}
+.checkin .selected-show.pending{background:#fff5e9;border-left-color:var(--orange);font-size:12.5px;line-height:1.45;color:#7a4a05}
+.checkin-grid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(270px,330px) minmax(0,1fr) minmax(360px,440px);gap:12px;margin:0}
+.checkin-grid .camera-frame{flex:1 1 auto;min-height:150px}
+.checkin-grid .camera-frame video{position:absolute;inset:0;height:100%}
+.checkin-grid .camera-frame #camera-placeholder{padding:12px}
+.checkin-grid .camera-actions{position:relative;z-index:1}
+.checkin-grid #manual-lookup{margin-top:10px}.checkin-grid #manual-lookup label{font-size:12px;margin-bottom:4px}
+.checkin-grid #manual-lookup input,.checkin-grid #manual-lookup .button{height:42px;min-height:42px;margin:0}
+.checkin-grid .scan-panel>.muted{margin:8px 0 0;font-size:11px}
+.checkin-grid #scan-result{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -4px;padding:0 4px}
+.checkin-grid .scan-results .empty{margin:0}
+.checkin-grid .scan-ticket{margin:0 0 10px;padding:12px 14px}
+.checkin-grid .staff-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.checkin-grid .staff-stats .kpi-card{padding:8px 10px;gap:0;border-radius:8px;background:var(--soft);border-color:transparent}
+.checkin-grid .staff-stats .kpi-card>span{font-size:11px;white-space:nowrap}
+.checkin-grid .staff-stats strong{font-size:20px;line-height:1.3}
+.ticket-filter{display:flex;gap:8px;margin-bottom:8px}
+.ticket-filter input,.ticket-filter select{margin:0;height:38px;padding:0 10px;min-width:0}
+.ticket-filter input{flex:1 1 auto}.ticket-filter select{flex:0 0 112px}
+.ticket-filter .button{min-height:38px;padding:6px 14px}
+.ticket-panel .table-wrap{flex:1 1 auto;min-height:0;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.ticket-panel table{margin:0;width:100%}
+.ticket-panel thead th{position:sticky;top:0;z-index:1;background:#f8fafc;font-size:11px;padding:8px 10px}
+.ticket-panel td{padding:7px 10px;font-size:12px}.ticket-panel td small{display:block;color:#64748b;font-size:11px}
+.ticket-panel .table-wrap .empty{border:0;border-radius:0;padding:24px 12px}
+.ticket-panel .ops-pagination{margin-top:8px;padding-top:0;border:0}
+.ticket-panel .ops-pagination .actions{display:flex;gap:6px}
+.ticket-panel .ops-pagination .button{min-height:34px;padding:4px 14px}
+
+/* Counter: shift bar, then shows | seats | cart; orders of the shift open in a side drawer. */
+.staff-main.counter .action-notice,.staff-main.counter .form-error{margin:0}
+.staff-main.counter .shift-bar{margin:0;padding:8px 14px;gap:8px 26px;flex-wrap:nowrap}
+.staff-main.counter .shift-bar strong{font-size:15px;white-space:nowrap}.staff-main.counter .shift-bar small{white-space:nowrap}
+.staff-main.counter .orders-open{margin-left:auto;min-height:38px;padding:6px 14px;gap:8px}
+.orders-open .count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--blue);color:white;font-size:11px}
+.staff-main.counter .close-shift{margin-left:0}
+.staff-main.counter .close-shift summary{min-height:38px;padding:6px 14px}
+.staff-main.counter .counter-grid{flex:1 1 auto;min-height:0;margin:0;gap:12px;align-items:stretch;grid-template-columns:minmax(220px,270px) minmax(0,1fr) minmax(290px,330px)}
+.staff-main.counter .counter-shows .panel-heading{margin:0}
+.staff-main.counter .show-list{flex:1 1 auto;min-height:0;max-height:none;margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.staff-main.counter .show-card{flex:none;padding:8px 10px;gap:2px 10px}.staff-main.counter .show-time{font-size:16px}
+.staff-main.counter .show-info small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.staff-main.counter .counter-seats .seat-map{flex:1 1 auto;min-height:0;overflow:auto}
+.staff-main.counter .screen{margin:4px auto 14px}
+.staff-main.counter .legend{margin-top:8px}
+.staff-main.counter .counter-cart{position:static;overflow:auto;grid-column:auto}
+.staff-main.counter .counter-cart>h2{margin:0 0 8px;font-size:15px}
+.staff-main.counter .counter-cart h3{margin:12px 0 6px}
+.staff-main.counter .stepper .step{width:36px;height:36px}
+.staff-main.counter .quick-cash button{min-height:36px}
+.staff-main.counter #cash-received{padding:6px 10px;font-size:18px}
+.staff-main.counter .cart-footer{position:sticky;bottom:-14px;margin:10px -14px -14px;padding:8px 14px 14px;background:white;border-top:1px solid var(--line)}
+.staff-main.counter .cart-footer .total{margin:0;padding:0 0 4px;border:0}
+.staff-main.counter .cart-footer .button.full{margin-top:6px;min-height:40px}
+.staff-main.counter .shift-open{align-self:center;margin-top:6vh;width:100%}
+.orders-drawer{position:fixed;inset:0 0 0 auto;margin:0;width:min(900px,92vw);height:100dvh;max-height:100dvh;border:0;border-radius:14px 0 0 14px;padding:0;background:white;color:var(--ink);box-shadow:-18px 0 48px #11182733}
+.orders-drawer[open]{display:flex;flex-direction:column;animation:drawer-in .3s cubic-bezier(.2,.8,.2,1)}
+.orders-drawer::backdrop{background:#11182759;animation:fade-in .25s ease}
+.orders-drawer>.panel-heading{flex:none;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0;padding:18px 20px 12px;border-bottom:1px solid var(--line)}
+.orders-drawer h2{margin:0 0 2px;font-size:17px}
+.orders-drawer>.table-wrap{flex:1 1 auto;overflow:auto;padding:0 20px 20px}
+.orders-drawer>.empty{margin:20px}
+.orders-drawer thead th{position:sticky;top:0;background:white;z-index:1}
+.drawer-close{flex:none;width:36px;height:36px;border:0;border-radius:8px;background:transparent;font-size:24px;line-height:1;color:#475569;cursor:pointer}
+.drawer-close:hover{background:#eef2f7}
+@keyframes drawer-in{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.staff-shell,.staff-tab-text,.staff-nav-label,.staff-nav-foot,.staff-nav-toggle path{transition:none}.orders-drawer[open],.orders-drawer::backdrop{animation:none}}

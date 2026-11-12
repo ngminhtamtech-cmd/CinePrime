@@ -1,0 +1,52 @@
+doctype html
+html(lang="vi")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title= title
+    link(rel="icon" href="/images/cineprime-mark.svg" type="image/svg+xml")
+    link(rel="stylesheet" href="/css/counter.css?v=20261112")
+    script(src="/js/counter-print.js?v=20261112" defer)
+  body.ticket-print
+    .print-actions
+      button#print-now(type="button") In vé (khổ 80mm)
+      span Nếu máy in nhiệt chưa tự cắt, chọn khổ giấy 80mm và lề "Không".
+    each t in order.tickets
+      if t.status != 'VOID'
+        article.receipt
+          header
+            strong CinePrime
+            span= order.cinemaName
+          h1= order.movieTitle
+          p.receipt-meta #{order.when} · #{order.roomName} · #{order.format}
+          .receipt-seat
+            span Ghế
+            strong= t.seat
+          img.receipt-qr(src='/staff/counter/tickets/' + t.id + '/qr.png' alt='Mã QR vé ' + t.code width="180" height="180")
+          p.receipt-code= t.code
+          p.receipt-meta Đơn #{order.code}
+          p.receipt-note Xuất trình mã QR khi vào phòng chiếu. Vé chỉ dùng một lần.
+    article.receipt.receipt-bill
+      header
+        strong CinePrime · Hóa đơn bán lẻ
+        span= order.cinemaName
+      p.receipt-meta Đơn #{order.code} · In lúc #{order.printedAt}
+      p.receipt-meta Thu ngân: #{order.cashier} · Khách: #{order.customer}
+      each l in order.seatLines
+        .receipt-line
+          span Ghế #{l.label} · #{l.type}
+          span= l.priceText
+      each p in order.productLines
+        .receipt-line
+          span #{p.name} × #{p.quantity}
+          span= p.amountText
+      .receipt-line.receipt-total
+        span Tổng cộng
+        strong= order.totalText
+      .receipt-line
+        span Tiền mặt khách đưa
+        span= order.received
+      .receipt-line
+        span Tiền thối
+        span= order.change
+      p.receipt-note Cảm ơn quý khách. Vé đã bán chỉ được hủy tại quầy trong 15 phút sau khi mua, trước giờ chiếu.

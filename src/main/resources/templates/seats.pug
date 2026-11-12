@@ -4,24 +4,20 @@ block head
   script(src="/js/seat-3d.js" defer)
 block content
   .container.section
-    .booking-steps
-      span 01 · Chọn suất
-      strong 02 · Chọn ghế
-      span 03 · Combo & Thanh toán
-      span 04 · Nhận vé
+    +bookingSteps(2)
     .booking-grid
       .panel
-        h1 Chọn chỗ ngồi của bạn
+        h1 Chọn chỗ ngồi
         p.muted Ghế được giữ 5 phút sau khi bấm Tiếp tục. Tối đa 8 ghế. Ghế đôi chọn cả cặp, giá hiển thị theo hai chỗ.
         .screen MÀN HÌNH
         #seat-map.seat-map(data-showtime=show.id data-room=show.cinemaName + ' · ' + show.roomName aria-label="Sơ đồ ghế")
           p Đang tải sơ đồ ghế…
-        p.muted Loại ghế
+        p.legend-title Loại ghế
         .legend
           span Standard · Ghế thường
           span.vip VIP
           span.couple Couple · Ghế đôi
-        p.muted Trạng thái ghế
+        p.legend-title Trạng thái ghế
         .legend
           span Còn trống
           span.selected Đang chọn
@@ -30,13 +26,15 @@ block content
           span.maintenance Bảo trì
         p#seat-status(role="status" aria-live="polite")
       aside.panel.summary
-        img.summary-poster(src=show.poster alt=show.movieTitle)
-        h2= show.movieTitle
-        p #{show.cinemaName} · #{show.roomName}
-        p= show.when
-        p #{show.format} · #{show.language}
-        hr
-        p Ghế chọn: 
+        .summary-head
+          img.summary-poster(src=show.poster alt=show.movieTitle)
+          div
+            h2= show.movieTitle
+            p #{show.cinemaName} · #{show.roomName}
+            p= show.when
+            p.muted #{show.format} · #{show.language}
+        .line
+          span Ghế đã chọn
           strong#selected-seats Chưa chọn
         .total
           span Tạm tính
@@ -44,5 +42,5 @@ block content
         .seat3d-actions
           button#seat-view-3d.button.secondary(type="button" disabled) Xem góc nhìn từ ghế
           button#room-view-3d.button.secondary(type="button" disabled) Xem phòng 3D
-        button#hold-seats.button.full(type="button" disabled) TIẾP TỤC →
+        button#hold-seats.button.full(type="button" disabled) Tiếp tục
         a.back(href="/showtimes") ← Chọn suất khác

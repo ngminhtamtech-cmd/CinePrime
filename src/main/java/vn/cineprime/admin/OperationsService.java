@@ -43,8 +43,8 @@ public class OperationsService {
             from=" from "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r, "+db.entityName(Movie.class)+" m, "+db.entityName(Cinema.class)+" c where s.roomId=r.id and s.movieId=m.id and r.cinemaId=c.id and s.status='OPEN' and s.startsAt>=:since and s.startsAt<=:until";
             args.put("since",now.minusSeconds(1800));args.put("until",now.plusSeconds(7200));select="select s,m.title,r.name,c.name";timeField="s.startsAt";order="s.startsAt,s.id";
         }else{
-            from=" from "+db.entityName(Order.class)+" o, "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r, "+db.entityName(User.class)+" u where o.showtimeId=s.id and s.roomId=r.id and o.userId=u.id and o.createdAt>=:since and o.createdAt<=:now";
-            args.put("since",now.atZone(ReportService.ZONE).toLocalDate().atStartOfDay(ReportService.ZONE).toInstant());args.put("now",now);select="select o,u.name";timeField="o.createdAt";order="o.createdAt desc,o.id desc";
+            from=" from "+db.entityName(Order.class)+" o left join "+db.entityName(User.class)+" u on u.id=o.userId, "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r where o.showtimeId=s.id and s.roomId=r.id and o.createdAt>=:since and o.createdAt<=:now";
+            args.put("since",now.atZone(ReportService.ZONE).toLocalDate().atStartOfDay(ReportService.ZONE).toInstant());args.put("now",now);select="select o,coalesce(u.name,'Khách vãng lai')";timeField="o.createdAt";order="o.createdAt desc,o.id desc";
         }
         from+=filter+" and "+alias+".id<=:upper";
         long total=query("select count(*)"+from,Long.class,args).getSingleResult();

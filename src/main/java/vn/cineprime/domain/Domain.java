@@ -61,6 +61,8 @@ public final class Domain {
         public Instant createdAt, expiresAt, paidAt;
         public long subtotal, discount, total; public boolean frozen;
         public String movieTitle, cinemaName, roomName; public Instant showStartsAt;
+        /** COUNTER orders are sold by Staff for cash; userId is null for walk-in customers. */
+        public String channel="ONLINE"; public Long soldBy, shiftId, cancelledBy; public Instant cancelledAt; public String cancelReason;
     }
     @Entity @Table(name="inventory") public static class Inventory extends Row {
         public Long showtimeId, seatId, orderId; public String status="AVAILABLE"; public Instant expiresAt;
@@ -80,12 +82,13 @@ public final class Domain {
         @Column(length=2048) public String payUrl;
         public long amount;
         public Integer resultCode; public boolean reconciliation; public Instant createdAt, updatedAt;
+        public Long received, shiftId;
     }
     @Entity @Table(name="tickets") public static class Ticket extends Row {
         public Long orderId, seatId, showtimeId; public String code, token, status="VALID";
         public Instant checkedInAt; public Long checkedInBy;
     }
-    @Entity @Table(name="point_ledger") public static class Point extends Row { public Long userId, orderId; public long points; public Instant createdAt; }
+    @Entity @Table(name="point_ledger") public static class Point extends Row { public Long userId, orderId; public long points; public String kind="EARN"; public Instant createdAt; }
     @Entity @Table(name="favorites") public static class Favorite extends Row { public Long userId, movieId; }
     @Entity @Table(name="reviews") public static class Review extends Row {
         public Long userId, movieId; public int stars;
@@ -103,8 +106,19 @@ public final class Domain {
         @Column(length=20000) public String body;
         public boolean active=true; public Instant publishedAt;
     }
+    /** Home hero slide: MOVIE points at a movie (own image optional), PROMO is a standalone image with an internal link. */
+    @Entity @Table(name="banners") public static class Banner extends Row {
+        public String kind="PROMO", title, image, link; public Long movieId;
+        public int sortOrder; public boolean active=true; public Instant startsAt, endsAt;
+    }
+    @Entity @Table(name="settings") public static class Setting extends Row { public String name, value; }
     @Entity @Table(name="audit_logs") public static class Audit extends Row {
         public Long actorId; public String action, target; public Instant createdAt;
+    }
+    /** Cash drawer session of one Staff member at one cinema; expected cash is snapshotted when closing. */
+    @Entity @Table(name="shifts") public static class Shift extends Row {
+        public Long staffId, cinemaId; public String status="OPEN"; public Instant openedAt, closedAt;
+        public long openingCash; public Long expectedCash, countedCash; public String note;
     }
     @Entity @Table(name="mail_jobs") public static class MailJob extends Row {
         public Long userId; public String dedupKey, destination, subject;

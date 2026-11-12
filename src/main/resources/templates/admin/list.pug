@@ -13,7 +13,7 @@ block admin
       else if key == 'showtimes'
         a.button(href='/admin/showtimes/new?cinemaId=' + cinemaId + '&date=' + day + '&movieId=' + movieId + '&roomId=' + roomId) + Thêm suất chiếu
       else
-        a.button(href='/admin/manage/' + key + '/edit?returnTo=' + returnEncoded) + Thêm mới
+        a.button(href='/admin/manage/' + key + '/edit?returnTo=' + returnEncoded data-dialog-form=dialogForm ? '/admin/manage/' + key + '/dialog?returnTo=' + returnEncoded : false) + Thêm mới
   if scopedCinema
     .cinema-context
       span RẠP ĐANG QUẢN LÝ
@@ -106,7 +106,7 @@ block admin
                   if key == 'seats'
                     a.action-btn.primary(href='/admin/setup/rooms/' + roomId + '?seatId=' + row.id) Sửa ghế
                   else
-                    a.action-btn.primary(href='/admin/manage/' + key + '/edit?id=' + row.id + '&returnTo=' + returnEncoded)
+                    a.action-btn.primary(href='/admin/manage/' + key + '/edit?id=' + row.id + '&returnTo=' + returnEncoded data-dialog-form=dialogForm && key != 'reviews' ? '/admin/manage/' + key + '/dialog?id=' + row.id + '&returnTo=' + returnEncoded : false)
                       svg(viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false")
                         path(d=key == 'reviews' ? 'M20 6L9 17l-5-5' : 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4')
                       | #{key == 'reviews' ? 'Duyệt' : 'Sửa'}

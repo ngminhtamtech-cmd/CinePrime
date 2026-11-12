@@ -2,8 +2,8 @@ extends layout
 include mixins
 block content
   section.container.section
-    .eyebrow KHÁM PHÁ CÂU CHUYỆN MỚI
-    h1 Phim tại CinePrime
+    h1.page-title Phim tại CinePrime
+    p.page-lead Tìm phim theo tên, thể loại, độ tuổi hoặc ngày chiếu.
     form.filters(action="/movies" method="get" data-auto-movie-filter)
       input(name="q" value=q placeholder="Tên phim" aria-label="Tên phim")
       select(name="status" aria-label="Trạng thái")
@@ -20,7 +20,7 @@ block content
         each a in ['P','K','T13','T16','T18']
           option(value=a selected=selectedAge == a)= a
       input(type="date" name="date" value=selectedDate aria-label="Ngày chiếu")
-      button.button(type="submit") TÌM PHIM
+      button.button(type="submit") Tìm phim
     p.filter-summary(role="status")
       strong #{movies.size()} phim
       span  · #{q ? 'Tên: ' + q + ' · ' : ''}#{selectedStatus == 'COMING_SOON' ? 'Sắp chiếu' : selectedStatus == 'NOW_SHOWING' ? 'Đang chiếu' : selectedStatus == 'ENDED' ? 'Vừa kết thúc' : 'Mọi trạng thái'}

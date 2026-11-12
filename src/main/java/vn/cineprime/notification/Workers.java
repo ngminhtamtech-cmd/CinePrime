@@ -24,7 +24,7 @@ public class Workers {
         for(Order o:db.list(Order.class,"where e.status='PENDING_PAYMENT' and e.expiresAt<=?1",clock.instant()))try{bookings.expire(o.id);}catch(RuntimeException ignored){/* Next pass retries; transaction rolls back on races. */}
     }
     @Scheduled(fixedDelay=60000,initialDelay=30000) public void reminders(){
-        for(Order snapshot:db.list(Order.class,"where e.status='PAID' and e.showStartsAt>?1 and e.showStartsAt<=?2",clock.instant(),clock.instant().plusSeconds(7200)))tx.executeWithoutResult(status->{
+        for(Order snapshot:db.list(Order.class,"where e.status='PAID' and e.userId is not null and e.showStartsAt>?1 and e.showStartsAt<=?2",clock.instant(),clock.instant().plusSeconds(7200)))tx.executeWithoutResult(status->{
             User u=db.lock(User.class,snapshot.userId);Order o=db.get(Order.class,snapshot.id);
             if(o.createdAt.isBefore(o.showStartsAt.minusSeconds(7200)))notices.notify(u,"remind:"+o.id,"Sắp đến giờ xem phim",o.movieTitle+" · "+o.cinemaName+" · "+db.date(o.showStartsAt),true);
         });

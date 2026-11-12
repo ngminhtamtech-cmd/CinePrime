@@ -14,7 +14,7 @@ Thiết kế website đặt vé xem phim rõ ràng, chuyên nghiệp, ưu tiên 
 2. Luồng đặt vé có thứ tự rõ và xác nhận lại thông tin cuối cùng.
 3. Card phim tập trung poster; tên, tuổi, điểm, thể loại, thời lượng dễ đọc.
 4. Không dùng màu sắc gây rối; tối ưu khoảng trắng và lưới 12 cột.
-5. Responsive, dễ dùng trên điện thoại, tránh thao tác hover-only.
+5. Giao diện khách responsive, dễ dùng trên điện thoại, tránh thao tác hover-only. Admin/Staff chỉ cần desktop (từ 12/11/2026).
 6. Đáp ứng trạng thái tải, rỗng, lỗi, không có suất và ghế không còn.
 
 ## 2. Cấu trúc website tham khảo
@@ -73,6 +73,31 @@ Thiết kế website đặt vé xem phim rõ ràng, chuyên nghiệp, ưu tiên 
 
 ## 3. Design System
 
+### 3.0. Giao diện khách (từ 12/11/2026)
+
+Trang khách dùng `static/css/site.css`; token khai báo ở `:root` đầu file. Bảng 3.1–3.3 bên dưới vẫn áp dụng cho Admin/Staff (`app.css`, `operations.css`).
+
+| Token | Giá trị | Vai trò |
+|---|---|---|
+| `--bg` / `--bg-soft` | `#FFFFFF` / `#F5F6F8` | Nền trang / nền phân khu |
+| `--ink` / `--muted` | `#14171C` / `#5B6472` | Chữ chính / chữ phụ |
+| `--line` / `--line-strong` | `#E3E6EA` / `#CFD4DA` | Viền thẻ / viền ô nhập, nút phụ |
+| `--navy` | `#111827` | Thanh menu, footer, dải thành viên, trạng thái đang chọn |
+| `--accent` / `--accent-hover` | `#F47B20` / `#DD6A12` | Màu nhấn duy nhất: nút hành động chính, ghế đang chọn |
+| `--accent-ink` | `#B4530B` | Chữ cam trên nền trắng (đủ tương phản) |
+
+- Font: **Be Vietnam Pro** (OFL, tự host trong `static/fonts`, 400/500/600/700, tách bộ ký tự Latin / Latin mở rộng / tiếng Việt) → `Segoe UI` → `Arial`.
+- Cỡ chữ: nội dung 16px/1.6; chú thích 14px; tên phim 17px/600; tiêu đề khối 28px/700 (mobile 22px); tiêu đề trang 36px/700 (mobile 28px); tiêu đề banner `clamp(32px, 4vw, 56px)`/700; nút 15px/600. Chữ thường theo câu, không viết hoa toàn bộ.
+- Hình khối: bo góc 8px; viền 1px thay đổ bóng (chỉ hộp thoại có bóng); không gradient trang trí (chỉ lớp tối dưới chữ của banner); không ký tự trang trí.
+- Khoảng cách: khối 72px (850px: 56px, 620px: 48px); vùng chạm tối thiểu 44px.
+- Ảnh: chỉ ảnh thật do Admin tải lên. Ưu đãi/bài viết không có ảnh hiển thị thẻ chữ (loại, tiêu đề, trích đoạn, ngày); ảnh thẻ khuyến nghị 1200×675 (16:9).
+
+**Hero (banner trang chủ):** quản lý tại Admin → Nội dung → Banner trang chủ. Chỉ hiện ảnh (chữ nằm sẵn trong ảnh), cả slide là link tới trang phim hoặc liên kết khuyến mãi. Slide giữa rộng tối đa 1360px (luôn chừa hai bên), tỉ lệ 3:1, bo góc trên; slide trước/sau ló ra hai bên, bấm vào thì chuyển tới. Mũi tên tròn sát mép (ẩn từ 850px), chấm vị trí + nút tạm dừng trong ảnh ở giữa phía dưới. Thanh mua vé nhanh nối liền mép dưới, rộng bằng slide: 4 bước đánh số cam (phim → rạp → ngày → suất) và nút "Mua vé nhanh"; mobile xếp dọc. Phim chưa có ảnh ngang dùng được không lên banner (Admin báo "Thiếu ảnh ngang"). Ảnh banner khuyến nghị 1920×640, chia ba mức và không bao giờ phóng to ảnh: rộng ≥ 1600px và tỉ lệ ≥ 16:9 thì phủ kín hero; ảnh ngang nhỏ hơn (rộng ≥ 560px, tỉ lệ ≥ 4:3) đặt giữa slide trên nền tối, đúng kích thước (tải lên được nhưng có cảnh báo). Ảnh dọc hoặc hẹp hơn 560px không nhận làm banner.
+
+**Trang chi tiết phim:** dải đen đầu trang (cao 240–480px) đặt ảnh ngang của phim ở giữa, không phóng to, nút play tròn mở trailer; poster viền trắng đè lên mép dải; bên phải poster: breadcrumb, tên phim + nhãn tuổi, thời lượng/ngày khởi chiếu/điểm có icon, Thể loại/Đạo diễn/Diễn viên dạng chip, khoảng chiếu, nút hành động. Dưới: Nội dung phim, Lịch chiếu, Khán giả chia sẻ. Cột phải 320px "Phim đang chiếu" (thẻ ảnh ngang 16:9, điểm, nhãn tuổi); dưới 1090px cột này xuống cuối trang. Phim chưa có ảnh ngang thì không có dải đen.
+
+Tự chuyển 5–10 giây (Admin chỉnh, mặc định 6), có chấm vị trí, mũi tên, nút tạm dừng, vuốt trên mobile; dừng khi rê chuột, khi focus bằng bàn phím, khi tab ẩn và khi hệ điều hành bật giảm chuyển động. Mobile: ảnh ở trên, chữ và nút ở dưới.
+
 ### 3.1. Bảng màu (design tokens)
 
 | Token | Giá trị HEX | Vai trò |
@@ -103,6 +128,8 @@ Thiết kế website đặt vé xem phim rõ ràng, chuyên nghiệp, ưu tiên 
 - Không sử dụng quá 3 kiểu weight trong cùng thành phần.
 
 ### 3.3. Spacing, grid và responsive
+
+Phạm vi (12/11/2026): các quy tắc mobile/tablet/breakpoint dưới đây chỉ áp dụng cho giao diện khách. Màn Admin/Staff thiết kế và nghiệm thu cho desktop (1366×768 trở lên).
 
 - Content max-width **1232px**, padding hai bên **24px** desktop / **16px** mobile.
 - Grid phim: desktop **4 cột**, tablet **3 cột**, mobile **2 cột**.
