@@ -2,7 +2,8 @@ extends layout
 block admin
   .page-heading
     div
-      h1= resourceLabel
+      if !hub
+        h1= resourceLabel
       p.muted #{total} kết quả · 5 dòng mỗi trang
     if key != 'reviews'
       if key == 'seats'
@@ -13,7 +14,7 @@ block admin
       else if key == 'showtimes'
         a.button(href='/admin/showtimes/new?cinemaId=' + cinemaId + '&date=' + day + '&movieId=' + movieId + '&roomId=' + roomId) + Thêm suất chiếu
       else
-        a.button(href='/admin/manage/' + key + '/edit?returnTo=' + returnEncoded data-dialog-form=dialogForm ? '/admin/manage/' + key + '/dialog?returnTo=' + returnEncoded : false) + Thêm mới
+        a.button.primary(href='/admin/manage/' + key + '/edit?returnTo=' + returnEncoded data-dialog-form=dialogForm ? '/admin/manage/' + key + '/dialog?returnTo=' + returnEncoded : false)= addLabel ? addLabel : '+ Thêm mới'
   if scopedCinema
     .cinema-context
       span RẠP ĐANG QUẢN LÝ
@@ -72,13 +73,13 @@ block admin
           option(value="") Tất cả
           option(value="WEEKDAY" selected=dayType == 'WEEKDAY') Thứ 2–6
           option(value="WEEKEND" selected=dayType == 'WEEKEND') Thứ 7, Chủ nhật
-    button.button.secondary(type="submit") Lọc kết quả
+    button.button(type="submit") Lọc kết quả
   .panel
     .table-wrap
       table.management-table
         thead
           tr
-            th Mã
+            th(title="Mã số bản ghi") #
             each column in columns
               th= column.label
             th Thao tác

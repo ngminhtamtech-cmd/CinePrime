@@ -15,79 +15,129 @@ html(lang="vi")
     block head
   body
     a.skip(href="#main") Đi đến nội dung
-    .topbar
-      .container
-        if siteNotices && siteNotices.size() > 0
-          each n in siteNotices
+    if siteNotices && siteNotices.size() > 0
+      each n in siteNotices
+        .notice-strip(data-notice=n.id)
+          .container
             a(href='/content/' + n.slug)= n.title
-        else
-          span Một tấm vé. Ngàn cảm xúc.
-        a(href="/content/chinh-sach") Thông tin đặt vé · Hỗ trợ
+            button.notice-close(type="button" data-notice-close aria-label="Ẩn thông báo")
+              svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                path(d="M6 6l12 12M18 6L6 18")
     header.site-header
       .container.header-row
         a.brand(href="/" aria-label="CinePrime trang chủ")
-          img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="40" height="40" aria-hidden="true")
+          img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="32" height="32" aria-hidden="true")
           span Cine
             strong Prime
-        a.button.ticket-link(href="/showtimes") Mua vé
-        form.header-search(action="/movies" method="get" role="search")
-          input(name="q" placeholder="Tìm phim theo tên" aria-label="Tìm phim")
-          button(type="submit" aria-label="Tìm kiếm")
+        nav#navigation.site-nav(aria-label="Điều hướng chính")
+          form.nav-search.nav-mobile-only(action="/movies" method="get" role="search")
+            input(name="q" placeholder="Tìm phim theo tên" aria-label="Tìm phim theo tên")
+          a(href="/" aria-current=currentPath == '/' ? 'page' : false) Trang chủ
+          .nav-group(class=currentPath && (currentPath.startsWith('/movies') || currentPath == '/showtimes') ? 'is-current' : '')
+            button.nav-trigger(type="button" aria-expanded="false" aria-controls="nav-movies")
+              | Phim
+              svg.icon.chevron(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                path(d="M6 9l6 6 6-6")
+            .nav-menu#nav-movies
+              a(href="/movies?status=NOW_SHOWING") Đang chiếu
+              a(href="/movies?status=COMING_SOON") Sắp chiếu
+              a(href="/showtimes" aria-current=currentPath == '/showtimes' ? 'page' : false) Lịch chiếu
+          a(href="/articles" aria-current=currentPath == '/articles' ? 'page' : false) Góc điện ảnh
+          a(href="/cinemas" aria-current=currentPath && currentPath.startsWith('/cinemas') ? 'page' : false) Hệ thống rạp
+          a(href="/offers" aria-current=currentPath == '/offers' ? 'page' : false) Khuyến mãi
+          if viewer
+            a.nav-mobile-only(href="/account" aria-current=currentPath == '/account' ? 'page' : false) Vé của tôi
+            if viewer.role == 'ADMIN'
+              a.nav-mobile-only(href="/admin") Quản trị
+            if viewer.role == 'STAFF'
+              a.nav-mobile-only(href="/staff") Soát vé
+            form.nav-mobile-only(action="/logout" method="post")
+              input(type="hidden" name=csrfName value=csrfToken)
+              button(type="submit") Đăng xuất
+          else
+            .nav-auth.nav-mobile-only
+              a.button.secondary(href="/login") Đăng nhập
+              a.button.dark(href="/register") Đăng ký
+        .header-tools
+          a.icon-button.search-toggle(href="#site-search" aria-controls="site-search" aria-expanded="false" aria-label="Tìm phim")
             svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
               circle(cx="11" cy="11" r="7")
               path(d="M20 20l-3.6-3.6")
-        .header-account
+          span.header-divider(aria-hidden="true")
           if viewer
-            a(href="/account")= viewer.name
-            form(action="/logout" method="post")
-              input(type="hidden" name=csrfName value=csrfToken)
-              button.text-button(type="submit") Đăng xuất
+            .nav-group.account-menu
+              button.account-trigger(type="button" aria-expanded="false" aria-controls="account-menu")
+                span.avatar-mini(aria-hidden="true")= viewerInitials
+                span.name= viewer.name
+                svg.icon.chevron(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                  path(d="M6 9l6 6 6-6")
+              .nav-menu#account-menu
+                a(href="/account") Vé của tôi
+                a(href="/account#favorites") Phim yêu thích
+                a(href="/account#points") Điểm thưởng
+                if viewer.role == 'ADMIN'
+                  a(href="/admin") Quản trị
+                if viewer.role == 'STAFF'
+                  a(href="/staff") Soát vé
+                hr
+                form(action="/logout" method="post")
+                  input(type="hidden" name=csrfName value=csrfToken)
+                  button(type="submit") Đăng xuất
           else
-            a(href="/login") Đăng nhập
-        button.menu-toggle(type="button" aria-expanded="false" aria-controls="navigation" aria-label="Mở menu")
-          svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
-            path(d="M4 7h16M4 12h16M4 17h16")
-    nav#navigation.site-nav(aria-label="Điều hướng chính")
-      .container.nav-row
-        a(href="/showtimes") Mua vé
-        a(href="/movies" aria-current=currentPath && currentPath.startsWith('/movies') ? 'page' : false) Phim
-        a(href="/showtimes" aria-current=currentPath == '/showtimes' ? 'page' : false) Lịch chiếu
-        a(href="/offers" aria-current=currentPath == '/offers' ? 'page' : false) Khuyến mãi
-        a(href="/articles" aria-current=currentPath == '/articles' ? 'page' : false) Góc điện ảnh
-        a(href="/cinemas" aria-current=currentPath && currentPath.startsWith('/cinemas') ? 'page' : false) Rạp / Giá vé
-        if viewer
-          a(href="/account" aria-current=currentPath == '/account' ? 'page' : false) Vé của tôi
-          if viewer.role == 'ADMIN'
-            a(href="/admin") Quản trị
-          if viewer.role == 'STAFF'
-            a(href="/staff") Soát vé
-          form.mobile-logout(action="/logout" method="post")
-            input(type="hidden" name=csrfName value=csrfToken)
-            button.text-button(type="submit") Đăng xuất
+            .header-auth
+              a.button.secondary.pill(href="/login")
+                svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                  circle(cx="12" cy="8" r="4")
+                  path(d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6")
+                | Đăng nhập
+              a.button.dark.pill(href="/register") Đăng ký
+          button.menu-toggle(type="button" aria-expanded="false" aria-controls="navigation" aria-label="Mở menu")
+            svg.icon.icon-open(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+              path(d="M4 7h16M4 12h16M4 17h16")
+            svg.icon.icon-close(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+              path(d="M6 6l12 12M18 6L6 18")
+      #site-search.search-panel
+        form.container.header-search(action="/movies" method="get" role="search")
+          input(name="q" placeholder="Tìm phim theo tên" aria-label="Tìm phim theo tên")
+          button.button.dark(type="submit") Tìm phim
     main#main
       block content
     footer.site-footer
       .container.footer-grid
         div
           a.brand(href="/" aria-label="CinePrime trang chủ")
-            img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="40" height="40" aria-hidden="true")
+            img.brand-symbol(src="/images/cineprime-mark.svg" alt="" width="32" height="32" aria-hidden="true")
             span Cine
               strong Prime
-          p Hơn cả một buổi xem phim.
+          p Đặt vé nhanh, chọn ghế trực tiếp và nhận vé QR ngay sau khi thanh toán.
           p Đồ án · Dữ liệu minh họa · Thanh toán sandbox
         div
-          h3 CinePrime
-          a(href="/content/gioi-thieu") Về chúng tôi
+          h3 Về chúng tôi
+          if footerAbout
+            each p in footerAbout
+              a(href='/content/' + p.slug)= p.title
           a(href="/cinemas") Hệ thống rạp
           a(href="/articles") Góc điện ảnh
         div
-          h3 Hỗ trợ
-          a(href="/content/chinh-sach") Chính sách đặt vé
-          a(href="/content/lien-he") Liên hệ
-          a(href="/account") Tài khoản & vé
+          h3 Hỗ trợ khách hàng
+          if footerPolicies
+            each p in footerPolicies
+              a(href='/content/' + p.slug)= p.title
+          a(href="/showtimes") Lịch chiếu
         div
-          h3 Đặt vé
-          p Chọn phim, chọn chỗ ngồi và nhận vé điện tử ngay sau khi thanh toán.
-          a.button(href="/showtimes") Đặt vé ngay
+          h3 Thành viên CinePrime
+          if viewer
+            a(href="/account") Vé của tôi
+          else
+            a(href="/register") Đăng ký thành viên
+          a(href="/account#favorites") Phim yêu thích
+          a(href="/account#points") Tích điểm
+        div
+          h3 Liên hệ
+          if footerContacts && footerContacts.size() > 0
+            each p in footerContacts
+              a(href='/content/' + p.slug)= p.title
+          else
+            p Thông tin liên hệ đang được cập nhật.
       .container.copyright © 2026 CinePrime · Đồ án hệ thống đặt vé trực tuyến
     #toast(role="status" aria-live="polite")

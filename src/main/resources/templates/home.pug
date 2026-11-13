@@ -2,35 +2,93 @@ extends layout
 include mixins
 block content
   h1.sr-only CinePrime · Đặt vé xem phim trực tuyến
-  .home-top
-    if slides.size() > 0
-      section#hero-carousel.hero(aria-roledescription="carousel" aria-label="Phim và ưu đãi nổi bật" data-interval=bannerInterval * 1000)
-        .hero-viewport
-          .hero-track
-            each s, i in slides
+  if slides.size() > 0
+    section#hero-carousel.hero(aria-roledescription="carousel" aria-label="Phim và ưu đãi nổi bật" data-interval=bannerInterval * 1000)
+      .hero-track
+        each s, i in slides
+          .hero-slide(class=(i == 0 ? 'is-active ' : '') + 'is-' + s.mode + (s.kind == 'MOVIE' ? ' is-movie' : ' is-promo') role="group" aria-roledescription="slide" aria-label=(i + 1) + ' / ' + slides.size() + ' · ' + s.title inert=i > 0)
+            if s.kind == 'MOVIE'
+              .container.hero-inner
+                .hero-copy
+                  .hero-chips
+                    if s.format
+                      span.hero-chip= s.format
+                    span.hero-chip= s.ageRating
+                    span.hero-chip= s.statusLabel
+                  h2.hero-title
+                    a(href=s.href)= s.title
+                  .hero-meta
+                    span
+                      svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                        rect(x="3" y="4" width="18" height="16" rx="2")
+                        path(d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4")
+                      | #{s.genres}
+                    span
+                      svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                        circle(cx="12" cy="12" r="9")
+                        path(d="M12 7v5l3 2")
+                      | #{s.duration} phút
+                    if s.language
+                      span
+                        svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                          circle(cx="12" cy="12" r="9")
+                          path(d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18")
+                        | #{s.language}
+                  if s.description
+                    p.hero-desc= s.description
+                  .hero-actions
+                    if s.bookable
+                      a.button(href=s.href + '#schedule')
+                        svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                          path(d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z")
+                        | #{s.comingSoon ? 'Đặt trước' : 'Mua vé ngay'}
+                    else
+                      a.button.secondary(href=s.href) Xem chi tiết
+                    if s.trailer
+                      button.button.secondary(type="button" data-trailer=s.trailer data-trailer-title='Trailer · ' + s.title)
+                        svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+                          circle(cx="12" cy="12" r="9")
+                          path(d="M10 8.5l5 3.5-5 3.5z")
+                        | Xem trailer
+                  if s.directors
+                    p.hero-credit Đạo diễn: #{s.directors}
+                a.hero-media(href=s.href tabindex="-1" aria-hidden="true")
+                  img.hero-banner(src=s.image alt="" loading=i > 0 ? 'lazy' : false fetchpriority=i == 0 ? 'high' : false)
+                a.hero-poster(href=s.href tabindex="-1" aria-hidden="true")
+                  img(src=s.poster alt="" loading=i > 0 ? 'lazy' : false)
+            else
               if s.href
-                a.hero-slide(href=s.href class=(i == 0 ? 'is-active ' : '') + 'is-' + s.mode aria-roledescription="slide" aria-label=(i + 1) + ' / ' + slides.size() + ' · ' + s.title aria-hidden=i > 0 ? 'true' : false tabindex=i > 0 ? '-1' : false)
-                  img.hero-banner(src=s.image alt=s.title loading=i > 1 ? 'lazy' : false fetchpriority=i == 0 ? 'high' : false)
+                a.hero-promo(href=s.href)
+                  img.hero-banner(src=s.image alt=s.title loading=i > 0 ? 'lazy' : false fetchpriority=i == 0 ? 'high' : false)
               else
-                .hero-slide(class=(i == 0 ? 'is-active ' : '') + 'is-' + s.mode role="group" aria-roledescription="slide" aria-label=(i + 1) + ' / ' + slides.size() + ' · ' + s.title aria-hidden=i > 0 ? 'true' : false)
-                  img.hero-banner(src=s.image alt=s.title loading=i > 1 ? 'lazy' : false fetchpriority=i == 0 ? 'high' : false)
-          if slides.size() > 1
-            button.hero-arrow.hero-prev(type="button" data-hero-prev aria-label="Banner trước")
-              svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
-                path(d="M15 18l-6-6 6-6")
-            button.hero-arrow.hero-next(type="button" data-hero-next aria-label="Banner tiếp theo")
-              svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
-                path(d="M9 18l6-6-6-6")
-            .hero-dots(role="group" aria-label="Chọn banner")
-              each s, i in slides
-                button.hero-dot(type="button" data-slide=i aria-label='Banner ' + (i + 1) + ': ' + s.title aria-current=i == 0 ? 'true' : 'false')
-              button.hero-toggle(type="button" data-hero-toggle aria-label="Tạm dừng tự chuyển banner" aria-pressed="false")
-                svg.icon.icon-pause(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
-                  path(d="M9 6v12M15 6v12")
-                svg.icon.icon-play(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
-                  path(d="M8 5l11 7-11 7z")
-    form#quick-book.quick-book(action="/showtimes" method="get" aria-label="Mua vé nhanh")
-      label.qb-field
+                .hero-promo
+                  img.hero-banner(src=s.image alt=s.title loading=i > 0 ? 'lazy' : false fetchpriority=i == 0 ? 'high' : false)
+      if slides.size() > 1
+        button.hero-side.prev(type="button" data-hero-prev aria-label="Banner trước")
+          svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+            path(d="M15 18l-6-6 6-6")
+        button.hero-side.next(type="button" data-hero-next aria-label="Banner tiếp theo")
+          svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+            path(d="M9 18l6-6-6-6")
+        .hero-controls(role="group" aria-label="Chọn banner")
+          button.hero-arrow(type="button" data-hero-prev aria-label="Banner trước")
+            svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+              path(d="M15 18l-6-6 6-6")
+          each s, i in slides
+            button.hero-dot(type="button" data-slide=i aria-label='Banner ' + (i + 1) + ': ' + s.title aria-current=i == 0 ? 'true' : 'false')
+          button.hero-toggle(type="button" data-hero-toggle aria-label="Tạm dừng tự chuyển banner" aria-pressed="false")
+            svg.icon.icon-pause(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+              path(d="M9 6v12M15 6v12")
+            svg.icon.icon-play(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+              path(d="M8 5l11 7-11 7z")
+          span.hero-count(data-hero-count aria-hidden="true") 1 / #{slides.size()}
+          button.hero-arrow(type="button" data-hero-next aria-label="Banner tiếp theo")
+            svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+              path(d="M9 18l6-6-6-6")
+  form#quick-book.quick-book(action="/showtimes" method="get" aria-label="Mua vé nhanh")
+    .container
+      p.qb-title Mua vé nhanh
+      label.qb-field.is-current
         span.qb-num 1
         select(name="movieId" required aria-label="Chọn phim")
           option(value="") Chọn phim
@@ -49,14 +107,21 @@ block content
         span.qb-num 4
         select(name="showtimeId" aria-label="Chọn suất" hidden)
           option(value="") Chọn suất
-      button.button.qb-submit(type="submit") Mua vé nhanh
+      button.button.qb-submit(type="submit")
+        svg.icon(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+          path(d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z")
+        | Mua vé
   section.container.section
     .section-heading
-      h2 Phim tại CinePrime
+      div
+        h2#movie-heading
+          span(data-heading-for="showing") Phim đang chiếu
+          span(data-heading-for="coming" hidden) Phim sắp chiếu
+          span.heading-lead Chọn phim để xem suất chiếu và đặt vé
       .tabs(role="tablist" aria-label="Trạng thái phim")
         button.tab.active(type="button" role="tab" aria-selected="true" aria-controls="showing" data-movie-tab="showing") Đang chiếu
         button.tab(type="button" role="tab" aria-selected="false" aria-controls="coming" data-movie-tab="coming") Sắp chiếu
-      a.more(href="/movies") Tất cả phim
+      a.more(href="/movies") Xem tất cả →
     #showing.movie-grid(role="tabpanel")
       each m in movies
         +movieCard(m)
@@ -71,14 +136,14 @@ block content
     .container
       .section-heading
         h2 Lịch chiếu
-        a.more(href="/showtimes") Xem toàn bộ lịch chiếu
+        a.more(href="/showtimes") Xem toàn bộ lịch chiếu →
       +dateStrip()
       .show-list
         +showList(shows)
   section.container.section
     .section-heading
       h2 Ưu đãi cho bạn
-      a.more(href="/offers") Tất cả ưu đãi
+      a.more(href="/offers") Tất cả ưu đãi →
     .content-grid
       each c in offers
         +contentCard(c, 'Ưu đãi')
@@ -93,7 +158,7 @@ block content
   section.container.section
     .section-heading
       h2 Góc điện ảnh
-      a.more(href="/articles") Tất cả bài viết
+      a.more(href="/articles") Tất cả bài viết →
     .content-grid
       each c in articles
         +contentCard(c, 'Bài viết')

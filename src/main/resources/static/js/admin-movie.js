@@ -102,6 +102,29 @@
     });
   });
 
+  // 3b. "+ Khác": type a new genre inline; it is created (or an existing one reused) and ticked right away.
+  const genreOther=document.getElementById('mf-genre-other'),genreBox=document.getElementById('mf-genre-new'),genreName=document.getElementById('mf-genre-name'),genreSave=document.getElementById('mf-genre-save');
+  if(genreOther&&genreBox){
+    const openGenre=on=>{genreBox.hidden=!on;genreOther.setAttribute('aria-expanded',String(on));if(on){genreName.value='';genreName.focus();}else genreOther.focus();};
+    genreOther.addEventListener('click',()=>openGenre(genreBox.hidden));
+    document.getElementById('mf-genre-cancel').addEventListener('click',()=>openGenre(false));
+    async function addGenre(){
+      const name=genreName.value.trim().replace(/\s+/g,' ');if(!name){genreName.focus();return;}
+      genreSave.disabled=true;
+      try{
+        const data=await api('/api/admin/form-options/genres',{method:'POST',body:JSON.stringify({name})}),g=data.genre;
+        let input=one('input[name="genreIds"][value="'+g.id+'"]');
+        if(!input){const chip=document.createElement('label');chip.className='mf-chip';input=document.createElement('input');input.type='checkbox';input.name='genreIds';input.value=g.id;input.dataset.active='true';const text=document.createElement('span');text.textContent=g.name;chip.append(input,text);genreOther.before(chip);}
+        else{input.disabled=false;input.dataset.active='true';input.closest('.mf-chip')?.classList.remove('is-inactive');const text=input.nextElementSibling;if(text)text.textContent=g.name;}
+        input.checked=true;form.dispatchEvent(new Event('change'));openGenre(false);
+        toast(data.created?'Đã thêm thể loại mới: '+g.name:data.reactivated?'Đã dùng lại thể loại: '+g.name:'Đã chọn '+g.name+' (đã có sẵn).');
+      }catch(error){toast(error.message||'Chưa thêm được thể loại.');}
+      finally{genreSave.disabled=false;}
+    }
+    genreSave.addEventListener('click',addGenre);
+    genreName.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addGenre();}else if(e.key==='Escape'){e.preventDefault();openGenre(false);}});
+  }
+
   // 4. Live preview card and readiness checklist.
   const previewTitle=document.getElementById('mf-preview-title'),previewMeta=document.getElementById('mf-preview-meta'),previewAge=document.getElementById('mf-preview-age'),previewPoster=document.getElementById('mf-preview-poster'),ribbon=document.getElementById('mf-preview-ribbon');
   const genres=()=>all('input[name="genreIds"]:checked');

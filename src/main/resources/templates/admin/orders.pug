@@ -2,13 +2,15 @@ extends layout
 block admin
   .page-heading
     div
-      h1 Đơn hàng & Thanh toán
-      p.muted Trạng thái đơn và từng lần thanh toán được theo dõi riêng.
+      h1 Đơn hàng
+      p.muted Mọi đơn online và tại quầy ở một nơi · trạng thái đơn và từng lần thanh toán được theo dõi riêng.
     a.button.secondary(href="/admin/transactions.csv") ↓ Nhật ký giao dịch
-  details.report-caption
-    summary Về file nhật ký giao dịch
-    p File gồm toàn bộ thời gian/trạng thái; một đơn có thể xuất hiện nhiều lần. Không cộng cột thành tiền để kết luận doanh thu. Báo cáo doanh thu theo kỳ nằm ở trang Tổng quan.
+  nav.channel-tabs(aria-label="Kênh bán")
+    a(href='/admin/orders?cinemaId=' + cinemaId + '&date=' + day aria-current=channel == '' ? 'page' : false) Tất cả kênh
+    a(href='/admin/orders?channel=ONLINE&cinemaId=' + cinemaId + '&date=' + day aria-current=channel == 'ONLINE' ? 'page' : false) Online
+    a(href='/admin/orders?channel=COUNTER&cinemaId=' + cinemaId + '&date=' + day aria-current=channel == 'COUNTER' ? 'page' : false) Tại quầy
   form.ops-filters(method="get")
+    input(type="hidden" name="channel" value=channel)
     label Tìm đơn
       input(name="q" value=q placeholder="Mã đơn, email, phim…")
     label Trạng thái đơn
@@ -23,6 +25,7 @@ block admin
         option(value="") Tất cả
         option(value="RECONCILIATION" selected=paymentState == 'RECONCILIATION') Cần đối soát
         option(value="SUCCEEDED" selected=paymentState == 'SUCCEEDED') Thành công
+        option(value="REFUNDED" selected=paymentState == 'REFUNDED') Đã hoàn tiền
         option(value="FAILED" selected=paymentState == 'FAILED') Có lần thất bại
         option(value="PENDING" selected=paymentState == 'PENDING') Đang xác minh
         option(value="CREATED" selected=paymentState == 'CREATED') Mới tạo
@@ -33,13 +36,31 @@ block admin
           option(value=c.id selected=cinemaId == c.id.toString())= c.name
     label Ngày tạo đơn
       input(type="date" name="date" value=day)
-    button.button.secondary(type="submit") Lọc đơn
+    button.button(type="submit") Lọc đơn
+  .order-summary(aria-label="Tổng hợp theo bộ lọc")
+    div
+      small Đơn khớp bộ lọc
+      strong(class=total == 0 ? 'zero' : '')= total
+      span Online #{summary.onlineCount} · Quầy #{summary.counterCount}
+    div
+      small Đã thanh toán
+      strong(class=summary.paidCount == 0 ? 'zero' : '')= summary.paidCount
+      span Giá trị #{summary.paidAmount}
+    div
+      small Chờ thanh toán
+      strong(class=summary.pending == 0 ? 'zero' : '')= summary.pending
+      span Đơn online đang giữ ghế / chờ MoMo
+    div
+      small Đã hủy
+      strong(class=summary.cancelled == 0 ? 'zero' : '')= summary.cancelled
+      span Gồm đơn quầy hủy và hoàn tiền mặt
   .panel
     .table-wrap
       table.management-table
         thead
           tr
             th Đơn / Khách
+            th Kênh
             th Phim / Suất
             th Ngày đặt
             th Thực trả
@@ -51,8 +72,12 @@ block admin
               td(data-label="Đơn / Khách")
                 a(href='/admin/orders/' + o.id)
                   strong= o.code
-                small #{o.customerName} · #{o.channelLabel}
+                small= o.customerName
                 small= o.email
+              td(data-label="Kênh")
+                span.channel-badge(class=o.counter ? 'counter' : 'online')= o.channelLabel
+                if o.counter && o.seller != ''
+                  small NV: #{o.seller}
               td(data-label="Phim / Suất")
                 span.cell-text= o.movieTitle
                 small #{o.cinemaName} · #{o.when}

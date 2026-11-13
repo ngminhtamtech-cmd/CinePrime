@@ -40,7 +40,7 @@ mixin operationWidget(name, data, moreUrl)
   .operation-widget(data-op-widget=name data-cinema=cinemaId data-next=data.nextCursor data-revision=data.revision)
     .operation-list(data-widget-rows)
       each item in data.rows
-        a.operation-item(href=(name == 'upcoming' ? '/admin/manage/showtimes/edit?id=' : '/admin/orders/') + item.id data-record-id=item.recordId)
+        a.operation-item(href=item.href ? item.href : (name == 'upcoming' ? '/admin/manage/showtimes/edit?id=' : '/admin/orders/') + item.id data-record-id=item.recordId)
           strong= item.label
           small= item.detail
       if data.rows.size() == 0
@@ -76,20 +76,33 @@ mixin movieCard(m)
         if m.comingSoon
           span.release-ribbon Khởi chiếu #{m.releaseText}
     .movie-card-body
-      if m.ended
-        h3= m.title
-        p.movie-card-meta #{m.genres} · #{m.duration} phút
-        span.button.secondary.small.card-action.disabled Đã hết lịch chiếu
-      else
-        a(href='/movies/' + m.slug)
+      .movie-card-text
+        if m.ended
           h3= m.title
-        p.movie-card-meta
-          span.score ★ #{m.score}
-          |  · #{m.genres} · #{m.duration} phút
-        if m.hasBookableShows
-          a.button.small.card-action(href='/movies/' + m.slug + '#schedule')= m.comingSoon ? 'Đặt trước' : 'Mua vé'
+          p.movie-card-meta Đã hết lịch chiếu
         else
-          a.button.secondary.small.card-action(href='/movies/' + m.slug) Xem chi tiết
+          h3
+            a(href='/movies/' + m.slug)= m.title
+          p.movie-card-meta #{m.genres} · #{m.duration} phút
+      +favButton(m)
+    if !m.ended
+      .card-actions
+        if m.hasBookableShows
+          a.button.small(href='/movies/' + m.slug + '#schedule')= m.comingSoon ? 'Đặt trước' : 'Mua vé'
+        a.button.secondary.small(href='/movies/' + m.slug) Xem chi tiết
+mixin favButton(m)
+  - liked = viewer && favoriteIds && favoriteIds.contains(m.id)
+  if viewer
+    form.fav-form(action='/account/favorites/' + m.id method="post")
+      input(type="hidden" name=csrfName value=csrfToken)
+      input(type="hidden" name="next" value=currentUrl)
+      button.fav(type="submit" aria-pressed=liked ? 'true' : 'false' aria-label=(liked ? 'Bỏ thích ' : 'Thích ') + m.title)
+        svg(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+          path(d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z")
+  else
+    a.fav(href="/login" aria-label='Đăng nhập để thích ' + m.title)
+      svg(viewBox="0 0 24 24" aria-hidden="true" focusable="false")
+        path(d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z")
 mixin showList(shows)
   if shows.size() == 0
     .empty Không có suất chiếu phù hợp. Hãy chọn ngày hoặc rạp khác.
@@ -131,30 +144,18 @@ mixin bookingSteps(current)
       li(class=i + 1 < current ? 'done' : '' aria-current=i + 1 == current ? 'step' : false)
         span.step-name= step
 mixin staffNavToggle
-  button#staff-nav-toggle.staff-nav-toggle(type="button" aria-label="Ẩn / hiện thanh chức năng" title="Ẩn / hiện thanh chức năng (Ctrl + B)" aria-controls="staff-nav" aria-expanded="true")
-    svg(viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false")
-      rect(x="3" y="4.5" width="18" height="15" rx="3")
-      path(d="M9 4.5v15")
+  .nav-controls
+    button#staff-nav-toggle.nav-control(type="button" aria-label="Ẩn / hiện cột trái" title="Ẩn / hiện cột trái (Ctrl + B)" aria-controls="staff-left" aria-expanded="true")
+      svg(viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false")
+        rect(x="3" y="4.5" width="18" height="15" rx="3")
+        path(d="M9 4.5v15")
+    button#nav-back.nav-control(type="button" aria-label="Quay lại trang trước" title="Quay lại (Alt + ←)")
+      svg(viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false")
+        path(d="M15 18l-6-6 6-6")
+    button#nav-forward.nav-control(type="button" aria-label="Tới trang sau" title="Tới (Alt + →)")
+      svg(viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false")
+        path(d="M9 18l6-6-6-6")
 mixin staffTabs(active)
-  nav#staff-nav.staff-nav(aria-label="Chức năng nhân viên")
-    span.staff-nav-label CHỨC NĂNG
-    a.staff-tab(href="/staff" aria-current=active == 'checkin' ? 'page' : false title="Soát vé vào rạp")
-      span.staff-tab-icon(aria-hidden="true")
-        svg(viewBox="0 0 24 24" width="20" height="20" focusable="false")
-          path(d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M7 12h10")
-      span.staff-tab-text
-        strong Soát vé vào rạp
-        small Quét QR, xác nhận vào phòng
-    a.staff-tab(href="/staff/counter" aria-current=active == 'counter' ? 'page' : false title="Bán vé & bắp nước tại quầy")
-      span.staff-tab-icon(aria-hidden="true")
-        svg(viewBox="0 0 24 24" width="20" height="20" focusable="false")
-          path(d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v2a2 2 0 0 0 0 4v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 15.5v-2a2 2 0 0 0 0-4zM14 6v11")
-      span.staff-tab-text
-        strong Bán vé tại quầy
-        small Ghế, combo, tiền mặt, in vé
-    .staff-nav-foot
-      if staffCinema
-        span.staff-nav-cinema(title=staffCinema)
-          small RẠP PHỤ TRÁCH
-          strong= staffCinema
-      span.staff-nav-key Ctrl + B để thu gọn
+  nav.staff-tabs(aria-label="Chức năng nhân viên")
+    a(href="/staff" aria-current=active != 'counter' ? 'page' : false) Soát vé
+    a(href="/staff/counter" aria-current=active == 'counter' ? 'page' : false) Bán vé tại quầy

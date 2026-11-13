@@ -2,7 +2,8 @@ extends layout
 block admin
   .page-heading
     div
-      h1 Lịch vận hành theo ngày
+      if !hub
+        h1 Lịch vận hành theo ngày
       p.muted #{day} · #{total} suất · 5 dòng mỗi trang
     .actions
       a.button(href='/admin/showtimes/new?cinemaId=' + cinemaId + '&date=' + day + '&movieId=' + movieId + '&roomId=' + roomId) + Thêm suất chiếu

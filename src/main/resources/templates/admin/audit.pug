@@ -1,6 +1,7 @@
 extends layout
 block admin
-  h1 Nhật ký hoạt động
+  if !hub
+    h1 Nhật ký hoạt động
   form.ops-filters(method="get")
     label Người thực hiện / Thao tác / Đối tượng
       input(name="q" value=q placeholder="Tìm nhật ký…")

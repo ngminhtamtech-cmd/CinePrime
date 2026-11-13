@@ -12,21 +12,9 @@
 .admin-compact #open-sidebar{display:grid;border:0;width:36px;height:36px;font-size:0}
 .admin-compact .ops-sidebar{display:flex;flex-direction:column;padding:12px 10px;background:#f8fafc;border-right:1px solid #edf1f5;scrollbar-width:thin;scrollbar-color:transparent transparent}
 .admin-compact .ops-sidebar:hover{scrollbar-color:#cbd5e1 transparent}
-.admin-compact .sidebar-heading{padding:2px 10px 8px;font-size:10px;letter-spacing:1.2px;color:#94a3b8}
 .admin-compact .sidebar-nav{flex:1;display:grid;align-content:start;gap:2px}
-.admin-compact .nav-group{margin:0}
-.admin-compact .nav-group summary{min-height:34px;padding:6px 10px;gap:10px;border-radius:8px;font-size:13px;font-weight:600;color:#334155}
-.admin-compact .nav-group summary:hover{background:#eef2f6}
-.admin-compact .nav-group summary:after{content:'';width:6px;height:6px;border:solid #94a3b8;border-width:0 1.5px 1.5px 0;transform:rotate(-45deg);margin:0 2px 0 auto;opacity:0;transition:transform .18s,opacity .15s}
-.admin-compact .nav-group summary:hover:after,.admin-compact .nav-group summary:focus-visible:after{opacity:1}
-.admin-compact .nav-group[open] summary:after{transform:rotate(45deg)}
-.nav-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;color:#64748b}
+.nav-icon{display:grid;place-items:center;width:20px;height:20px;flex:none}
 .nav-svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.admin-compact .nav-group[data-active="true"] summary .nav-icon{color:var(--blue)}
-.admin-compact .nav-links{display:grid;gap:1px;padding:2px 0 6px}
-.admin-compact .nav-links a{display:block;margin:0 0 0 20px;padding:6px 10px;border:0;border-radius:8px;font-size:13px;line-height:1.45;color:#475569;transition:background .12s,color .12s}
-.admin-compact .nav-links a:hover{background:#eef2f6;color:var(--ink)}
-.admin-compact .nav-links a.active{background:#e6edf6;color:var(--ink);font-weight:600}
 @media(min-width:851px){
   .admin-compact .ops-shell{transition:grid-template-columns .28s cubic-bezier(.32,.72,0,1)}
   .admin-compact .ops-sidebar{transition:transform .28s cubic-bezier(.32,.72,0,1),opacity .2s,visibility .28s}
@@ -242,3 +230,65 @@
   .banner-editor .be-schedule-fields{grid-template-columns:1fr}
   .banner-editor .be-section,.banner-editor .be-preview-card{padding:16px}
 }
+
+/* Dashboard: heading + inline filters, 4 KPI cards, then a 3-column board (money flow, counter shifts, live work, rankings). Admin is desktop-only. */
+.admin-compact .dash-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.admin-compact .dash-head h1{margin:0 0 2px}.admin-compact .dash-head p{margin:0;font-size:12px}.admin-compact .dash-head p strong{color:#334155}
+.admin-compact .dash-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.admin-compact .dash-filters label{margin:0}.admin-compact .dash-filters select,.admin-compact .dash-filters input{margin:0;height:40px;padding:0 10px;min-width:0}
+.admin-compact .dash-filters select[name=cinemaId]{max-width:220px}.admin-compact .dash-filters .button{min-height:40px;padding:8px 14px;white-space:nowrap}
+.admin-compact .dash-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.admin-compact .dash-kpis .kpi-card{padding:14px 16px;gap:2px}
+.admin-compact .dash-kpis .kpi-card>strong{font-size:24px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-compact .dash-kpis .kpi-card>small{font-size:11px;color:#64748b}
+.admin-compact .dash-kpis .flow-in>strong{color:#15803d}.admin-compact .dash-kpis .flow-out>strong{color:#b42318}
+.admin-compact .dash-kpis .flow-in .kpi-icon{background:#e9f7ef;color:#15803d}.admin-compact .dash-kpis .flow-out .kpi-icon{background:#fdecec;color:#b42318}
+.admin-compact .split-bar{display:block;width:100%;height:6px;border-radius:3px;overflow:hidden;margin:6px 0 2px}
+.admin-compact .split-bar .track{fill:#eef2f6}.admin-compact .split-bar .online{fill:var(--blue)}.admin-compact .split-bar .counter{fill:var(--orange)}
+/* Two stacked lanes (2/3 + 1/3): panels sit directly under each other, so no row leaves holes beside a taller neighbour. */
+.admin-compact .dash-board{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
+.admin-compact .dash-lane{display:flex;flex-direction:column;gap:12px;min-width:0}
+.admin-compact .dash-lane>.panel:last-child{flex:1 1 auto}
+.admin-compact .dash-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch}
+.admin-compact .dash-board .panel{margin:0;min-width:0;padding:14px 16px}
+.admin-compact .dash-pair>.panel{display:flex;flex-direction:column}.admin-compact .dash-pair .operation-widget{flex:1;display:flex;flex-direction:column}.admin-compact .dash-pair .operation-list{flex:1}
+.admin-compact .dash-board .panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}
+.admin-compact .dash-board h2{font-size:16px;margin:0}.admin-compact .dash-board .panel>p.muted{margin:0 0 6px}
+/* Compact live widgets: one-line pager row, small empty state, status only on hover/focus area. */
+.admin-compact .dash-board .operation-list .empty-inline{margin:4px 0;padding:8px 10px;font-size:12px}
+.admin-compact .dash-board .ops-pagination{margin-top:6px;padding-top:6px;min-height:0;gap:6px}
+.admin-compact .dash-board .ops-pagination .pager-btn{width:32px;height:32px;min-height:32px}
+.admin-compact .dash-board .ops-pagination .widget-more{min-height:32px;padding:4px 8px}
+.admin-compact .dash-board .operation-section{margin:6px 0}.admin-compact .dash-board .operation-section>summary{padding:6px 10px}
+.admin-compact .dash-board .operation-section:not([open])+.operation-section{margin-top:0}
+.admin-compact .dash-board [data-widget-status]{font-size:10px;margin:2px 0 0}
+.admin-compact .flow-layout>div:first-child{display:flex;flex-direction:column;align-self:stretch}
+.admin-compact .flow-layout .chart-empty{flex:1;display:flex;align-items:center;justify-content:center;margin:0 0 8px}
+.admin-compact .chart-legend{display:flex;align-items:center;gap:12px;font-size:11px;color:#64748b}
+.admin-compact .chart-legend>span:not(.badge):before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.admin-compact .chart-legend .online:before{background:var(--blue)}.admin-compact .chart-legend .counter:before{background:var(--orange)}
+.admin-compact .chart-bar-counter{fill:var(--orange)}.admin-compact .chart-bar:hover,.admin-compact .chart-bar-counter:hover{opacity:.85}
+.admin-compact .revenue-chart .chart-bar:hover{fill:var(--blue)}
+.admin-compact .flow-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.admin-compact .flow-table{margin:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.admin-compact .flow-table>div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.admin-compact .flow-table dt{display:flex;flex-direction:column;min-width:0;font-size:12px;font-weight:600;color:#334155}
+.admin-compact .flow-table dt small{font-weight:400;color:#64748b;font-size:11px}
+.admin-compact .flow-table dd{margin:0;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:13px}
+.admin-compact .flow-table .in dd{color:#15803d}.admin-compact .flow-table .out dd{color:#b42318}
+.admin-compact .flow-table .net{background:#f4f8fd}.admin-compact .flow-table .net dt span{color:var(--navy)}.admin-compact .flow-table .net dd{font-size:16px;color:var(--blue)}
+.admin-compact .flow-table .held{background:#fffaf0}.admin-compact .flow-table .held dd{color:#a85d00}
+.admin-compact .flow-table .flow-help{padding:8px 12px}.admin-compact .flow-table .flow-help p{font-size:11px;color:#64748b;margin:8px 0 0;line-height:1.5}
+.admin-compact .drawer-total{display:grid;grid-template-columns:1fr auto;align-items:center;gap:0 8px;padding:10px 12px;margin-bottom:6px;border-radius:10px;background:#fff7ed;border:1px solid #fde4c4}
+.admin-compact .drawer-total small{grid-column:1/-1;font-size:11px;color:#9a5b13}.admin-compact .drawer-total strong{font-size:20px;color:#9a3412;font-variant-numeric:tabular-nums}
+.admin-compact nav.channel-tabs{display:flex;gap:4px;margin:0 0 10px;padding:0;background:transparent;border-radius:0;border-bottom:1px solid var(--line)}
+.admin-compact .channel-tabs a{padding:8px 16px;color:#64748b;font-weight:600;font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.admin-compact .channel-tabs a:hover{color:var(--blue)}.admin-compact .channel-tabs a[aria-current=page]{color:var(--blue);border-bottom-color:var(--orange)}
+.admin-compact .order-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 12px}
+.admin-compact .order-summary>div{display:flex;flex-direction:column;padding:10px 14px;background:white;border:1px solid var(--line);border-radius:10px}
+.admin-compact .order-summary small{font-size:11px;color:#64748b}.admin-compact .order-summary strong{font-size:20px;color:var(--blue);line-height:1.35}.admin-compact .order-summary span{font-size:11px;color:#64748b}
+.admin-compact .channel-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.admin-compact .channel-badge.online{background:#eaf2fb;color:var(--blue)}.admin-compact .channel-badge.counter{background:#fff1e3;color:#b45309}
+.admin-compact td .channel-badge+small{display:block;margin-top:3px}
+.admin-compact .shift-summary-strip strong.shift-detail{font-size:12px;color:#334155;font-weight:600;line-height:1.5}
+@media(max-width:1280px){.admin-compact .flow-layout{grid-template-columns:minmax(0,1fr) 260px}}

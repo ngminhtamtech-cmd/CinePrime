@@ -62,6 +62,8 @@ public class Store {
     }
     public List<Map<String,Object>> views(Collection<? extends Row> rows) { return rows.stream().map(this::view).toList(); }
     public String money(long amount) { return String.format(Locale.forLanguageTag("vi-VN"),"%,d ₫",amount); }
+    /** Operations screens (Admin/Staff) write money as "170.000 đ"; the "₫" glyph renders underlined in Be Vietnam Pro. */
+    public String cash(long amount) { return String.format(Locale.forLanguageTag("vi-VN"),"%,d đ",amount); }
     public String date(Instant instant) { return instant==null?"":DateTimeFormatter.ofPattern("HH:mm · dd/MM/yyyy").withZone(ZoneId.of("Asia/Ho_Chi_Minh")).format(instant); }
     public String local(Instant instant) { return instant==null?"":DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm").withZone(ZoneId.of("Asia/Ho_Chi_Minh")).format(instant); }
     @Transactional public void audit(Long actor,String action,String target) { Audit a=new Audit();a.actorId=actor;a.action=action;a.target=target;a.createdAt=Instant.now();save(a); }

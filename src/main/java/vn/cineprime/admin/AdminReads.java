@@ -30,9 +30,9 @@ public class AdminReads {
         var records=query("select e from "+entity(type)+" e where e.orderId=:id order by e.id desc",type,Map.of("id",id)).setFirstResult(page*AdminPage.SIZE).setMaxResults(AdminPage.SIZE).getResultList();
         Map<Long,String> seats=new HashMap<>();if(section.equals("tickets")&&!records.isEmpty())db.query("select s.id,s.label from "+entity(Seat.class)+" s where s.id in ?1",Object[].class,records.stream().map(r->((Ticket)r).seatId).toList()).forEach(r->seats.put((Long)r[0],(String)r[1]));
         List<Map<String,Object>> rows=records.stream().map(row->{
-            if(row instanceof OrderSeat l)return Map.<String,Object>of("seat",l.label,"type",AdminPresentation.text(l.seatType),"price",db.money(l.price));
-            if(row instanceof OrderProduct l)return Map.<String,Object>of("name",l.name,"quantity",l.quantity,"price",db.money(Math.multiplyExact(l.price,l.quantity)));
-            var v=db.view(row);if(row instanceof Payment p){v.put("statusLabel",AdminPresentation.text(p.status));v.put("amountText",db.money(p.amount));}if(row instanceof Ticket t){v.put("seat",seats.getOrDefault(t.seatId,"—"));v.put("statusLabel",AdminPresentation.text(t.status));v.put("when",db.date(t.checkedInAt));}return v;
+            if(row instanceof OrderSeat l)return Map.<String,Object>of("seat",l.label,"type",AdminPresentation.text(l.seatType),"price",db.cash(l.price));
+            if(row instanceof OrderProduct l)return Map.<String,Object>of("name",l.name,"quantity",l.quantity,"price",db.cash(Math.multiplyExact(l.price,l.quantity)));
+            var v=db.view(row);if(row instanceof Payment p){v.put("statusLabel",AdminPresentation.text(p.status));v.put("amountText",db.cash(p.amount));}if(row instanceof Ticket t){v.put("seat",seats.getOrDefault(t.seatId,"—"));v.put("statusLabel",AdminPresentation.text(t.status));v.put("when",db.date(t.checkedInAt));}return v;
         }).toList();return new AdminPage<>(rows,total,page,page>0,(page+1L)*AdminPage.SIZE<total).model();
     }
     public static String interval(Instant start,Instant end){
@@ -57,16 +57,23 @@ public class AdminReads {
         var p=page("select s,m.title,r.name,c.name",from," order by m.title,s.startsAt,s.id",args,requested);
         return mapped(p,p.rows().stream().map(row->{var s=(Showtime)row[0];return Map.<String,Object>of("id",s.id,"movieTitle",row[1],"roomName",row[2],"cinemaName",row[3],"when",interval(s.startsAt,s.endsAt),"status",AdminPresentation.text(s.status));}).toList());
     }
-    public Map<String,Object> orders(String q,String state,String paymentState,Long cinema,LocalDate day,int requested){
-        String from=" from "+entity(Order.class)+" o left join "+entity(User.class)+" u on u.id=o.userId, "+entity(Showtime.class)+" s, "+entity(Room.class)+" r where o.showtimeId=s.id and s.roomId=r.id";
+    public Map<String,Object> orders(String q,String state,String paymentState,Long cinema,LocalDate day,int requested){return orders(q,state,paymentState,"",cinema,day,requested);}
+    /** Orders of both channels; the summary covers every order matching the filter (not only the current page). */
+    public Map<String,Object> orders(String q,String state,String paymentState,String channel,Long cinema,LocalDate day,int requested){
+        String from=" from "+entity(Order.class)+" o left join "+entity(User.class)+" u on u.id=o.userId left join "+entity(User.class)+" seller on seller.id=o.soldBy, "+entity(Showtime.class)+" s, "+entity(Room.class)+" r where o.showtimeId=s.id and s.roomId=r.id";
         Map<String,Object> args=new HashMap<>();
+        if(channel.equals("ONLINE")||channel.equals("COUNTER")){from+=" and o.channel=:channel";args.put("channel",channel);}
         if(!q.isBlank()){from+=" and (lower(o.code) like :q escape '!' or lower(o.movieTitle) like :q escape '!' or lower(u.email) like :q escape '!' or lower(u.name) like :q escape '!')";args.put("q",search(q));}
         if(!state.isBlank()){from+=" and o.status=:state";args.put("state",state);}if(cinema!=null){from+=" and r.cinemaId=:cinema";args.put("cinema",cinema);}
         if(day!=null){from+=" and o.createdAt>=:from and o.createdAt<:until";args.put("from",day.atStartOfDay(ReportService.ZONE).toInstant());args.put("until",day.plusDays(1).atStartOfDay(ReportService.ZONE).toInstant());}
         if(!paymentState.isBlank()){from+=" and exists (select p.id from "+entity(Payment.class)+" p where p.orderId=o.id and "+(paymentState.equals("RECONCILIATION")?"p.reconciliation=true)":"p.status=:payment)");if(!paymentState.equals("RECONCILIATION"))args.put("payment",paymentState);}
-        var p=page("select o,coalesce(u.email,''),coalesce(u.name,'Khách vãng lai')",from," order by o.createdAt desc,o.id desc",args,requested);
+        var p=page("select o,coalesce(u.email,''),coalesce(u.name,'Khách vãng lai'),coalesce(seller.name,'')",from," order by o.createdAt desc,o.id desc",args,requested);
+        long paidCount=0,paidAmount=0,onlineCount=0,counterCount=0,pending=0,cancelled=0;
+        for(Object[] g:query("select o.status,o.channel,count(o),coalesce(sum(o.total),0)"+from+" group by o.status,o.channel",Object[].class,args).getResultList()){long n=((Number)g[2]).longValue();if("PAID".equals(g[0])){paidCount+=n;paidAmount=Math.addExact(paidAmount,((Number)g[3]).longValue());}else if("PENDING_PAYMENT".equals(g[0]))pending+=n;else if("CANCELLED".equals(g[0]))cancelled+=n;if("COUNTER".equals(g[1]))counterCount+=n;else onlineCount+=n;}
+        Map<String,Object> summary=new LinkedHashMap<>();summary.put("paidCount",paidCount);summary.put("paidAmount",db.cash(paidAmount));summary.put("onlineCount",onlineCount);summary.put("counterCount",counterCount);summary.put("pending",pending);summary.put("cancelled",cancelled);
         Map<Long,List<Payment>> payments=new HashMap<>();if(!p.rows().isEmpty())db.list(Payment.class,"where e.orderId in ?1 order by e.id desc",p.rows().stream().map(r->((Order)r[0]).id).toList()).forEach(a->payments.computeIfAbsent(a.orderId,n->new ArrayList<>()).add(a));
-        return mapped(p,p.rows().stream().map(row->{Order o=(Order)row[0];var v=catalog.order(o);v.put("email",row[1]);v.put("customerName",row[2]);v.put("channelLabel",o.channel.equals("COUNTER")?"Quầy":"Online");v.put("created",db.date(o.createdAt));v.put("statusLabel",AdminPresentation.text(o.status));var ps=payments.getOrDefault(o.id,List.of());v.put("paymentLabel",ps.isEmpty()?"Chưa tạo thanh toán":AdminPresentation.text(ps.getFirst().status)+(ps.stream().anyMatch(a->a.reconciliation)?" · Cần đối soát":""));return v;}).toList());
+        Map<String,Object> model=new HashMap<>(mapped(p,p.rows().stream().map(row->{Order o=(Order)row[0];var v=catalog.order(o);v.put("email",row[1]);v.put("customerName",row[2]);v.put("counter",o.channel.equals("COUNTER"));v.put("seller",row[3]);v.put("channelLabel",o.channel.equals("COUNTER")?"Quầy":"Online");v.put("created",db.date(o.createdAt));v.put("statusLabel",AdminPresentation.text(o.status));var ps=payments.getOrDefault(o.id,List.of());v.put("paymentLabel",ps.isEmpty()?"Chưa tạo thanh toán":(ps.getFirst().provider.equals("CASH")?"Tiền mặt · ":"MoMo · ")+AdminPresentation.text(ps.getFirst().status)+(ps.stream().anyMatch(a->a.reconciliation)?" · Cần đối soát":""));return v;}).toList()));
+        model.put("summary",summary);return model;
     }
     /** Counter cash shifts; expected cash of open shifts is read live, closed shifts use their snapshot. */
     public Map<String,Object> shifts(Long cinema,LocalDate day,String state,int requested){
@@ -75,8 +82,8 @@ public class AdminReads {
         if(day!=null){from+=" and s.openedAt>=:from and s.openedAt<:until";args.put("from",day.atStartOfDay(ReportService.ZONE).toInstant());args.put("until",day.plusDays(1).atStartOfDay(ReportService.ZONE).toInstant());}
         var p=page("select s,u.name,c.name",from," order by s.openedAt desc,s.id desc",args,requested);
         return mapped(p,p.rows().stream().map(row->{Shift s=(Shift)row[0];long cashIn=query("select coalesce(sum(p.amount),0) from "+entity(Payment.class)+" p where p.shiftId=:id and p.provider='CASH' and p.status='SUCCEEDED'",Long.class,Map.of("id",s.id)).getSingleResult();long expected=s.expectedCash!=null?s.expectedCash:s.openingCash+cashIn;
-            Map<String,Object> v=new LinkedHashMap<>();v.put("id",s.id);v.put("staff",row[1]);v.put("cinema",row[2]);v.put("opened",db.date(s.openedAt));v.put("closed",s.closedAt==null?"Đang mở":db.date(s.closedAt));v.put("status",AdminPresentation.text(s.status));v.put("opening",db.money(s.openingCash));v.put("cashIn",db.money(expected-s.openingCash));v.put("expected",db.money(expected));v.put("counted",s.countedCash==null?"—":db.money(s.countedCash));
-            v.put("difference",s.countedCash==null?"—":(s.countedCash>expected?"+":"")+db.money(s.countedCash-expected));v.put("mismatch",s.countedCash!=null&&s.countedCash!=expected);v.put("orders",db.count(Order.class,"where e.shiftId=?1 and e.status='PAID'",s.id));v.put("cancelled",db.count(Order.class,"where e.shiftId=?1 and e.cancelledAt is not null",s.id));v.put("note",Objects.toString(s.note,""));return v;}).toList());
+            Map<String,Object> v=new LinkedHashMap<>();v.put("id",s.id);v.put("staff",row[1]);v.put("cinema",row[2]);v.put("opened",db.date(s.openedAt));v.put("closed",s.closedAt==null?"Đang mở":db.date(s.closedAt));v.put("status",AdminPresentation.text(s.status));v.put("opening",db.cash(s.openingCash));v.put("cashIn",db.cash(expected-s.openingCash));v.put("expected",db.cash(expected));v.put("counted",s.countedCash==null?"—":db.cash(s.countedCash));
+            v.put("difference",s.countedCash==null?"—":(s.countedCash>expected?"+":"")+db.cash(s.countedCash-expected));v.put("mismatch",s.countedCash!=null&&s.countedCash!=expected);v.put("orders",db.count(Order.class,"where e.shiftId=?1 and e.status='PAID'",s.id));v.put("cancelled",db.count(Order.class,"where e.shiftId=?1 and e.cancelledAt is not null",s.id));v.put("note",Objects.toString(s.note,""));return v;}).toList());
     }
     public Map<String,Object> audit(String q,int requested){
         String from=" from "+entity(Audit.class)+" a left join "+entity(User.class)+" u on u.id=a.actorId where 1=1";Map<String,Object> args=new HashMap<>();

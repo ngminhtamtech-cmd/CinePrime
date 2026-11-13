@@ -13,7 +13,7 @@ public class RoomPrices {
     private final Store db;private final AdminService admin;
     public RoomPrices(Store db,AdminService admin){this.db=db;this.admin=admin;}
     public static String version(Price p){try{return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest((p.id+"|"+p.cinemaId+"|"+p.seatType+"|"+p.dayType+"|"+p.fromMinute+"|"+p.toMinute+"|"+p.amount).getBytes(StandardCharsets.UTF_8)));}catch(java.security.NoSuchAlgorithmException e){throw new IllegalStateException(e);}}
-    private Map<String,Object> row(Price p){return Map.of("id",p.id,"seatType",p.seatType,"dayType",p.dayType,"fromMinute",AdminPresentation.time(p.fromMinute),"toMinute",AdminPresentation.time(p.toMinute),"amount",Long.toString(p.amount),"amountText",db.money(p.amount),"version",version(p));}
+    private Map<String,Object> row(Price p){return Map.of("id",p.id,"seatType",p.seatType,"dayType",p.dayType,"fromMinute",AdminPresentation.time(p.fromMinute),"toMinute",AdminPresentation.time(p.toMinute),"amount",Long.toString(p.amount),"amountText",db.cash(p.amount),"version",version(p));}
     public Map<String,Object> page(Long roomId,String type,String day,int requested){
         Room room=db.get(Room.class,roomId);String where=" where p.cinemaId=:cinema";Map<String,Object> args=new HashMap<>(Map.of("cinema",room.cinemaId));
         if(!type.isBlank()){where+=" and p.seatType=:type";args.put("type",type);}if(!day.isBlank()){where+=" and p.dayType=:day";args.put("day",day);}

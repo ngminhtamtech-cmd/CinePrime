@@ -563,3 +563,25 @@ Không khảo sát Galaxy ở lượt này: phần sửa là Admin, thiết kế
 - Hồi quy đầy đủ **129 tests, 0 failures/errors/skipped** trên `cineprime_test` (log `%TEMP%\cineprime-test8.log`).
 - Trình duyệt (JAR cổng 8081, schema test, 1600×900 và 375×812): thêm thể loại qua pop-up → danh sách tải lại, giữ bộ lọc, có thông báo; bỏ trống tên → lỗi tại ô; sửa → dữ liệu đúng, đóng dở → hỏi lại, "Tiếp tục nhập" giữ nội dung; bài viết 940px 2 cột, slug tự tạo; người dùng email trùng → lỗi ở pop-up, giữ tên, xoá mật khẩu. Form banner: xem trước đúng ba trạng thái với ảnh 1920×640, 880×348 và phim không ảnh; kéo-thả ảnh tải lên được; đặt lịch → "Chờ tới lịch" trong danh sách; menu không còn Upload; mobile không tràn ngang.
 - Chưa kiểm tra lại bằng trình duyệt sau sửa nhỏ cuối cùng: trả focus về nút đã mở pop-up khi đóng (`admin-dialog.js`).
+
+### Sidebar Admin phẳng và trang gộp có tab — được duyệt và làm 13/11/2026
+
+Người dùng muốn sidebar gọn như ứng dụng chat, bỏ nhóm đóng/mở. Đã chốt: 9 mục phẳng (Tổng quan · Đơn hàng · Vận hành: Phim, Lịch chiếu, Rạp & phòng, Ca tại quầy · Quản lý: Kinh doanh, Nội dung, Hệ thống); khu nhiều màn mở bằng tab trên đầu trang, mỗi tab giữ URL cũ (không đổi route, quyền, schema; không migration).
+
+- [x] `AdminController.NAV` + `nav()`: mục phẳng, `hub` tab chỉ ở màn danh sách, tab theo rạp mang `cinemaId`; nút tạo ghi rõ đối tượng ("+ Thêm voucher").
+- [x] `admin/layout.pug` (9 icon `navIcon`), `admin-sheet.css` (`.nav-item`, `.nav-section`, `.hub-tabs`), bỏ lưu trạng thái nhóm trong `admin.js`/`operations.js`.
+- Kiểm chứng: full suite MySQL `cineprime_test` 135 test, 0 failures/errors/skipped (thêm assert hub tab vào `BookingIntegrationTest`). Sau đó đổi hàng tab (hub + kênh Đơn hàng) thành dải phân đoạn có vạch ngăn, chỉ CSS, đã xem trên JAR. JAR cổng 8085 trên `cineprime_test`, 1366×768: 19 đường dẫn Admin trả 200 với đúng mục sáng và tab (kể cả `showtimes/new`, `vouchers/edit`, `banners/edit`), sidebar không cuộn, Ctrl+B ẩn/hiện, không lỗi console.
+- [x] Thanh đầu Admin chỉ còn nút viền "Xem website"; tên người dùng + "Đăng xuất" chuyển xuống đáy sidebar (Staff giữ nguyên). Full suite lại 135 test, 0 failures/errors/skipped; trên JAR 1366×768 khối tài khoản sát đáy, sidebar không cuộn, bấm Đăng xuất về `/login?logout`.
+- Không áp dụng gì vào DB `cineprime` (không có migration).
+
+### Trang khách gọn theo phác thảo (PC + mobile) — được duyệt và làm 13/11/2026
+
+Người dùng thấy trang chủ trên laptop quá to (≈177px thanh trên, hero 3:1 cao 380px, poster 4 cột cao ≈417px) và gửi phác thảo bố cục. Bản thiết kế chi tiết dựng trên canvas (trang "Trang khách — theo phác thảo (13/11)"), người dùng duyệt rồi mới sửa mã. Bỏ mục "Sự kiện" theo người dùng. Token/thành phần ghi ở UI-Template §3.0 "Bố cục gọn".
+
+- [x] Header một hàng 64px dính đầu trang (bỏ dải chữ trên + thanh menu xanh đen), menu Phim ▾ và menu tài khoản bằng click/Escape, dòng tìm kiếm mở từ kính lúp (chạy được không JS qua `#site-search`), tấm menu mobile toàn màn; thông báo NOTICE thành dải mỏng đóng được.
+- [x] Hero: slide phim có chip/tên/thể loại · thời lượng · ngôn ngữ/mô tả/"Mua vé ngay" hoặc "Đặt trước"/"Xem trailer"/đạo diễn + ảnh ngang + poster (`BannerService.details`: đạo diễn từ Credit, định dạng/ngôn ngữ phổ biến nhất của suất OPEN sắp tới); slide khuyến mãi giữ chỉ ảnh; cao `clamp(300px,46svh,400px)`; một slide mỗi lúc.
+- [x] Mua vé nhanh thành dải sát dưới hero, bước cần chọn có số cam; lưới phim 6/5/4/3/2 cột; thẻ phim có tim (`POST /account/favorites/{id}` nhận `next` chỉ là đường dẫn nội bộ); nút trên poster khi rê, luôn hiện trên màn cảm ứng; footer sáng 5 cột lấy liên kết từ nội dung ABOUT/POLICY/CONTACT.
+- [x] Nhịp khối 56/48/40px, h1/h2 nhỏ lại; nút cam chữ đậm; dải đen trang chi tiết tối đa 320px; tiền ở trang chọn ghế đổi "₫" → "đ".
+- Kiểm chứng: full suite MySQL `cineprime_test` 135 test, 0 failures/errors/skipped (thêm assert header một hàng, slide phim có chữ, tim quay lại trang đang xem, chặn `next` ngoài trang, bấm lần hai bỏ thích). JAR cổng 8081 trên bản sao dữ liệu `cineprime` trong `cineprime_test`: 1366×650 đáy mua vé nhanh ở 422px, hàng phim bắt đầu 535px, poster rộng 200px; 1920×950 và 375×812 không tràn ngang (375: scrollWidth 375); menu Phim mở/đóng bằng click và Escape; menu mobile mở, nhóm Phim xổ; không lỗi console.
+- Chưa kiểm tra bằng trình duyệt: giao diện khi đã đăng nhập (menu tài khoản, tim) — chỉ có test HTTP; thiết bị di động thật; trang chọn ghế/đơn hàng sau đổi định dạng tiền.
+- Không áp dụng gì vào DB `cineprime` (không có migration); `cineprime_test` đã bị bộ test ghi đè sau lần chép.

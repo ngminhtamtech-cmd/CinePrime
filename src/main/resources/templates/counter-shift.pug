@@ -1,55 +1,52 @@
 extends operations
 include mixins
 block head
-  link(rel="stylesheet" href="/css/staff.css?v=20261112")
-  script(src="/js/staff-nav.js?v=20261112")
-  link(rel="stylesheet" href="/css/counter.css?v=20261112")
-  script(src="/js/counter-print.js?v=20261112" defer)
+  link(rel="stylesheet" href="/css/staff.css?v=20261113c")
+  script(src="/js/staff-nav.js?v=20261113c")
+  script(src="/js/counter-print.js?v=20261113c" defer)
 block brandControls
   +staffNavToggle
+block headerNav
+  +staffTabs('counter')
 block content
-  .staff-shell
-    +staffTabs('counter')
-    main#main.staff-main.counter
-      .page-heading
-        div
-          h1 Phiếu tổng kết ca ##{shift.id}
-          p.muted #{shift.staffName} · #{shift.cinemaName}
-        .actions
-          button#print-now.button.secondary(type="button") In phiếu
-          a.button(href="/staff/counter") Về màn bán vé
-      if notice
-        p.action-notice(role="status")= notice
-      section.panel.shift-summary
-        .receipt-line
-          span Trạng thái
-          strong= shift.status == 'OPEN' ? 'Đang mở' : 'Đã đóng'
-        .receipt-line
-          span Mở ca
-          span= shift.opened
-        .receipt-line
-          span Đóng ca
-          span= shift.closed
-        .receipt-line
-          span Đơn đã bán · đã hủy
-          span #{shift.orders} · #{shift.cancelled}
-        .receipt-line
-          span Vé còn hiệu lực
-          span= shift.tickets
-        .receipt-line
-          span Tiền đầu ca
-          span= shift.openingCash
-        .receipt-line
-          span Tiền mặt thu trong ca (đã trừ đơn hủy)
-          span= shift.cashIn
-        .receipt-line.receipt-total
-          span Tiền dự kiến trong két
-          strong= shift.expected
-        .receipt-line
-          span Tiền đếm được
-          strong= shift.counted
-        .receipt-line(class=shift.balanced ? '' : 'mismatch')
-          span Chênh lệch
-          strong= shift.difference
-        if shift.note
-          p Ghi chú: #{shift.note}
+  main#main.staff-page
+    .page-head
+      div
+        h1 Phiếu tổng kết ca ##{shift.id}
+        p.hint #{shift.staffName} · #{shift.cinemaName} · #{shift.status == 'OPEN' ? 'Đang mở' : 'Đã đóng'}
+      .inline
+        button#print-now.btn(type="button") In phiếu
+        a.btn.dark(href="/staff/counter") Về màn bán vé
+    if notice
+      p.flash(role="status")= notice
+    table.ledger.receipt
+      tbody
+        tr
+          th(scope="row") Mở ca
+          td.num= shift.opened
+        tr
+          th(scope="row") Đóng ca
+          td.num= shift.closed.length() > 0 ? shift.closed : '—'
+        tr
+          th(scope="row") Đơn đã bán · đã huỷ
+          td.num #{shift.orders} · #{shift.cancelled}
+        tr
+          th(scope="row") Vé còn hiệu lực
+          td.num= shift.tickets
+        tr
+          th(scope="row") Tiền đầu ca
+          td.num= shift.openingCash
+        tr
+          th(scope="row") Tiền mặt thu trong ca (đã trừ đơn huỷ)
+          td.num= shift.cashIn
+        tr.sum
+          th(scope="row") Tiền dự kiến trong két
+          td.num= shift.expected
+        tr
+          th(scope="row") Tiền đếm được
+          td.num= shift.counted
+        tr(class=shift.balanced ? '' : 'mismatch')
+          th(scope="row") Chênh lệch
+          td.num= shift.difference
+    if shift.note
+      p.note Ghi chú: #{shift.note}

@@ -31,17 +31,32 @@ public class BannerService {
             if("MOVIE".equals(b.kind)){var m=movies.get(b.movieId);if(m==null||Boolean.TRUE.equals(m.get("ended")))continue;var s=movieSlide(m,b.image);if(s!=null)slides.add(s);}
             else{String image=media.bannerOrEmpty(b.image);if(image.isBlank())continue;String mode=media.bannerMode(image);slides.add(slide("PROMO",b.title,Objects.toString(b.link,""),image,mode.isEmpty()?"framed":mode));}
         }
-        if(!slides.isEmpty())return slides;
-        // Nothing scheduled: featured movies, otherwise the newest now-showing titles, that have a usable landscape image.
-        var listed=movies.values().stream().filter(m->!Boolean.TRUE.equals(m.get("ended"))).sorted((a,b)->Long.compare(((Number)b.get("id")).longValue(),((Number)a.get("id")).longValue())).toList();
-        var featured=listed.stream().filter(m->Boolean.TRUE.equals(m.get("featured"))).map(m->movieSlide(m,null)).filter(Objects::nonNull).toList();
-        return featured.isEmpty()?listed.stream().filter(m->"NOW_SHOWING".equals(m.get("status"))).map(m->movieSlide(m,null)).filter(Objects::nonNull).limit(5).toList():featured;
+        if(slides.isEmpty()){
+            // Nothing scheduled: featured movies, otherwise the newest now-showing titles, that have a usable landscape image.
+            var listed=movies.values().stream().filter(m->!Boolean.TRUE.equals(m.get("ended"))).sorted((a,b)->Long.compare(((Number)b.get("id")).longValue(),((Number)a.get("id")).longValue())).toList();
+            var featured=listed.stream().filter(m->Boolean.TRUE.equals(m.get("featured"))).map(m->movieSlide(m,null)).filter(Objects::nonNull).toList();
+            slides=new ArrayList<>(featured.isEmpty()?listed.stream().filter(m->"NOW_SHOWING".equals(m.get("status"))).map(m->movieSlide(m,null)).filter(Objects::nonNull).limit(5).toList():featured);
+        }
+        details(slides);return slides;
     }
-    /** Image-only slide: the banner artwork carries the title. Movies without a usable landscape image stay off the hero (null). */
+    /** Movie slide: copy (chips, title, meta, synopsis, buttons, director) beside the landscape image and the poster. Movies without a usable landscape image stay off the hero (null). */
     Map<String,Object> movieSlide(Map<String,Object> m,String own){
         String image=own!=null&&!own.isBlank()?media.bannerOrEmpty(own):"";if(image.isBlank()||media.bannerMode(image).isEmpty())image=Objects.toString(m.get("banner"),"");String mode=media.bannerMode(image);
-        return mode.isEmpty()?null:slide("MOVIE",Objects.toString(m.get("title"),""),"/movies/"+m.get("slug"),image,mode);
+        if(mode.isEmpty())return null;Map<String,Object> s=slide("MOVIE",Objects.toString(m.get("title"),""),"/movies/"+m.get("slug"),image,mode);
+        s.put("movieId",((Number)m.get("id")).longValue());s.put("poster",m.get("poster"));s.put("ageRating",m.get("ageRating"));s.put("duration",m.get("duration"));s.put("trailer",Objects.toString(m.get("trailer"),""));
+        s.put("genres",Objects.toString(m.get("genres"),"").replace(" · ",", "));s.put("comingSoon",m.get("comingSoon"));s.put("statusLabel",Boolean.TRUE.equals(m.get("comingSoon"))?"Khởi chiếu "+m.get("releaseText"):m.get("statusLabel"));
+        s.put("bookable",m.get("hasBookableShows"));String d=Objects.toString(m.get("description"),"").strip().replaceAll("\\s+"," ");s.put("description",d.length()>220?d.substring(0,217).strip()+"…":d);return s;
     }
+    /** Director names (credits) and the format/language most used by each slide movie's upcoming open showtimes; absent values stay blank and are hidden. */
+    void details(List<Map<String,Object>> slides){
+        List<Long> ids=slides.stream().filter(s->s.get("movieId")!=null).map(s->(Long)s.get("movieId")).distinct().toList();if(ids.isEmpty())return;
+        Map<Long,List<String>> directors=new HashMap<>();
+        db.query("select c.movieId,p.name from "+db.entityName(Credit.class)+" c, "+db.entityName(Person.class)+" p where c.personId=p.id and c.kind='DIRECTOR' and c.movieId in ?1 order by c.id",Object[].class,ids).forEach(r->directors.computeIfAbsent((Long)r[0],k->new ArrayList<>()).add((String)r[1]));
+        Map<Long,Map<String,Integer>> formats=new HashMap<>(),languages=new HashMap<>();
+        db.query("select s.movieId,s.format,s.language from "+db.entityName(Showtime.class)+" s where s.status='OPEN' and s.startsAt>?2 and s.movieId in ?1",Object[].class,ids,clock.instant()).forEach(r->{formats.computeIfAbsent((Long)r[0],k->new HashMap<>()).merge(Objects.toString(r[1],""),1,Integer::sum);languages.computeIfAbsent((Long)r[0],k->new HashMap<>()).merge(Objects.toString(r[2],""),1,Integer::sum);});
+        for(var s:slides){Long id=(Long)s.get("movieId");if(id==null)continue;s.put("directors",String.join(", ",directors.getOrDefault(id,List.of())));s.put("format",top(formats.get(id)));s.put("language",top(languages.get(id)));}
+    }
+    static String top(Map<String,Integer> counts){return counts==null?"":counts.entrySet().stream().filter(e->!e.getKey().isBlank()).max(Map.Entry.<String,Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey(Comparator.reverseOrder()))).map(Map.Entry::getKey).orElse("");}
     static Map<String,Object> slide(String kind,String title,String href,String image,String mode){Map<String,Object> s=new HashMap<>();s.put("kind",kind);s.put("title",title);s.put("href",href);s.put("image",image);s.put("mode",mode);return s;}
 
     /** Admin list in display order, with the reason a row is or is not on the home page right now. */

@@ -22,16 +22,19 @@ public class PageAdvice {
         // JSON responses do not render the shared page chrome.
         String path=request.getServletPath();
         if(path.startsWith("/api/")||path.equals("/admin/operations")||path.equals("/admin/media")||path.startsWith("/admin/layout")&&Objects.toString(request.getContentType(),"").startsWith("application/json")||path.endsWith(".csv")||path.equals("/catalog/showtimes")||path.equals("/payments/momo/ipn"))return;
-        model.addAttribute("title","CinePrime · Hơn cả một buổi xem phim");model.addAttribute("currentPath",request.getServletPath());
+        model.addAttribute("title","CinePrime · Hơn cả một buổi xem phim");model.addAttribute("currentPath",request.getServletPath());model.addAttribute("currentUrl",request.getServletPath()+(request.getQueryString()==null?"":"?"+request.getQueryString()));
         boolean operations=path.startsWith("/admin")||path.startsWith("/staff");
         if(!operations)model.addAttribute("siteNotices",db.views(db.list(Content.class,"where e.kind='NOTICE' and e.active=true order by e.id desc").stream().limit(1).toList()));
-        if(authentication!=null&&authentication.getPrincipal() instanceof SessionUser p){User u=db.get(User.class,p.id());model.addAttribute("viewer",db.view(u));}
+        if(authentication!=null&&authentication.getPrincipal() instanceof SessionUser p){User u=db.get(User.class,p.id());model.addAttribute("viewer",db.view(u));if(!operations){model.addAttribute("viewerInitials",initials(u.name));model.addAttribute("favoriteIds",new HashSet<>(db.query("select f.movieId from "+db.entityName(Favorite.class)+" f where f.userId=?1",Long.class,u.id)));}}
+        if(!operations){for(String[] k:new String[][]{{"ABOUT","footerAbout"},{"POLICY","footerPolicies"},{"CONTACT","footerContacts"}})model.addAttribute(k[1],db.views(db.list(Content.class,"where e.kind=?1 and e.active=true order by e.id",k[0]).stream().limit(4).toList()));}
         CsrfToken token=(CsrfToken)request.getAttribute(CsrfToken.class.getName());if(token!=null){model.addAttribute("csrfName",token.getParameterName());model.addAttribute("csrfToken",token.getToken());model.addAttribute("csrfHeader",token.getHeaderName());}
         if(operations)return;
         model.addAttribute("cinemaOptions",db.views(db.list(Cinema.class,"where e.active=true order by e.city,e.name")));
         String requestedDay=request.getParameter("date");LocalDate today=LocalDate.now(clock.withZone(ZoneId.of("Asia/Ho_Chi_Minh")));
         model.addAttribute("days",java.util.stream.IntStream.range(0,7).mapToObj(i->{LocalDate day=today.plusDays(i);var link=org.springframework.web.util.UriComponentsBuilder.fromPath(request.getServletPath().equals("/")?"/showtimes":request.getServletPath());for(String key:List.of("movieId","cinemaId")){String value=request.getParameter(key);if(value!=null)link.queryParam(key,value);}link.queryParam("date",day);return Map.of("value",day.toString(),"href",link.build().encode().toUriString(),"selected",day.toString().equals(requestedDay==null?today.toString():requestedDay),"label",i==0?"Hôm nay":day.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")),"weekday",i==0?"Hôm nay":weekday(day),"day",day.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")));}).toList());
     }
+    /** "Nguyễn Văn An" → "NA": first and last word, upper-cased, for the header avatar. */
+    static String initials(String name){String[] w=Objects.toString(name,"").trim().split("\\s+");if(w[0].isEmpty())return "?";String s=w[0].substring(0,1)+(w.length>1?w[w.length-1].substring(0,1):"");return s.toUpperCase(Locale.forLanguageTag("vi"));}
     static String weekday(LocalDate day){return day.getDayOfWeek()==DayOfWeek.SUNDAY?"Chủ nhật":"Thứ "+(day.getDayOfWeek().getValue()+1);}
     @ExceptionHandler({IllegalArgumentException.class,DataAccessException.class,AccessDeniedException.class})
     public Object failure(Exception exception,HttpServletRequest request,HttpServletResponse response){

@@ -2,11 +2,10 @@
 (() => {
   if (!document.body.classList.contains('admin-compact')) return;
   const one=(s,r=document)=>r.querySelector(s), all=(s,r=document)=>[...r.querySelectorAll(s)];
-  const sidebar=one('#ops-sidebar'), groups=all('[data-group-id]',sidebar);
-  const preferenceKey=`cineprime.admin.nav.v2.${document.body.dataset.adminId}`;
-  let preferences={groups:{},scroll:0};
-  try {const saved=JSON.parse(localStorage.getItem(preferenceKey));if(saved && saved.groups && typeof saved.groups==='object')preferences=saved;} catch {}
-  for(const group of groups)group.open=group.dataset.active==='true'||preferences.groups[group.dataset.groupId]===true;
+  const sidebar=one('#ops-sidebar');
+  const preferenceKey=`cineprime.admin.nav.v3.${document.body.dataset.adminId}`;
+  let preferences={scroll:0};
+  try {const saved=JSON.parse(localStorage.getItem(preferenceKey));if(saved && typeof saved==='object')preferences=saved;} catch {}
   // Sidebar toggle (desktop): hides the whole sidebar with a slide, like a chat app panel. Mobile keeps the drawer.
   const root=document.documentElement,wide=matchMedia('(min-width:851px)'),collapseKey='cineprime.admin.navCollapsed',headerToggle=one('#open-sidebar');
   const collapsed=()=>root.classList.contains('nav-collapsed');
@@ -36,8 +35,8 @@
   document.addEventListener('click',e=>{if(!e.target.closest('.row-menu'))closeMenus();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus();});
   addEventListener('scroll',()=>closeMenus(),{passive:true,capture:true});addEventListener('resize',()=>closeMenus());
-  const save=()=>{try {localStorage.setItem(preferenceKey,JSON.stringify({groups:Object.fromEntries(groups.map(g=>[g.dataset.groupId,g.open])),scroll:sidebar.scrollTop}));}catch {}};
-  requestAnimationFrame(()=>{sidebar.scrollTop=Math.max(0,Number(preferences.scroll)||0);groups.forEach(g=>g.addEventListener('toggle',save));sidebar.addEventListener('scroll',save,{passive:true});});
+  const save=()=>{try {localStorage.setItem(preferenceKey,JSON.stringify({scroll:sidebar.scrollTop}));}catch {}};
+  requestAnimationFrame(()=>{sidebar.scrollTop=Math.max(0,Number(preferences.scroll)||0);sidebar.addEventListener('scroll',save,{passive:true});});
   window.addEventListener('pagehide',save);
   all('a',sidebar).forEach(link=>link.addEventListener('click',()=>{save();if(sidebar.classList.contains('open'))one('#close-sidebar').click();}));
   all('a[data-page-param]').forEach(link=>{const url=new URL(location.href);url.searchParams.set(link.dataset.pageParam,link.dataset.page);link.href=url.pathname+url.search;});
@@ -76,7 +75,7 @@
             const row=document.createElement('div');row.className='ranking-row';const title=document.createElement('strong'),amount=document.createElement('span');title.textContent=item.title;amount.textContent=item.amount;row.append(title,amount);fragment.append(row);
           }else{
             const row=document.createElement('tr');
-            if(widget.dataset.reportWidget==='chart'){td(row,item.label);td(row,item.amount);}
+            if(widget.dataset.reportWidget==='chart'){td(row,item.label);td(row,item.amount);td(row,item.onlineAmount??'—');td(row,item.counterAmount??'—');}
             else{const cell=td(row,'','Phim / Rạp / Phòng'),title=document.createElement('strong'),detail=document.createElement('small');title.textContent=item.movieTitle;detail.textContent=`${item.cinemaName} · ${item.roomName}`;cell.append(title,detail);td(row,item.when,'Suất');td(row,item.occupancy,'Vé / Ghế');}
             fragment.append(row);
           }
@@ -99,7 +98,7 @@
       all('.muted',c.rows).forEach(node=>node.remove());
       rows.forEach((item,index)=>{
         let node=existing.get(String(item.recordId));if(!node){node=document.createElement('a');node.className='operation-item';node.dataset.recordId=item.recordId;node.append(document.createElement('strong'),document.createElement('small'));}
-        existing.delete(String(item.recordId));node.href=section==='upcoming'?'/admin/manage/showtimes/edit?id='+item.id:'/admin/orders/'+item.id;
+        existing.delete(String(item.recordId));node.href=item.href||(section==='upcoming'?'/admin/manage/showtimes/edit?id='+item.id:'/admin/orders/'+item.id);
         one('strong',node).textContent=item.label;one('small',node).textContent=item.detail;
         const current=c.rows.children[index];if(current!==node)c.rows.insertBefore(node,current||null);
       });

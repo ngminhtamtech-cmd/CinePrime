@@ -9,7 +9,7 @@
   let mode=root.dataset.step,busy=root.dataset.busy==='true',seats=[],deletes=new Map(),extent={rows:0,cols:0},layoutVersion='',savedKey='',isNew=false,layoutDirty=false,priceDirty=false,seatDirty=false,savingLayout=false,savingPrice=false,selected=[],loaded=false,tool='STANDARD',painting=null,undoStack=[],redoStack=[],lastContext=null,showTotal=Number(root.dataset.showTotal||0);
   let scale=1,panX=0,panY=0,fitting=true,drag=null,inventoryRows=[],inventoryGeneration=0,inventoryController,inventoryLoading=false,inventoryMutating=false,lastSeat=null;
   const value=id=>one('#'+id).value,el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
-  const fmt=amount=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND'}).format(BigInt(amount));
+  const fmt=amount=>BigInt(amount).toLocaleString('vi-VN')+' đ';
   const rowChar=i=>String.fromCharCode(65+i),rowIndex=label=>label.charCodeAt(0)-65,wide=()=>innerWidth>=1090;
   const note=text=>{message.textContent=text;};
 

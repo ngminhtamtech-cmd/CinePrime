@@ -75,7 +75,7 @@ Thiết kế website đặt vé xem phim rõ ràng, chuyên nghiệp, ưu tiên 
 
 ### 3.0. Giao diện khách (từ 12/11/2026)
 
-Trang khách dùng `static/css/site.css`; token khai báo ở `:root` đầu file. Bảng 3.1–3.3 bên dưới vẫn áp dụng cho Admin/Staff (`app.css`, `operations.css`).
+Trang khách dùng `static/css/site.css`; token khai báo ở `:root` đầu file. Admin/Staff theo mục **3.4** (phương án B, chốt 13/11/2026); bảng 3.1–3.3 là token cũ của `app.css`/`operations.css`, chỉ giữ để tra cứu cho tới khi 3.4 được triển khai.
 
 | Token | Giá trị | Vai trò |
 |---|---|---|
@@ -92,7 +92,24 @@ Trang khách dùng `static/css/site.css`; token khai báo ở `:root` đầu fil
 - Khoảng cách: khối 72px (850px: 56px, 620px: 48px); vùng chạm tối thiểu 44px.
 - Ảnh: chỉ ảnh thật do Admin tải lên. Ưu đãi/bài viết không có ảnh hiển thị thẻ chữ (loại, tiêu đề, trích đoạn, ngày); ảnh thẻ khuyến nghị 1200×675 (16:9).
 
-**Hero (banner trang chủ):** quản lý tại Admin → Nội dung → Banner trang chủ. Chỉ hiện ảnh (chữ nằm sẵn trong ảnh), cả slide là link tới trang phim hoặc liên kết khuyến mãi. Slide giữa rộng tối đa 1360px (luôn chừa hai bên), tỉ lệ 3:1, bo góc trên; slide trước/sau ló ra hai bên, bấm vào thì chuyển tới. Mũi tên tròn sát mép (ẩn từ 850px), chấm vị trí + nút tạm dừng trong ảnh ở giữa phía dưới. Thanh mua vé nhanh nối liền mép dưới, rộng bằng slide: 4 bước đánh số cam (phim → rạp → ngày → suất) và nút "Mua vé nhanh"; mobile xếp dọc. Phim chưa có ảnh ngang dùng được không lên banner (Admin báo "Thiếu ảnh ngang"). Ảnh banner khuyến nghị 1920×640, chia ba mức và không bao giờ phóng to ảnh: rộng ≥ 1600px và tỉ lệ ≥ 16:9 thì phủ kín hero; ảnh ngang nhỏ hơn (rộng ≥ 560px, tỉ lệ ≥ 4:3) đặt giữa slide trên nền tối, đúng kích thước (tải lên được nhưng có cảnh báo). Ảnh dọc hoặc hẹp hơn 560px không nhận làm banner.
+**Bố cục gọn theo phác thảo (chốt 13/11/2026, đã triển khai mã):** canvas "CinePrime Admin/Staff — phác thảo", trang "Trang khách — theo phác thảo (13/11)". Mục tiêu: ở 1366×768 thấy trọn header + hero + mua vé nhanh + đầu hàng phim.
+
+| Token mới | Giá trị | Vai trò |
+|---|---|---|
+| `--brand` / `--brand-soft` | `#1459A5` / `#E8F1FB` | Chữ "Cine" ở logo, liên kết "Xem tất cả →", mục menu đang mở trên mobile, ô chữ cái tài khoản |
+| `--container` | `1328px` | 1280px nội dung + 2 lề 24px |
+| `--header-h` | `64px` (mobile `56px`) | Header một hàng, dính đầu trang |
+| `--hero-h` | `clamp(300px, 46svh, 400px)` | 300px ở laptop 1366×768, 400px ở màn lớn |
+| `--section` | `56px` (≤1440 rộng hoặc ≤820 cao: `48px`; ≤850: `40px`) | Nhịp giữa các khối |
+
+- Cỡ chữ: h1 32px (laptop 30px, mobile 28px); h2 24px (laptop/mobile 22px). Nút cam dùng **chữ đậm `--ink`** (chữ trắng trên `#F47B20` dưới 3:1).
+- **Header:** một hàng: logo · Trang chủ · Phim ▾ (Đang chiếu, Sắp chiếu, Lịch chiếu) · Góc điện ảnh · Hệ thống rạp · Khuyến mãi · kính lúp (mở dòng tìm kiếm dưới header) · Đăng nhập (viền, bo 19px) + Đăng ký (xanh đen). Đã đăng nhập: nút tài khoản (chữ cái đầu + tên) mở menu Vé của tôi / Phim yêu thích / Điểm thưởng / Quản trị hoặc Soát vé / Đăng xuất. Menu xổ bằng click/Enter, đóng bằng Escape hoặc bấm ngoài. Bỏ dải chữ trên cùng và thanh menu xanh đen; thông báo (NOTICE) hiện thành dải cam nhạt mỏng, đóng được. Không có mục "Sự kiện". ≤850px: logo · nút menu; menu là tấm trắng toàn màn (ô tìm kiếm, mục 52px, nhóm Phim xổ tại chỗ, Đăng nhập/Đăng ký ở cuối), khoá cuộn nền.
+- **Hero:** slide phim = cột chữ (chip định dạng/tuổi/trạng thái, tên phim, thể loại · thời lượng · ngôn ngữ có icon, mô tả 2 dòng, nút cam "Mua vé ngay"/"Đặt trước" + "Xem trailer", "Đạo diễn: …") + ảnh ngang 16:9 + poster 2:3 (poster ẩn ≤1090). Định dạng/ngôn ngữ lấy giá trị phổ biến nhất của các suất sắp tới, không có suất thì ẩn. Slide khuyến mãi vẫn chỉ ảnh, nằm giữa nền xanh đen. Một slide mỗi lúc (không ló hai bên). Điều khiển: thanh trắng giữa đáy gồm ‹ chấm · tạm dừng · "1 / 3" ›; >1440px mũi tên tròn 40px ra hai mép. ≤850: ảnh ngang trên, chữ dưới, nút chia 2 cột, vuốt để chuyển.
+- **Mua vé nhanh:** dải trắng sát dưới hero, rộng bằng nội dung: 4 ô (số trong vòng tròn xanh đen, bước đang cần chọn số cam) + nút cam "Mua vé" 200px. ≤1090: ô có viền 2×2, nút cả hàng; ≤620: phim, rạp cả hàng, ngày | suất.
+- **Khối phim:** tiêu đề có vạch trái 3px xanh đen + dòng phụ; tab nhỏ (đang chọn nền xanh đen); "Xem tất cả →" xanh. Lưới 6 cột (≤1280: 5, ≤1090: 4, ≤850: 3, ≤620: 2), khoảng 28/16px. Thẻ: poster 2:3, nhãn tuổi, tên 15px/600 tối đa 2 dòng, thể loại · thời lượng 13px, tim (thích; chưa đăng nhập thì dẫn tới Đăng nhập). Chuột: "Mua vé"/"Xem chi tiết" nổi trên chân poster khi rê hoặc focus; màn cảm ứng: nút chính luôn hiện dưới thẻ.
+- **Footer:** nền `--bg-soft`, 5 cột: logo + mô tả · Về chúng tôi · Hỗ trợ khách hàng · Thành viên CinePrime · Liên hệ. Liên kết lấy từ nội dung ABOUT/POLICY/CONTACT đang bật (không có thì ghi "đang được cập nhật"), không ghi hotline/email giả, không icon mạng xã hội khi chưa có liên kết thật.
+
+**Hero (banner trang chủ):** quản lý tại Admin → Nội dung → Banner trang chủ. Cả slide khuyến mãi là link tới liên kết khuyến mãi; slide phim dẫn tới trang phim (tên, ảnh, poster, nút). Phim chưa có ảnh ngang dùng được không lên banner (Admin báo "Thiếu ảnh ngang"). Ảnh banner khuyến nghị 1920×640, chia ba mức và không bao giờ phóng to ảnh: rộng ≥ 1600px và tỉ lệ ≥ 16:9 thì phủ kín khung; ảnh ngang nhỏ hơn (rộng ≥ 560px, tỉ lệ ≥ 4:3) đặt giữa khung trên nền tối, đúng kích thước (tải lên được nhưng có cảnh báo). Ảnh dọc hoặc hẹp hơn 560px không nhận làm banner. *(Bản 12/11 "chỉ ảnh, slide 3:1 ló hai bên" đã thay bằng bố cục trên.)*
 
 **Trang chi tiết phim:** dải đen đầu trang (cao 240–480px) đặt ảnh ngang của phim ở giữa, không phóng to, nút play tròn mở trailer; poster viền trắng đè lên mép dải; bên phải poster: breadcrumb, tên phim + nhãn tuổi, thời lượng/ngày khởi chiếu/điểm có icon, Thể loại/Đạo diễn/Diễn viên dạng chip, khoảng chiếu, nút hành động. Dưới: Nội dung phim, Lịch chiếu, Khán giả chia sẻ. Cột phải 320px "Phim đang chiếu" (thẻ ảnh ngang 16:9, điểm, nhãn tuổi); dưới 1090px cột này xuống cuối trang. Phim chưa có ảnh ngang thì không có dải đen.
 
@@ -139,6 +156,94 @@ Phạm vi (12/11/2026): các quy tắc mobile/tablet/breakpoint dưới đây ch
 - Shadow: nhẹ, tập trung banner mua vé nhanh và modal.
 - Breakpoints: `1090`, `850`, `620` px.
 - Nút: bán kính **7px**, mục tiêu chạm trên điện thoại gần 44px.
+
+### 3.4. Giao diện vận hành Admin/Staff — "Thẻ màu nhạt" (chốt 13/11/2026, phương án B)
+
+> **Trạng thái:** người dùng chọn phương án B ngày 13/11/2026, thay hướng "Sổ suất chiếu" đen trắng (12/11) vì bản đó nhàm và khó quét mắt. **Đã triển khai 13/11/2026:** Admin — `static/css/admin-sheet.css` viết lại theo B (nạp sau cùng: nền `--canvas`, thẻ, chip vuông theo `tone-*`, thẻ số liệu có vạch + ô icon, sidebar hiện icon `navIcon`, nút xanh/cam); Tổng quan có ô icon và màu nghĩa cho 4 thẻ số liệu, số 0 hiện `0 đ` thay cho "—"; Đơn hàng hiện số 0 thật; nút "+ Thêm …" là nút cam (`.button.primary`), "Lọc" là nút xanh; trạng thái Đã hủy/Thất bại dùng tone `bad` (đỏ); cột mã bản ghi đổi thành `#` (hết trùng "Mã | Mã" ở Voucher); mức giảm voucher có đơn vị (`100%`, `20.000 đ`); breadcrumb có khoảng trắng. Staff — lớp màu B ở cuối `static/css/staff.css` (bố cục và luồng Soát vé/Bán quầy giữ nguyên): chip trạng thái suất và vé, thẻ kết quả soát tô nền theo kết quả, dải số thành thẻ có vạch, dải ca màu quầy, ghế VIP tím/Đôi cam, chú giải ghế thêm Thường/VIP/Đôi. Đã xem trên bản thử cổng 8084 (`cineprime_test`, 1440×900): Tổng quan, Đơn hàng, Phim, Voucher, Soát vé, Bán vé tại quầy. Chưa làm: trục giờ "Hôm nay"; các trình biên tập riêng (sơ đồ ghế, xếp lịch tuần, form phim chi tiết) chưa soát lại theo B. Chỉ desktop ≥ 1366×768. Skill dự án duy nhất: `/cineuxui <màn>` (`.claude/skills/cineuxui`) — quy trình phác thảo, sửa và soát UI cho cả khách lẫn vận hành. Bản phác thảo: canvas riêng tư "CinePrime Admin/Staff — phác thảo" trên claude.ai, trang "Bản 2 — Có màu" (bảng màu/chip, phương án A · B · C trên màn Đơn hàng).
+
+Màu có nghĩa, không màu trang trí: mỗi màu gắn một ý nghĩa cố định trên mọi màn, nhìn là biết trạng thái, kênh bán, khu chức năng. Nền trang xám rất nhạt, khối là thẻ trắng viền 1px, ô số liệu có vạch màu và ô icon nhạt. Không gradient, không emoji, không bóng đổ trên thẻ.
+
+**Nguyên tắc**
+
+1. **Màu = nghĩa.** Dùng đúng bảng ngữ nghĩa bên dưới; không tô màu chỉ để đẹp. Mỗi chip luôn có chữ, không chỉ dựa vào màu.
+2. **Thẻ trắng trên nền nhạt.** Khối là thẻ (`--card`, viền `--line`, bo 10px) trên nền `--canvas`; bảng, bộ lọc và tab của cùng một danh sách nằm chung một thẻ.
+3. **Trạng thái là chip vuông nhạt.** "Đang hoạt động", "Đã thanh toán"… là ô bo 4px, nền nhạt + chữ đậm cùng tông + viền 1px. Không dùng ô 8px trơn, không pill tròn.
+4. **Cam để tạo/bán, xanh để làm việc.** Nút cam (chữ `--ink`) cho hành động tạo hoặc bán, tối đa một mỗi màn; nút xanh cho lọc/xác nhận/lưu thường; liên kết, tab và mục đang chọn màu xanh.
+5. **Số rõ ràng.** Chữ số tabular, cột tiền căn phải, tiền `170.000 đ`, phần trăm `100%`; giá trị 0 hiện `0` kèm dòng giải thích ngắn (không dải "—" lặp lại).
+6. **Rỗng là một dòng.** Nói thẳng chuyện gì đang xảy ra và việc tiếp theo; nút chưa đủ điều kiện thì thay bằng dòng hướng dẫn, không để nút mờ.
+
+**Token nền** (khai báo ở `:root`, không dùng hex rời trong rule)
+
+| Token | Giá trị | Vai trò |
+|---|---|---|
+| `--canvas` | `#F4F6F9` | Nền vùng nội dung |
+| `--card` | `#FFFFFF` | Thẻ, thanh đầu, sidebar |
+| `--card-head` | `#F8F9FB` | Nền đầu bảng |
+| `--ink` / `--ink-2` / `--muted` | `#14171C` / `#3D434D` / `#5B6472` | Chữ chính / chữ phụ dài / nhãn, chú thích |
+| `--line` / `--line-soft` / `--line-strong` | `#E3E6EA` / `#EEF0F3` / `#CFD4DA` | Viền thẻ / kẻ dòng trong bảng / viền ô nhập, nút phụ |
+| `--brand` / `--brand-soft` | `#1459A5` / `#E8F1FB` | Liên kết, tab, mục sidebar đang mở, nút xanh / nền mục đang mở |
+| `--accent` / `--accent-ink` | `#F47B20` / `#A9480A` | Nút tạo/bán (chữ `--ink`), ghế đang chọn / chữ cam trên nền trắng |
+
+**Màu ngữ nghĩa** (chip = nền / chữ / viền; vạch = vạch đầu thẻ số liệu)
+
+| Nghĩa | Nền | Chữ | Viền | Vạch | Dùng cho |
+|---|---|---|---|---|---|
+| Ổn (`ok`) | `#E6F4EA` | `#1B6B3F` | `#C5E6CF` | `#1F8A4C` | Đang hoạt động · Đang chiếu · Đang hiển thị · Đã thanh toán · Đã vào · Hợp lệ |
+| Thông tin (`info`) | `#E8F1FB` | `#1459A5` | `#C9DDF4` | `#1459A5` | Sắp chiếu · Đang giữ ghế · Chờ MoMo · Mở bán · Online |
+| Cần xem (`warn`) | `#FFF5D6` | `#7A5300` | `#F1DE9E` | `#D9A400` | Chờ đối soát · Sắp hết hạn · Thiếu ảnh ngang · Vé đã dùng |
+| Lỗi (`bad`) | `#FDECEC` | `#B42318` | `#F6CACA` | `#C2362F` | Đã huỷ · Thanh toán lỗi · Sai suất · Không thuộc rạp · Đã khoá |
+| Tắt (`off`) | `#F1F2F4` | `#4B5563` | `#E0E3E8` | `#9AA2AD` | Đã tắt · Đang ẩn · Hết hạn · Đã kết thúc · Nháp · Chưa vào |
+| Quầy (`counter`) | `#FEF0E4` | `#A9480A` | `#F9D4B4` | `#E06A12` | Tại quầy · ghế Đôi |
+| Đặc biệt (`special`) | `#F1ECFB` | `#5B3BA8` | `#DDD1F4` | `#6B4BC2` | ghế VIP · Voucher |
+| Bắp nước (`food`) | `#E3F4F4` | `#0F6466` | `#BFE3E3` | `#0F7C7E` | Combo · Đồ uống |
+
+Nhãn tuổi giống trang khách, nền đặc chữ trắng 11/700: P `#1F8A4C` · K `#1459A5` · T13 `#B7791F` · T16 `#D9620C` · T18 `#C2362F`. Thể loại luôn là chip `off` chữ 500.
+
+**Icon theo mục sidebar** (sidebar phẳng kiểu ứng dụng chat, người dùng chốt 13/11/2026, thay cho nhóm đóng/mở): mỗi mục có một icon nét riêng, mixin `navIcon(id)` trong `templates/admin/layout.pug` (khung 24×24, 20px, nét 1.6, không tô nền, không màu riêng từng mục):
+
+| Mục (`id`) | Hình |
+|---|---|
+| Tổng quan (`overview`) | 4 ô chữ nhật lệch cao |
+| Đơn hàng (`orders`) | hoá đơn răng cưa đáy + 3 dòng |
+| Phim (`movies`) | cuộn phim |
+| Lịch chiếu (`schedule`) | khung lịch + 2 khoen + dòng |
+| Rạp & phòng (`cinemas`) | toà nhà mái nhọn + cửa |
+| Ca tại quầy (`shifts`) | hai người |
+| Kinh doanh (`business`) | thẻ giá |
+| Nội dung (`content`) | khung ảnh |
+| Hệ thống (`system`) | bánh răng |
+
+Icon màu `--muted`; mục đang mở nền `--brand-soft`, icon và chữ `--brand` 600.
+
+**Chữ:** Be Vietnam Pro (đã tự host). Thang cỡ: 12 nhãn/chip · 13 bảng · 14 nội dung, ô nhập, sidebar · 16/600 tiêu đề thẻ · 28/700 tiêu đề trang · 26–28/700 số trong thẻ số liệu. Mã vé/mã đơn dùng `ui-monospace, Consolas, monospace` 600. Viết hoa đầu câu.
+
+**Hình khối và khoảng cách:** thẻ bo 10px; ô số liệu, nút, ô nhập bo 6px; chip bo 4px; ô icon 36px bo 8px; ghế bo 3px. Lưới bội số 4px; khoảng cách giữa các thẻ 12–16px; đệm thẻ 14–16px. Dòng bảng ≥ 44px, ô nhập/nút 38px, chip 24px. Bóng chỉ cho hộp thoại và menu nổi: `0 8px 24px rgba(20,23,28,.16)`. Focus: viền `--brand` 2px cách 2px.
+
+**Khung**
+
+- **Thanh trên cùng** trắng, kẻ dưới `--line`. **Cụm đầu trái giữ nguyên như hiện tại** (người dùng chốt): nút ẩn/hiện sidebar, mũi tên lùi/tiến, logo `cineprime-mark.svg` + "Cine" xanh "Prime" cam. Bên phải (Admin, chốt 13/11/2026): chỉ nút viền "Xem website" có icon mở tab mới; tên người dùng (ô tròn chữ cái đầu + tên + vai trò) và "Đăng xuất" (một dòng như mục sidebar, rê chuột tô `--bad-bg`) nằm ở đáy sidebar, kẻ trên `--line`. Staff giữ nguyên tên + "Đăng xuất" trên thanh đầu.
+- **Admin:** sidebar trắng 232px, kẻ phải, thu gọn được (Ctrl+B). **Danh sách phẳng, không nhóm đóng/mở** (chốt 13/11/2026): mỗi mục cao 36px = icon 20px + tên 14/500, cách 12px; nhãn mục "Vận hành", "Quản lý" là chữ 12/500 `--muted`, không bấm được. Chín mục theo thứ tự: Tổng quan · Đơn hàng · *Vận hành:* Phim · Lịch chiếu · Rạp & phòng · Ca tại quầy · *Quản lý:* Kinh doanh · Nội dung · Hệ thống — định nghĩa ở `NAV` trong `AdminController`. Nội dung đệm 24/32px trên nền `--canvas`.
+- **Trang gộp có tab** (`.hub-head` + `.hub-tabs`): mục có nhiều màn mở ra tiêu đề khu (28/700) và **dải tab phân đoạn** (người dùng yêu cầu thêm vách ngăn, nổi bật hơn — 13/11/2026): thẻ trắng viền `--line-strong` bo 8px, mỗi tab cao 42px đệm ngang 20px, chữ 14/600 `--ink-2`, ngăn nhau bằng vạch dọc 1px; tab đang mở nền `--brand-soft`, chữ `--brand`, gạch dưới 3px `--brand`. Tab kênh ở Đơn hàng (`.channel-tabs`) dùng cùng kiểu. Mỗi tab giữ URL riêng; tab theo rạp mang theo `cinemaId`. Tab chỉ hiện ở màn danh sách, không ở form sửa. Lịch chiếu = Lịch theo ngày · Suất chiếu; Rạp & phòng = Rạp · Phòng · Ghế / Bảo trì; Kinh doanh = Bảng giá · Bắp nước / Combo · Voucher; Nội dung = Banner trang chủ · Bài viết / Ưu đãi / Chính sách · Bình luận; Hệ thống = Người dùng · Nhật ký hoạt động. Khi có tab, trang không in lại h1 riêng; nút tạo ghi rõ đối tượng ("+ Thêm voucher").
+- **Staff:** không sidebar; hai tab "Soát vé" · "Bán vé tại quầy" trên thanh đầu (tab đang mở chữ `--brand` 600 + gạch dưới 2px). Tên rạp phụ trách in đậm bên phải. Nút ẩn/hiện ở cụm trái thu gọn cột danh sách suất.
+
+**Thành phần**
+
+- **Đầu trang:** breadcrumb (`Quản trị / Đơn hàng`, có khoảng trắng hai bên dấu `/`) → tiêu đề 28/700 (không kèm icon hay ô màu) → một dòng mô tả `--muted`; nút bên phải (cam nếu là tạo mới: "+ Thêm phim", "+ Thêm banner").
+- **Thẻ số liệu:** 4 thẻ một hàng, vạch trên 3px theo nghĩa, ô icon 36px nền nhạt cùng nghĩa (icon nét 1.8px), nhãn 12px, số 26–28/700, một dòng phụ tô chữ cùng nghĩa. Thẻ trung tính (tổng, khớp bộ lọc) dùng `info`.
+- **Thẻ danh sách:** trong một thẻ: tab kênh (tab đang mở có chip đếm `info`) → hàng bộ lọc (nhãn trên ô, nút "Lọc" xanh) → bảng (đầu bảng nền `--card-head`, kẻ `--line-soft`) → dòng phân trang. Cột trạng thái, kênh, loại dùng chip.
+- **Hành động trong dòng:** "Sửa" nền `--brand-soft` chữ `--brand`; "Xoá" nền trắng viền đỏ nhạt chữ `bad`; các hành động phụ trong menu "⋯".
+- **Danh sách "Cần để ý":** mỗi dòng chip nghĩa + tiêu đề 600 + dòng chi tiết + liên kết; không có việc thì một dòng với chip `ok`.
+- **Trục giờ "Hôm nay"** (Tổng quan, Soát vé): hàng theo phòng, thước giờ; mỗi suất là thanh nền `info` nhạt, phần đậm = tỉ lệ lấp đầy, suất đang chiếu viền `--brand` 2px; vạch "bây giờ" cam 2px kèm nhãn giờ `--accent-ink`.
+- **Ghế:** Trống viền `--line-strong`; Thường/VIP/Đôi theo `off`/`special`/`counter` khi cần phân loại; Đang chọn nền `--accent` chữ `--ink`; Quầy này giữ nền `--brand` chữ trắng; Đã bán / nơi khác giữ nền `#CFD4DA`; Bảo trì viền nét đứt.
+
+**Màn chính**
+
+- **Tổng quan (Admin):** đầu trang + bộ lọc kỳ/ngày/rạp + "Xuất CSV" → 4 thẻ số liệu (Doanh thu `info`, Tiền vào `ok`, Hoàn tiền `bad`, Vé · đơn `special`) → trục giờ Hôm nay → hai cột: thẻ Dòng tiền | thẻ Cần để ý + Ca quầy đang mở → thẻ Đơn mới hôm nay.
+- **Đơn hàng và các trang danh sách** (Phim, Bảng giá, Combo, Voucher, Bài viết, Banner, Bình luận, Người dùng): đầu trang → (thẻ số liệu nếu có) → thẻ danh sách. Phim: chip tuổi cạnh tên, chip `Đang chiếu`/`Sắp chiếu`/`Đã kết thúc` và chip `Đang hiển thị`/`Đang ẩn` tách nghĩa. Voucher: mức giảm có đơn vị (`100%`, `20.000 đ`).
+- **Soát vé (Staff):** giữ bố cục ba cột đã triển khai. Kết quả soát là một thẻ lớn tô nền theo nghĩa (Hợp lệ `ok`, Vé đã dùng `warn`, Sai suất/Không thuộc rạp `bad`) với chữ trạng thái 28/700, ghế, suất, mã đơn; nút "Cho vào" cam. Bảng vé dùng chip Đã vào `ok` / Chưa vào `off`. Dải số Hiệu lực/Đã vào/Chưa vào/Tỉ lệ là thẻ số liệu nhỏ.
+- **Bán vé tại quầy (Staff):** dải ca nền `counter` nhạt (ca, đơn, vé, tiền mặt trong két, "Đơn trong ca", "Đóng ca"); ba cột 1 · Suất → 2 · Ghế → 3 · Đơn; nút chính cam "Giữ N ghế · 5 phút" chỉ hiện khi đã chọn ghế.
+
+**Không làm:** gradient, emoji, bóng đổ trên thẻ thường; màu không có nghĩa (thể loại nhiều màu, icon tô màu ngẫu nhiên); pill tròn cho trạng thái; chỉ dùng màu không có chữ; nhiều hơn một nút cam mỗi màn; nút đen nặng cho "Thêm mới"; dải "—" lặp lại cho số 0; ký hiệu "₫"; nhóm sidebar rỗng; thay đổi cụm logo + nút sidebar.
 
 ## 4. Component Specifications
 

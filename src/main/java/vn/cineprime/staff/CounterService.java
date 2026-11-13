@@ -41,7 +41,7 @@ public class CounterService {
         }
         long count=money(counted,"Tiền đếm được"),expect=expected(s);String text=note==null?"":note.trim();
         if(text.length()>500)throw new IllegalArgumentException("Ghi chú tối đa 500 ký tự.");
-        if(count!=expect&&text.isEmpty())throw new IllegalArgumentException("Tiền đếm lệch "+db.money(count-expect)+" so với hệ thống. Nhập ghi chú giải thích trước khi đóng ca.");
+        if(count!=expect&&text.isEmpty())throw new IllegalArgumentException("Tiền đếm lệch "+db.cash(count-expect)+" so với hệ thống. Nhập ghi chú giải thích trước khi đóng ca.");
         s.status="CLOSED";s.closedAt=now();s.expectedCash=expect;s.countedCash=count;s.note=text.isEmpty()?null:text;db.audit(staffId,"SHIFT_CLOSE","#"+s.id+" · dự kiến "+expect+" · đếm "+count);return s;
     }
 
@@ -84,7 +84,7 @@ public class CounterService {
         if(!now().isBefore(show.startsAt))throw new IllegalArgumentException("Đã tới giờ chiếu. Quầy ngừng bán suất này.");
         if(!show.status.equals("OPEN"))throw new IllegalArgumentException("Suất không còn mở bán.");
         if(!Objects.equals(o.shiftId,shift.id))throw new IllegalArgumentException("Ghế được giữ trong ca khác. Hãy chọn ghế lại.");
-        long cash=money(received,"Tiền khách đưa");if(cash<o.total)throw new IllegalArgumentException("Tiền khách đưa chưa đủ. Còn thiếu "+db.money(o.total-cash)+".");
+        long cash=money(received,"Tiền khách đưa");if(cash<o.total)throw new IllegalArgumentException("Tiền khách đưa chưa đủ. Còn thiếu "+db.cash(o.total-cash)+".");
         User customer=null;if(customerId!=null){customer=db.get(User.class,customerId);if(!customer.role.equals("CUSTOMER")||!customer.enabled)throw new IllegalArgumentException("Tài khoản khách không hợp lệ hoặc đã khóa.");}
         List<Inventory> seats=db.list(Inventory.class,"where e.orderId=?1 order by e.seatId",o.id);for(Inventory inv:seats)db.lock(Inventory.class,inv.id);
         if(seats.size()!=db.count(OrderSeat.class,"where e.orderId=?1",o.id)||seats.stream().anyMatch(i->!i.status.equals("HELD")))throw new IllegalArgumentException("Ghế không còn được giữ cho đơn này. Hãy chọn ghế lại.");

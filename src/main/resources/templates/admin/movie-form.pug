@@ -66,11 +66,12 @@ block admin
                 label.mf-chip(class=g.active ? '' : 'is-inactive')
                   input(type="checkbox" name="genreIds" value=g.id checked=g.selected disabled=!g.active && !g.selected data-active=g.active ? 'true' : 'false')
                   span #{g.name}#{g.active ? '' : ' · đã ngừng'}
-              if movieGenres.size() == 0
-                p.muted Chưa có thể loại nào.
-            small
-              | Chọn ít nhất 1 thể loại để phim hiển thị được.
-              a(href="/admin/manage/genres/edit" target="_blank" rel="noopener")  + Thêm thể loại mới ↗
+              button#mf-genre-other.mf-chip.mf-chip-add(type="button" aria-expanded="false" aria-controls="mf-genre-new") + Khác
+            .mf-genre-new#mf-genre-new(hidden)
+              input#mf-genre-name(type="text" maxlength="100" autocomplete="off" placeholder="Tên thể loại mới, ví dụ: Hài hước" aria-label="Tên thể loại mới")
+              button#mf-genre-save.button(type="button") Thêm
+              button#mf-genre-cancel.button.secondary(type="button") Hủy
+            small Chọn ít nhất 1 thể loại để phim hiển thị được. Chưa có thể loại phù hợp thì bấm “+ Khác” để ghi thêm.
 
         //- 2. Release window
         section.mf-card#mf-release(aria-labelledby="mf-release-title")

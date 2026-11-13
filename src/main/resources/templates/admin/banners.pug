@@ -2,9 +2,10 @@ extends layout
 block admin
   .page-heading
     div
-      h1 Banner trang chủ
+      if !hub
+        h1 Banner trang chủ
       p.muted Phim mới được lưu (đang hiển thị trên website) tự có một banner phim ở cuối danh sách. Banner đang bật hiển thị trên trang chủ theo thứ tự dưới đây; phim đã kết thúc tự ẩn khỏi trang chủ.
-    a.button(href="/admin/banners/edit") + Thêm banner
+    a.button.primary(href="/admin/banners/edit") + Thêm banner
   .panel
     form.banner-interval(action="/admin/banners/interval" method="post")
       +csrf()

@@ -1,6 +1,13 @@
 extends operations
+include mixins
+block head
+  link(rel="stylesheet" href="/css/staff.css?v=20261113c")
+  script(src="/js/staff-nav.js?v=20261113c")
+block headerNav
+  +staffTabs(staffTab)
 block content
-  main#main.staff-main
-    h1 Chưa được phân công rạp
-    p.notice Tài khoản của bạn vẫn được giữ. Quản trị viên cần phân công rạp mới trước khi bạn chọn suất và soát vé.
-    p Khi đã được phân công, đăng nhập lại để bắt đầu làm việc.
+  main#main.staff-page
+    .page-head
+      div
+        h1 Chưa được phân công rạp
+        p.hint Tài khoản vẫn được giữ. Quản trị viên cần phân công rạp trước khi bạn soát vé hoặc bán vé; sau đó đăng nhập lại.

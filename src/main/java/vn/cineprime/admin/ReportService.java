@@ -53,9 +53,10 @@ public class ReportService {
         String id=UUID.randomUUID().toString();Map<String,Object> model=new LinkedHashMap<>();
         model.put("reportId",id);model.put("period",period);model.put("reportDate",date.toString());model.put("cinemaId",cinemaId==null?"":cinemaId.toString());model.put("cinemaLabel",cinema);model.put("generatedAt",stamp(now));model.put("range",range.from()+" → "+range.until().minusDays(1));
         model.put("cutoff",range.future()?"Chưa bắt đầu":stamp(range.end()));model.put("comparisonRange",range.future()?"Không so sánh kỳ chưa bắt đầu":"từ 00:00 · "+range.previousFrom().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))+" đến trước "+stamp(range.previousEnd()));
-        long counterRevenue=0;for(Object[] row:rows){Order o=(Order)row[0];if("COUNTER".equals(o.channel))counterRevenue=Math.addExact(counterRevenue,o.total);}
-        model.put("counterRevenue",db.money(counterRevenue));model.put("onlineRevenue",db.money(revenue-counterRevenue));
-        model.put("revenue",db.money(revenue));model.put("revenueValue",revenue);model.put("ticketCount",ticketCount);model.put("orderCount",rows.size());
+        long counterRevenue=0,counterOrders=0;for(Object[] row:rows){Order o=(Order)row[0];if("COUNTER".equals(o.channel)){counterRevenue=Math.addExact(counterRevenue,o.total);counterOrders++;}}
+        model.put("counterRevenue",db.cash(counterRevenue));model.put("onlineRevenue",db.cash(revenue-counterRevenue));model.put("counterOrders",counterOrders);model.put("onlineOrders",rows.size()-counterOrders);
+        model.put("cashflow",cashflow(range,cinemaId,revenue-counterRevenue,rows.size()-counterOrders));
+        model.put("revenue",db.cash(revenue));model.put("revenueValue",revenue);model.put("ticketCount",ticketCount);model.put("orderCount",rows.size());
         model.put("revenueChange",change(revenue,oldRevenue,range.future()));model.put("ticketChange",change(ticketCount,oldTickets,range.future()));model.put("orderChange",change(rows.size(),previous.size(),range.future()));
         model.put("chart",chart(range,now,rows));model.put("topMovies",top(rows));model.put("occupancy",occupancy(range,cinemaId));
         model.put("customerCount",db.count(User.class,"where e.role='CUSTOMER'"));model.put("nowCount",db.count(Movie.class,"where e.active=true and "+MovieLifecycle.expression("e","?1")+"='NOW_SHOWING'",MovieLifecycle.today(clock)));model.put("comingCount",db.count(Movie.class,"where e.active=true and "+MovieLifecycle.expression("e","?1")+"='COMING_SOON'",MovieLifecycle.today(clock)));
@@ -63,19 +64,40 @@ public class ReportService {
         for(Object[] row:rows){Order o=(Order)row[0];csv.append(csvRow(id,range.from()+" → "+range.until().minusDays(1),cinema,range.end(),o.code,stamp(o.paidAt),o.movieTitle,o.cinemaName,o.roomName,row[3],o.subtotal,o.discount,o.total,"COUNTER".equals(o.channel)?"Quầy":"Online"));}
         return new Snapshot(id,now,model,csv.toString().getBytes(StandardCharsets.UTF_8));
     }
+    /** Money in and out during the closed part of the period: online MoMo (paid orders), counter cash taken, counter cash refunded, and late payments held for reconciliation (not revenue). */
+    private Map<String,Object> cashflow(Range range,Long cinemaId,long onlineIn,long onlineCount){
+        long[] cashIn={0,0},refund={0,0},held={0,0};
+        if(!range.future()){
+            Instant start=range.from().atStartOfDay(ZONE).toInstant(),end=range.end();
+            String base=" from %s p, %s o, %s s, %s r where p.orderId=o.id and o.showtimeId=s.id and s.roomId=r.id".formatted(db.entityName(Payment.class),db.entityName(Order.class),db.entityName(Showtime.class),db.entityName(Room.class))+(cinemaId==null?"":" and r.cinemaId=?3");
+            Object[] args=cinemaId==null?new Object[]{start,end}:new Object[]{start,end,cinemaId};
+            cashIn=sum("select count(p),coalesce(sum(p.amount),0)"+base+" and p.provider='CASH' and p.status in ('SUCCEEDED','REFUNDED') and p.createdAt>=?1 and p.createdAt<?2",args);
+            refund=sum("select count(p),coalesce(sum(p.amount),0)"+base+" and p.provider='CASH' and p.status='REFUNDED' and p.updatedAt>=?1 and p.updatedAt<?2",args);
+            held=sum("select count(p),coalesce(sum(p.amount),0)"+base+" and p.reconciliation=true and coalesce(p.updatedAt,p.createdAt)>=?1 and coalesce(p.updatedAt,p.createdAt)<?2",args);
+        }
+        long in=Math.addExact(onlineIn,cashIn[1]),net=in-refund[1];
+        Map<String,Object> flow=new LinkedHashMap<>();
+        flow.put("onlineIn",db.cash(onlineIn));flow.put("onlineCount",onlineCount);flow.put("cashIn",db.cash(cashIn[1]));flow.put("cashCount",cashIn[0]);
+        flow.put("refund",db.cash(refund[1]));flow.put("refundCount",refund[0]);flow.put("refundValue",refund[1]);flow.put("held",db.cash(held[1]));flow.put("heldCount",held[0]);flow.put("heldValue",held[1]);
+        flow.put("in",db.cash(in));flow.put("inValue",in);flow.put("net",db.cash(net));flow.put("cashNet",db.cash(cashIn[1]-refund[1]));
+        int onlineShare=in==0?0:(int)Math.round(onlineIn*100.0/in);flow.put("onlineShare",onlineShare);flow.put("cashShare",in==0?0:100-onlineShare);
+        return flow;
+    }
+    private long[] sum(String hql,Object[] args){Object[] row=db.query(hql,Object[].class,args).getFirst();return new long[]{((Number)row[0]).longValue(),((Number)row[1]).longValue()};}
     private static String stamp(Instant time){return DateTimeFormatter.ofPattern("HH:mm:ss · dd/MM/yyyy").withZone(ZONE).format(time);}
     private static long total(List<Object[]> rows){long total=0;for(Object[] row:rows)total=Math.addExact(total,((Order)row[0]).total);return total;}
     private static String change(long current,long previous,boolean future){if(future)return "Chưa bắt đầu";if(previous==0)return "— · Kỳ trước bằng 0";BigDecimal percent=BigDecimal.valueOf(current).subtract(BigDecimal.valueOf(previous)).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(previous),1,RoundingMode.HALF_UP);return (percent.signum()>0?"↑ +":percent.signum()<0?"↓ ":"↔ ")+percent.toPlainString()+"% so cùng kỳ";}
     private List<Map<String,Object>> chart(Range range,Instant now,List<Object[]> rows){
-        int count=range.period().equals("day")?24:range.period().equals("year")?12:(int)java.time.temporal.ChronoUnit.DAYS.between(range.from(),range.until());long[] sums=new long[count];
-        for(Object[] row:rows){Order o=(Order)row[0];ZonedDateTime t=o.paidAt.atZone(ZONE);int bucket=range.period().equals("day")?t.getHour():range.period().equals("year")?t.getMonthValue()-1:(int)java.time.temporal.ChronoUnit.DAYS.between(range.from(),t.toLocalDate());sums[bucket]=Math.addExact(sums[bucket],o.total);}
+        int count=range.period().equals("day")?24:range.period().equals("year")?12:(int)java.time.temporal.ChronoUnit.DAYS.between(range.from(),range.until());long[] sums=new long[count],counter=new long[count];
+        for(Object[] row:rows){Order o=(Order)row[0];ZonedDateTime t=o.paidAt.atZone(ZONE);int bucket=range.period().equals("day")?t.getHour():range.period().equals("year")?t.getMonthValue()-1:(int)java.time.temporal.ChronoUnit.DAYS.between(range.from(),t.toLocalDate());sums[bucket]=Math.addExact(sums[bucket],o.total);if("COUNTER".equals(o.channel))counter[bucket]=Math.addExact(counter[bucket],o.total);}
         long max=Arrays.stream(sums).max().orElse(0);List<Map<String,Object>> points=new ArrayList<>();
-        for(int i=0;i<count;i++){Instant start=range.period().equals("day")?range.from().atStartOfDay(ZONE).plusHours(i).toInstant():range.period().equals("year")?range.from().plusMonths(i).atStartOfDay(ZONE).toInstant():range.from().plusDays(i).atStartOfDay(ZONE).toInstant();boolean future=!start.isBefore(now);int height=max==0?0:BigDecimal.valueOf(sums[i]).multiply(BigDecimal.valueOf(150)).divide(BigDecimal.valueOf(max),0,RoundingMode.HALF_UP).intValue();String label=range.period().equals("day")?String.format("%02dh",i):range.period().equals("year")?"T"+(i+1):range.from().plusDays(i).format(DateTimeFormatter.ofPattern("dd/MM"));points.add(Map.of("label",label,"value",sums[i],"amount",future?"Chưa tới":db.money(sums[i]),"future",future,"x",i*32+12,"y",170-height,"height",height,"labelX",i*32+21,"labelY",i%2==0?192:207));}
+        for(int i=0;i<count;i++){Instant start=range.period().equals("day")?range.from().atStartOfDay(ZONE).plusHours(i).toInstant():range.period().equals("year")?range.from().plusMonths(i).atStartOfDay(ZONE).toInstant():range.from().plusDays(i).atStartOfDay(ZONE).toInstant();boolean future=!start.isBefore(now);int height=max==0?0:BigDecimal.valueOf(sums[i]).multiply(BigDecimal.valueOf(150)).divide(BigDecimal.valueOf(max),0,RoundingMode.HALF_UP).intValue();String label=range.period().equals("day")?String.format("%02dh",i):range.period().equals("year")?"T"+(i+1):range.from().plusDays(i).format(DateTimeFormatter.ofPattern("dd/MM"));int counterHeight=sums[i]==0?0:(int)Math.round(height*(double)counter[i]/sums[i]);
+            Map<String,Object> point=new LinkedHashMap<>();point.put("label",label);point.put("value",sums[i]);point.put("amount",future?"Chưa tới":db.cash(sums[i]));point.put("onlineAmount",future?"—":db.cash(sums[i]-counter[i]));point.put("counterAmount",future?"—":db.cash(counter[i]));point.put("future",future);point.put("x",i*32+12);point.put("y",170-height);point.put("height",height);point.put("counterY",170-counterHeight);point.put("counterHeight",counterHeight);point.put("labelX",i*32+21);point.put("labelY",i%2==0?192:207);points.add(Collections.unmodifiableMap(point));}
         return List.copyOf(points);
     }
     private List<Map<String,Object>> top(List<Object[]> rows){
         Map<Long,Long> amounts=new HashMap<>();Map<Long,String> names=new HashMap<>();for(Object[] row:rows){Order o=(Order)row[0];Long movieId=(Long)row[1];amounts.merge(movieId,o.total,Math::addExact);names.put(movieId,o.movieTitle);}
-        return amounts.entrySet().stream().sorted(Map.Entry.<Long,Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey())).map(e->Map.<String,Object>of("title",names.get(e.getKey())+" · #"+e.getKey(),"amount",db.money(e.getValue()),"value",e.getValue())).toList();
+        return amounts.entrySet().stream().sorted(Map.Entry.<Long,Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey())).map(e->Map.<String,Object>of("title",names.get(e.getKey())+" · #"+e.getKey(),"amount",db.cash(e.getValue()),"value",e.getValue())).toList();
     }
     private List<Map<String,Object>> occupancy(Range range,Long cinemaId){
         Object[] args=cinemaId==null?new Object[]{range.from().atStartOfDay(ZONE).toInstant(),range.until().atStartOfDay(ZONE).toInstant()}:new Object[]{range.from().atStartOfDay(ZONE).toInstant(),range.until().atStartOfDay(ZONE).toInstant(),cinemaId};

@@ -1,0 +1,237 @@
+/* Admin — phương án B "Thẻ màu nhạt" (UI-Template.md §3.4, chốt 13/11/2026). Loaded last on every Admin page.
+   Colour always carries meaning (status, channel, kind); white cards on a light canvas; group icons in the sidebar.
+   Desktop only (≥1366×768). No business behaviour lives here. */
+body.admin-compact{
+  --canvas:#F4F6F9;--card:#FFFFFF;--card-head:#F8F9FB;--ink-2:#3D434D;--line-soft:#EEF0F3;--line-strong:#CFD4DA;--faint:#9AA2AD;
+  --brand:#1459A5;--brand-soft:#E8F1FB;--brand-line:#C9DDF4;--accent:#F47B20;--accent-ink:#A9480A;
+  --ok-bg:#E6F4EA;--ok-fg:#1B6B3F;--ok-line:#C5E6CF;--ok-bar:#1F8A4C;
+  --info-bg:#E8F1FB;--info-fg:#1459A5;--info-line:#C9DDF4;--info-bar:#1459A5;
+  --warn-bg:#FFF5D6;--warn-fg:#7A5300;--warn-line:#F1DE9E;--warn-bar:#D9A400;
+  --bad-bg:#FDECEC;--bad-fg:#B42318;--bad-line:#F6CACA;--bad-bar:#C2362F;
+  --off-bg:#F1F2F4;--off-fg:#4B5563;--off-line:#E0E3E8;--off-bar:#9AA2AD;
+  --counter-bg:#FEF0E4;--counter-fg:#A9480A;--counter-line:#F9D4B4;--counter-bar:#E06A12;
+  --special-bg:#F1ECFB;--special-fg:#5B3BA8;--special-line:#DDD1F4;--special-bar:#6B4BC2;
+  --mono:ui-monospace,Consolas,monospace;--shadow:0 8px 24px rgba(20,23,28,.16);
+  /* old app.css tokens, re-pointed */
+  --ink:#14171C;--navy:#111827;--muted:#5B6472;--line:#E3E6EA;--soft:#F4F6F9;--surface:#FFFFFF;
+  --blue:#1459A5;--blue-2:#1A68BA;--orange:#F47B20;--orange-hover:#DD6A12;--success:#1B6B3F;--danger:#B42318;
+  background:var(--canvas);color:var(--ink);font-family:'Be Vietnam Pro','Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums
+}
+.admin-compact :focus-visible{outline:2px solid var(--brand)!important;outline-offset:2px}
+.admin-compact a{color:var(--brand)}
+.admin-compact h1{font-size:28px;font-weight:700;letter-spacing:-.01em}
+.admin-compact h2{font-size:16px;font-weight:600;letter-spacing:0}
+.admin-compact .muted,.admin-compact small{color:var(--muted)}
+
+/* Header — left cluster (sidebar toggle, arrows, logo) kept exactly as approved */
+.admin-compact .ops-header{height:56px;padding:0 24px 0 12px;border-bottom:1px solid var(--line);background:var(--card);box-shadow:none}
+.admin-compact .ops-header .brand{font-size:21px;color:var(--brand)}
+.admin-compact .ops-header .brand strong{color:var(--accent)}
+.admin-compact .ops-header .brand-symbol{width:28px;height:28px}
+.admin-compact .nav-control{border-radius:6px;color:var(--ink-2)}
+.admin-compact .nav-control:hover:not(:disabled){background:var(--canvas)}
+.admin-compact .nav-control:disabled{color:var(--line-strong)}
+.admin-compact .ops-role{font-size:14px;font-weight:400;color:var(--muted);border-left-color:var(--line)}
+.admin-compact .ops-account{font-size:14px;gap:20px}
+.admin-compact .ops-site.button{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;font-size:14px;font-weight:600;text-decoration:none}
+.admin-compact .ops-site svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.admin-compact .ops-user{color:var(--muted)}
+.admin-compact .ops-header .text-button{color:var(--brand);font-size:14px;font-weight:500}
+
+/* Sidebar — flat list like a chat app (chốt 13/11/2026): one stroke icon per item, small non-clickable section labels,
+   no collapsible groups. Areas with several screens open as tabs (.hub-tabs) at the top of the page. */
+.admin-compact .ops-sidebar{background:var(--card);border-right:1px solid var(--line);padding:12px 10px 24px}
+.admin-compact .sidebar-heading{display:none}
+/* app.css paints every <nav> navy for the public site header; admin navs sit on white */
+.admin-compact .sidebar-nav{display:flex;background:none}
+.admin-compact .sidebar-nav{flex-direction:column;gap:2px}
+.admin-compact .ops-sidebar a:focus-visible{outline:2px solid var(--brand)!important;outline-offset:-2px}
+.admin-compact .ops-sidebar a:focus:not(:focus-visible){outline:none!important}
+.admin-compact .nav-section{margin:14px 0 4px;padding:0 10px;font-size:12px;font-weight:500;color:var(--muted)}
+.admin-compact .nav-item{display:flex;align-items:center;gap:12px;min-height:36px;padding:0 10px;border-radius:6px;font-size:14px;font-weight:500;color:var(--ink-2);text-decoration:none}
+.admin-compact .nav-item .nav-icon{color:var(--muted)}
+.admin-compact .nav-item:hover{background:var(--canvas);color:var(--ink)}
+.admin-compact .nav-item.active{background:var(--brand-soft);color:var(--brand);font-weight:600}
+.admin-compact .nav-item.active .nav-icon{color:var(--brand)}
+.admin-compact .nav-svg{stroke-width:1.6}
+/* Account block pinned to the sidebar bottom (chốt 13/11/2026): who is signed in + "Đăng xuất" as a sidebar row */
+.admin-compact .sidebar-account{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:4px}
+.admin-compact .account-who{display:flex;align-items:center;gap:10px;padding:4px 10px;min-width:0}
+.admin-compact .account-avatar{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:50%;background:var(--brand);color:var(--card);font-size:13px;font-weight:600}
+.admin-compact .account-text{display:grid;min-width:0;line-height:1.3}
+.admin-compact .account-text strong{font-size:14px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-compact .account-text small{font-size:12px;color:var(--muted)}
+.admin-compact button.nav-item{width:100%;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left}
+.admin-compact button.nav-item.logout:hover{background:var(--bad-bg);color:var(--bad-fg)}
+.admin-compact button.nav-item.logout:hover .nav-icon{color:var(--bad-fg)}
+.admin-compact .ops-sidebar button:focus-visible{outline:2px solid var(--brand)!important;outline-offset:-2px}
+
+/* Area heading + tabs (Kinh doanh, Nội dung, Hệ thống, Lịch chiếu, Rạp & phòng) */
+.admin-compact .hub-head{margin:2px 0 4px}
+.admin-compact .hub-head h1{margin:0 0 12px}
+/* Switcher tabs (hub tabs + order channels), chốt 13/11/2026: a white segmented strip with 1px dividers, so the
+   choice reads as a control, not as text. Active segment: brand-soft fill, brand text, 3px brand underline. */
+.admin-compact :is(.hub-tabs,.channel-tabs){display:inline-flex!important;gap:0!important;max-width:100%;margin:0 0 16px;padding:0;background:var(--card)!important;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.admin-compact :is(.hub-tabs,.channel-tabs) a{display:flex;align-items:center;min-height:42px;margin:0;padding:0 20px;border:0;border-left:1px solid var(--line-strong);border-bottom:3px solid transparent;border-top:3px solid transparent;border-radius:0;background:none!important;font-size:14px;font-weight:600;color:var(--ink-2);text-decoration:none;white-space:nowrap}
+.admin-compact :is(.hub-tabs,.channel-tabs) a:first-child{border-left:0}
+.admin-compact :is(.hub-tabs,.channel-tabs) a:hover{background:var(--canvas)!important;color:var(--ink)}
+.admin-compact :is(.hub-tabs a.active,.channel-tabs a[aria-current=page]){background:var(--brand-soft)!important;color:var(--brand)!important;border-bottom-color:var(--brand)}
+.admin-compact .hub-head + .page-heading{margin-top:0}
+.admin-compact .page-heading .button{flex:none;white-space:nowrap}
+
+/* Content on the canvas */
+.admin-compact .ops-main{padding:24px 32px 48px;background:var(--canvas)}
+.admin-compact .ops-breadcrumb{display:flex;gap:6px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.admin-compact .ops-breadcrumb a{color:var(--brand)}
+.admin-compact .notice{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;color:var(--ink-2);font-size:13px;box-shadow:none}
+.admin-compact .action-notice{background:var(--ok-bg);border:1px solid var(--ok-line);border-radius:6px;padding:10px 14px;color:var(--ok-fg);font-size:14px;box-shadow:none}
+.admin-compact .form-error{background:var(--bad-bg);border:1px solid var(--bad-line);border-radius:6px;padding:10px 14px;color:var(--bad-fg);font-size:14px;box-shadow:none}
+
+/* Cards */
+.admin-compact :is(.panel,.mf-card,.chart-panel,.table-wrap,.ops-filters){background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:none}
+.admin-compact :is(.panel,.mf-card,.chart-panel){padding:16px 18px;margin:0 0 16px}
+.admin-compact .panel-heading{border:0;padding:0;margin-bottom:12px}
+.admin-compact .panel-heading h2{font-size:16px;font-weight:600}
+
+/* Chips: square, light fill, same-hue text, 1px border. Always text, never colour alone. */
+.admin-compact :is(.status-badge,.channel-badge,.badge){display:inline-flex;align-items:center;gap:0;min-height:24px;padding:0 8px;border:1px solid var(--off-line);border-radius:4px;background:var(--off-bg);color:var(--off-fg);font-size:12px;font-weight:600;line-height:1.2;white-space:nowrap}
+.admin-compact .status-badge::before,.admin-compact .badge::before{content:none!important;display:none!important}
+.admin-compact .status-badge.tone-ok{background:var(--ok-bg);color:var(--ok-fg);border-color:var(--ok-line)}
+.admin-compact .status-badge.tone-info{background:var(--info-bg);color:var(--info-fg);border-color:var(--info-line)}
+.admin-compact .status-badge.tone-warn{background:var(--warn-bg);color:var(--warn-fg);border-color:var(--warn-line)}
+.admin-compact .status-badge:is(.tone-bad,.tone-danger,.tone-error){background:var(--bad-bg);color:var(--bad-fg);border-color:var(--bad-line)}
+.admin-compact .status-badge:is(.tone-muted,.tone-neutral){background:var(--off-bg);color:var(--off-fg);border-color:var(--off-line)}
+.admin-compact .channel-badge.online{background:var(--info-bg);color:var(--info-fg);border-color:var(--info-line)}
+.admin-compact .channel-badge.counter{background:var(--counter-bg);color:var(--counter-fg);border-color:var(--counter-line)}
+.admin-compact .channel-badge+small{display:block;margin-top:4px}
+.admin-compact .live-indicator{display:inline-flex;align-items:center;gap:6px;background:none;padding:0;color:var(--ok-fg);font-size:12px;font-weight:500}
+.admin-compact .live-indicator::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--ok-bar)}
+
+/* Tables inside cards */
+.admin-compact .table-wrap{overflow:hidden;margin-top:0}
+.admin-compact table{border-collapse:collapse;background:none;font-size:13px}
+.admin-compact thead th,.admin-compact th{background:var(--card-head)!important;font-size:12px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;border-bottom:1px solid var(--line);padding:11px 12px}
+.admin-compact tbody td{border-bottom:1px solid var(--line-soft);padding:10px 12px;height:44px;background:var(--card)}
+.admin-compact tbody tr:last-child td{border-bottom:0}
+.admin-compact tbody tr:nth-child(even) td{background:var(--card)}
+.admin-compact tbody tr:hover td{background:#FAFBFC}
+.admin-compact td strong{font-weight:600}
+
+/* KPI cards: 3px meaning bar + light icon tile */
+.admin-compact .kpi-grid{gap:12px;border:0;margin-bottom:16px}
+.admin-compact .kpi-card{position:relative;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--info-bar);border-radius:10px;box-shadow:none;padding:14px 16px}
+.admin-compact .kpi-card+.kpi-card{border-left:1px solid var(--line)}
+.admin-compact .kpi-label{display:flex;align-items:center;justify-content:flex-start;flex-direction:row;gap:10px;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.admin-compact .kpi-icon{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:8px;background:var(--info-bg);color:var(--info-fg)}
+.admin-compact .kpi-icon svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.admin-compact .kpi-card>strong{font-size:26px;font-weight:700;letter-spacing:-.01em;color:var(--ink)!important}
+.admin-compact .kpi-card>strong.zero{color:var(--ink)!important;font-weight:700}
+.admin-compact .kpi-change{font-size:12px;font-weight:500;background:none;padding:0;color:var(--info-fg)}
+.admin-compact .kpi-card.tone-ok{border-top-color:var(--ok-bar)}.admin-compact .kpi-card.tone-ok .kpi-icon{background:var(--ok-bg);color:var(--ok-fg)}.admin-compact .kpi-card.tone-ok .kpi-change{color:var(--ok-fg)}
+.admin-compact .kpi-card.tone-bad{border-top-color:var(--bad-bar)}.admin-compact .kpi-card.tone-bad .kpi-icon{background:var(--bad-bg);color:var(--bad-fg)}.admin-compact .kpi-card.tone-bad .kpi-change{color:var(--bad-fg)}
+.admin-compact .kpi-card.tone-warn{border-top-color:var(--warn-bar)}.admin-compact .kpi-card.tone-warn .kpi-icon{background:var(--warn-bg);color:var(--warn-fg)}.admin-compact .kpi-card.tone-warn .kpi-change{color:var(--warn-fg)}
+.admin-compact .kpi-card.tone-special{border-top-color:var(--special-bar)}.admin-compact .kpi-card.tone-special .kpi-icon{background:var(--special-bg);color:var(--special-fg)}.admin-compact .kpi-card.tone-special .kpi-change{color:var(--special-fg)}
+.admin-compact .split-bar .track{fill:var(--line-soft)}
+.admin-compact .split-bar .online,.admin-compact .chart-legend .online::before{fill:var(--brand);background:var(--brand)}
+.admin-compact .split-bar .counter,.admin-compact .chart-legend .counter::before{fill:var(--counter-bar);background:var(--counter-bar)}
+.admin-compact .chart-bar{fill:var(--brand)}
+.admin-compact .chart-bar-counter{fill:var(--counter-bar)}
+.admin-compact .revenue-chart .chart-bar:hover{fill:var(--blue-2)}
+
+/* Cash flow */
+.admin-compact .flow-table{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.admin-compact .flow-table>div{padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line-soft)}
+.admin-compact .flow-table dt{color:var(--ink)}
+.admin-compact .flow-table .in dd{color:var(--ok-fg)}
+.admin-compact .flow-table .out dd{color:var(--bad-fg)}
+.admin-compact .flow-table .net{background:var(--info-bg)}
+.admin-compact .flow-table .net dd{color:var(--info-fg);font-size:16px}
+.admin-compact .flow-table .held{background:var(--warn-bg)}
+.admin-compact .flow-table .held dd{color:var(--warn-fg)}
+.admin-compact .operation-section>summary{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:10px 12px;margin-bottom:8px}
+.admin-compact .operation-section>summary strong{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border:1px solid var(--off-line);border-radius:4px;background:var(--off-bg);color:var(--off-fg);font-size:12px;font-weight:600}
+.admin-compact .drawer-total{background:var(--counter-bg);border:1px solid var(--counter-line);border-radius:8px;padding:12px 14px}
+.admin-compact .drawer-total strong{font-size:28px;font-weight:700;color:var(--counter-fg)!important}
+.admin-compact .catalog-context{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--muted)}
+.admin-compact .flow-in>strong,.admin-compact .flow-out>strong{color:var(--ink)!important}
+
+/* Empty = one line, no dashed box, no illustration */
+.admin-compact .empty{display:block;border:0;border-radius:0;background:none;padding:14px 0;color:var(--muted);font-size:13px;text-align:left}
+.admin-compact .empty-inline::before,.admin-compact .chart-empty::before,.admin-compact .empty::before{display:none!important}
+.admin-compact .empty-inline{color:var(--muted)}
+
+/* Buttons: blue = work (filter, refresh, submit), orange = create/sell (one per screen), outline = secondary */
+.admin-compact .button{min-height:38px;padding:0 16px;border:1px solid var(--brand);border-radius:6px;background:var(--brand);color:#fff;font-size:13px;font-weight:600;letter-spacing:0;box-shadow:none}
+.admin-compact .button:hover{background:var(--blue-2);border-color:var(--blue-2);color:#fff}
+.admin-compact .button.secondary{background:var(--card);color:var(--ink);border-color:var(--line-strong)}
+.admin-compact .button.secondary:hover{background:var(--card);border-color:var(--brand);color:var(--brand)}
+.admin-compact .button.danger{background:var(--card);color:var(--bad-fg);border-color:var(--bad-line)}
+.admin-compact .button.danger:hover{border-color:var(--bad-fg);background:var(--bad-bg);color:var(--bad-fg)}
+.admin-compact .button:disabled{background:var(--off-bg);color:var(--faint);border-color:var(--off-line)}
+.admin-compact :is(.form-savebar,.mf-savebar) .button:not(.secondary):not(.danger),.admin-compact .button.primary{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.admin-compact :is(.form-savebar,.mf-savebar) .button:not(.secondary):not(.danger):hover,.admin-compact .button.primary:hover{background:var(--orange-hover);border-color:var(--orange-hover);color:var(--ink)}
+.admin-compact .text-button{color:var(--brand)}
+.admin-compact .row-actions .action-btn,.admin-compact .pager-btn{min-height:32px;border:1px solid var(--line-strong);border-radius:6px;background:var(--card);color:var(--ink-2)}
+.admin-compact .row-actions .action-btn.primary{border-color:var(--brand-line);background:var(--brand-soft);color:var(--brand)}
+.admin-compact .row-actions .action-btn:hover,.admin-compact .row-actions .action-btn.primary:hover,.admin-compact .pager-btn:hover:not(:disabled){border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.admin-compact .widget-more{border-radius:6px;padding:4px 8px;color:var(--brand);font-weight:600}
+.admin-compact .widget-more:hover{background:var(--brand-soft)}
+.admin-compact .ops-pagination a{color:var(--brand)}
+
+/* Inputs */
+.admin-compact input:not([type=checkbox]):not([type=radio]):not([type=range]),.admin-compact select,.admin-compact textarea{border:1px solid var(--line-strong);border-radius:6px;background:var(--card);box-shadow:none;font-size:14px}
+.admin-compact input:focus,.admin-compact select:focus,.admin-compact textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.admin-compact label{color:var(--ink-2)}
+
+/* Tabs / segmented: brand for the chosen item */
+.admin-compact .account-tabs a.active,.admin-compact .setup-steps a.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.admin-compact .setup-steps a:hover{background:var(--brand-soft);color:var(--brand)}
+.admin-compact .cinema-context{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;color:var(--ink-2)}
+.admin-compact .cinema-context>strong{color:var(--brand)}
+.admin-compact details.disclosure[open]>summary,.admin-compact .disclosure-icon{color:var(--brand)}
+.admin-compact .disclosure-icon{border-color:var(--line-strong);background:var(--card)}
+
+/* Dialogs and floating menus keep the only shadow */
+.admin-compact dialog,.admin-compact .admin-form-dialog{border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+.admin-compact .row-menu-list{border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+.admin-compact #toast{border-radius:6px;background:var(--ink);color:#fff}
+
+/* Dashboard */
+.admin-compact .dash-board{gap:16px;margin-bottom:16px}
+.admin-compact .dash-lane{gap:16px}
+.admin-compact .dash-pair{gap:16px}
+.admin-compact .dash-board .panel{margin:0}
+.admin-compact .dash-head{margin-bottom:16px}
+.admin-compact .dash-head .muted strong{font-weight:600;color:var(--ink)}
+
+/* Order summary / stats grid → KPI cards (orders: total · paid · waiting · cancelled) */
+.admin-compact :is(.order-summary,.stats-grid){gap:12px;border:0;margin:0 0 16px}
+.admin-compact :is(.order-summary>div,.stats-grid .stat-card){background:var(--card);border:1px solid var(--line);border-top:3px solid var(--info-bar);border-radius:10px;box-shadow:none;padding:12px 16px}
+.admin-compact :is(.order-summary>div,.stats-grid .stat-card)+:is(div,.stat-card){border-left:1px solid var(--line)}
+.admin-compact .order-summary>div:nth-child(2){border-top-color:var(--ok-bar)}
+.admin-compact .order-summary>div:nth-child(3){border-top-color:var(--warn-bar)}
+.admin-compact .order-summary>div:nth-child(4){border-top-color:var(--bad-bar)}
+.admin-compact .order-summary>div:nth-child(2) strong{color:var(--ok-fg)}
+.admin-compact .order-summary>div:nth-child(3) strong{color:var(--warn-fg)}
+.admin-compact .order-summary>div:nth-child(4) strong{color:var(--bad-fg)}
+.admin-compact :is(.order-summary,.stats-grid) small,.admin-compact .stats-grid .stat-card>span{font-size:12px;color:var(--muted)}
+.admin-compact :is(.order-summary,.stats-grid) strong{font-size:26px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.admin-compact :is(.order-summary,.stats-grid) strong.zero{font-weight:700}
+
+/* Filters card */
+.admin-compact .ops-filters{padding:14px 16px;margin-bottom:12px}
+.admin-compact .ops-filters label,.admin-compact .ops-filters span{font-size:12px;font-weight:500;color:var(--muted)}
+
+/* Channel tabs: underline in brand */
+
+/* Movie form */
+.admin-compact .mf-side section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.admin-compact .mf-side h2{text-transform:none;letter-spacing:0;font-size:16px;font-weight:600;color:var(--ink)}
+.admin-compact .mf-step{border-radius:6px;background:var(--brand-soft);color:var(--brand)}
+.admin-compact .mf-seg-option span,.admin-compact .mf-chip{border-radius:6px;border-color:var(--line-strong)}
+.admin-compact .mf-seg-option input:checked+span,.admin-compact .mf-chip:has(input:checked),.admin-compact .mf-chip.is-selected{border-color:var(--brand);background:var(--brand-soft);color:var(--brand);box-shadow:none}
+.admin-compact .mf-seg-option input:checked+span small,.admin-compact .mf-seg-option input:checked+span strong{color:var(--brand)}
+.admin-compact .mf-field :is(input[type=text],input[type=number],input[type=date],input[type=search],textarea){border-radius:6px;border-color:var(--line-strong)}
+.admin-compact .mf-ready{border-radius:8px;background:var(--ok-bg);color:var(--ok-fg);padding:10px 12px}
+.admin-compact .mf-savebar{background:var(--card);border-top:1px solid var(--line);box-shadow:none}
+.admin-compact .mf-savebar .button{min-height:40px;padding:0 20px}

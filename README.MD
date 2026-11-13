@@ -181,6 +181,10 @@ Reset token dùng một lần/30 phút; đổi password vô hiệu phiên cũ. N
 
 ## Hướng dẫn demo ba vai trò
 
+### Giao diện khách
+
+Từ 13/11/2026, trang khách dùng bố cục gọn theo phác thảo của người dùng (UI-Template §3.0): header một hàng, hero có chữ + ảnh ngang + poster, dải mua vé nhanh, lưới phim 6 cột có nút thích, footer 5 cột. Đã kiểm tra trên JAR ở 1366×650, 1920×950 và 375×812. Chưa thử trên điện thoại thật.
+
 ### Giao diện điều hành Admin/Staff
 
 Từ 12/11/2026, Admin và Staff chỉ hỗ trợ desktop (1366×768 trở lên); chỉ giao diện khách cần responsive trên điện thoại. Các phần mobile của màn điều hành đã làm trước đó vẫn còn nhưng không được bảo đảm hay nghiệm thu nữa.

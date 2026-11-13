@@ -18,20 +18,20 @@ public class OperationsService {
     public OperationsService(Store db,Clock clock){this.db=db;this.clock=clock;new SecureRandom().nextBytes(cursorKey);}
     private record Position(Instant anchor,long upper,Instant time,long id,int page){}
     public Map<String,Object> read(Long cinemaId){
-        var reconciliation=page("reconciliation",cinemaId,"");var failures=page("failures",cinemaId,"");var latest=page("latest",cinemaId,"");var upcoming=page("upcoming",cinemaId,"");
-        Map<String,Object> result=new LinkedHashMap<>();result.put("updatedAt",db.date(clock.instant()));result.put("reconciliationCount",reconciliation.get("total"));result.put("reconciliationAmount",reconciliation.get("totalAmount"));result.put("failedCount",failures.get("total"));result.put("newCount",latest.get("total"));
-        var pages=Map.of("reconciliation",reconciliation,"failures",failures,"latest",latest,"upcoming",upcoming);result.put("pages",pages);pages.forEach((k,v)->result.put(k,v.get("rows")));return result;
+        var reconciliation=page("reconciliation",cinemaId,"");var failures=page("failures",cinemaId,"");var latest=page("latest",cinemaId,"");var upcoming=page("upcoming",cinemaId,"");var shifts=page("shifts",cinemaId,"");
+        Map<String,Object> result=new LinkedHashMap<>();result.put("updatedAt",db.date(clock.instant()));result.put("reconciliationCount",reconciliation.get("total"));result.put("reconciliationAmount",reconciliation.get("totalAmount"));result.put("failedCount",failures.get("total"));result.put("newCount",latest.get("total"));result.put("shiftCount",shifts.get("total"));result.put("drawerAmount",shifts.get("totalAmount"));
+        var pages=Map.of("reconciliation",reconciliation,"failures",failures,"latest",latest,"upcoming",upcoming,"shifts",shifts);result.put("pages",pages);pages.forEach((k,v)->result.put(k,v.get("rows")));return result;
     }
     public Map<String,Object> page(String section,Long cinemaId,String cursor){
-        if(!Set.of("reconciliation","failures","latest","upcoming").contains(section))throw new IllegalArgumentException("Khối vận hành không hợp lệ.");
-        boolean payment=section.equals("reconciliation")||section.equals("failures"),upcoming=section.equals("upcoming");
-        String alias=payment?"p":upcoming?"s":"o";
+        if(!Set.of("reconciliation","failures","latest","upcoming","shifts").contains(section))throw new IllegalArgumentException("Khối vận hành không hợp lệ.");
+        boolean payment=section.equals("reconciliation")||section.equals("failures"),upcoming=section.equals("upcoming"),shifts=section.equals("shifts");
+        String alias=payment?"p":upcoming?"s":shifts?"sh":"o";
         Position position;
         if(cursor.isBlank()){
-            long upper=db.query("select coalesce(max(e.id),0) from "+db.entityName(payment?Payment.class:upcoming?Showtime.class:Order.class)+" e",Long.class).getFirst();
+            long upper=db.query("select coalesce(max(e.id),0) from "+db.entityName(payment?Payment.class:upcoming?Showtime.class:shifts?Shift.class:Order.class)+" e",Long.class).getFirst();
             position=new Position(clock.instant(),upper,null,0,0);
         }else position=decode(cursor,section,cinemaId);
-        Instant now=position.anchor();String filter=cinemaId==null?"":" and r.cinemaId=:cinema";
+        Instant now=position.anchor();String filter=cinemaId==null?"":shifts?" and sh.cinemaId=:cinema":" and r.cinemaId=:cinema";
         Map<String,Object> args=new HashMap<>(Map.of("upper",position.upper()));if(cinemaId!=null)args.put("cinema",cinemaId);
         String from,select,timeField,order;
         if(payment){
@@ -42,13 +42,17 @@ public class OperationsService {
         }else if(upcoming){
             from=" from "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r, "+db.entityName(Movie.class)+" m, "+db.entityName(Cinema.class)+" c where s.roomId=r.id and s.movieId=m.id and r.cinemaId=c.id and s.status='OPEN' and s.startsAt>=:since and s.startsAt<=:until";
             args.put("since",now.minusSeconds(1800));args.put("until",now.plusSeconds(7200));select="select s,m.title,r.name,c.name";timeField="s.startsAt";order="s.startsAt,s.id";
+        }else if(shifts){
+            from=" from "+db.entityName(Shift.class)+" sh, "+db.entityName(User.class)+" u, "+db.entityName(Cinema.class)+" c where sh.staffId=u.id and sh.cinemaId=c.id and sh.status='OPEN'";
+            select="select sh,u.name,c.name";timeField="sh.openedAt";order="sh.openedAt desc,sh.id desc";
         }else{
-            from=" from "+db.entityName(Order.class)+" o left join "+db.entityName(User.class)+" u on u.id=o.userId, "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r where o.showtimeId=s.id and s.roomId=r.id and o.createdAt>=:since and o.createdAt<=:now";
-            args.put("since",now.atZone(ReportService.ZONE).toLocalDate().atStartOfDay(ReportService.ZONE).toInstant());args.put("now",now);select="select o,coalesce(u.name,'Khách vãng lai')";timeField="o.createdAt";order="o.createdAt desc,o.id desc";
+            from=" from "+db.entityName(Order.class)+" o left join "+db.entityName(User.class)+" u on u.id=o.userId left join "+db.entityName(User.class)+" seller on seller.id=o.soldBy, "+db.entityName(Showtime.class)+" s, "+db.entityName(Room.class)+" r where o.showtimeId=s.id and s.roomId=r.id and o.createdAt>=:since and o.createdAt<=:now";
+            args.put("since",now.atZone(ReportService.ZONE).toLocalDate().atStartOfDay(ReportService.ZONE).toInstant());args.put("now",now);select="select o,coalesce(u.name,'Khách vãng lai'),coalesce(seller.name,'')";timeField="o.createdAt";order="o.createdAt desc,o.id desc";
         }
         from+=filter+" and "+alias+".id<=:upper";
         long total=query("select count(*)"+from,Long.class,args).getSingleResult();
-        long amount=section.equals("reconciliation")?query("select coalesce(sum(p.amount),0)"+from,Long.class,args).getSingleResult():0;
+        long amount=section.equals("reconciliation")?query("select coalesce(sum(p.amount),0)"+from,Long.class,args).getSingleResult()
+            :shifts?Math.addExact(query("select coalesce(sum(sh.openingCash),0)"+from,Long.class,args).getSingleResult(),query("select coalesce(sum(p.amount),0) from "+db.entityName(Payment.class)+" p where p.provider='CASH' and p.status='SUCCEEDED' and p.shiftId in (select sh.id"+from+")",Long.class,args).getSingleResult()):0;
         String seek="";
         if(position.page()>0){
             args.put("lastId",position.id());
@@ -59,13 +63,15 @@ public class OperationsService {
         boolean more=records.size()>AdminPage.SIZE;if(more)records=records.subList(0,AdminPage.SIZE);
         List<Map<String,Object>> rows=new ArrayList<>();
         for(Object[] row:records){
-            if(payment){Payment p=(Payment)row[0];rows.add(Map.of("id",p.orderId,"recordId",p.id,"label",row[1],"detail",section.equals("reconciliation")?AdminPresentation.text(p.status)+" · "+db.money(p.amount):"Lần thanh toán #"+p.id+" · "+db.date(p.updatedAt==null?p.createdAt:p.updatedAt)));}
+            if(payment){Payment p=(Payment)row[0];rows.add(Map.of("id",p.orderId,"recordId",p.id,"label",row[1],"detail",section.equals("reconciliation")?AdminPresentation.text(p.status)+" · "+db.cash(p.amount):"Lần thanh toán #"+p.id+" · "+db.date(p.updatedAt==null?p.createdAt:p.updatedAt)));}
             else if(upcoming){Showtime s=(Showtime)row[0];rows.add(Map.of("id",s.id,"recordId",s.id,"label",row[1],"detail",row[3]+" · "+row[2]+" · "+AdminReads.interval(s.startsAt,s.endsAt)+" · "+(now.isBefore(s.startsAt.minusSeconds(3600))?"Sắp tới":"Trong khung check-in")));}
-            else{Order o=(Order)row[0];rows.add(Map.of("id",o.id,"recordId",o.id,"label",o.code+" · "+o.movieTitle,"detail",row[1]+" · "+(o.status.equals("PENDING_PAYMENT")?"Chưa thu tiền":o.status.equals("PAID")&&o.total==0?"Miễn phí hợp lệ":AdminPresentation.text(o.status))+" · "+(o.status.equals("PAID")?"":"Giá trị đơn: ")+db.money(o.total)));}
+            else if(shifts){Shift sh=(Shift)row[0];long cash=db.query("select coalesce(sum(p.amount),0) from "+db.entityName(Payment.class)+" p where p.shiftId=?1 and p.provider='CASH' and p.status='SUCCEEDED'",Long.class,sh.id).getFirst();long sold=db.count(Order.class,"where e.shiftId=?1 and e.status='PAID'",sh.id);
+                rows.add(Map.of("id",sh.id,"recordId",sh.id,"href","/admin/shifts?state=OPEN","label",row[1]+" · "+row[2],"detail","Mở "+db.date(sh.openedAt)+" · "+sold+" đơn · Trong két "+db.cash(Math.addExact(sh.openingCash,cash))));}
+            else{Order o=(Order)row[0];boolean counter="COUNTER".equals(o.channel);rows.add(Map.of("id",o.id,"recordId",o.id,"label",o.code+" · "+o.movieTitle,"detail",(counter?"Quầy"+(Objects.toString(row[2],"").isBlank()?"":" ("+row[2]+")"):"Online")+" · "+row[1]+" · "+(o.status.equals("PENDING_PAYMENT")?"Chưa thu tiền":o.status.equals("PAID")&&o.total==0?"Miễn phí hợp lệ":AdminPresentation.text(o.status))+" · "+(o.status.equals("PAID")?"":"Giá trị đơn: ")+db.cash(o.total)));}
         }
         String next="";
-        if(more){Object value=records.getLast()[0];long id=((Row)value).id;Instant time=value instanceof Showtime s?s.startsAt:value instanceof Order o?o.createdAt:now;next=encode(section,cinemaId,new Position(now,position.upper(),time,id,position.page()+1));}
-        return Map.of("rows",List.copyOf(rows),"total",total,"totalAmount",db.money(amount),"page",position.page(),"hasPrevious",position.page()>0,"hasMore",more,"nextCursor",next,"updatedAt",db.date(now),"revision",Objects.hash(total,amount,rows));
+        if(more){Object value=records.getLast()[0];long id=((Row)value).id;Instant time=value instanceof Showtime s?s.startsAt:value instanceof Order o?o.createdAt:value instanceof Shift sh?sh.openedAt:now;next=encode(section,cinemaId,new Position(now,position.upper(),time,id,position.page()+1));}
+        return Map.of("rows",List.copyOf(rows),"total",total,"totalAmount",db.cash(amount),"page",position.page(),"hasPrevious",position.page()>0,"hasMore",more,"nextCursor",next,"updatedAt",db.date(now),"revision",Objects.hash(total,amount,rows));
     }
     private <T> jakarta.persistence.TypedQuery<T> query(String hql,Class<T> type,Map<String,Object> params){var q=db.entityManager().createQuery(hql,type);params.forEach(q::setParameter);return q;}
     private byte[] sign(String data){try{Mac mac=Mac.getInstance("HmacSHA256");mac.init(new SecretKeySpec(cursorKey,"HmacSHA256"));return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));}catch(GeneralSecurityException e){throw new IllegalStateException(e);}}

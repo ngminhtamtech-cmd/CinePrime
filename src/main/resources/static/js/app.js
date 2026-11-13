@@ -1,6 +1,6 @@
 'use strict';
 const $ = (selector, root = document) => root.querySelector(selector);
-const money = value => new Intl.NumberFormat('vi-VN', {style:'currency',currency:'VND'}).format(value);
+const money = value => new Intl.NumberFormat('vi-VN').format(value)+' đ';
 let toastTimer;
 function toast(message) { const node=$('#toast'); node.textContent=message; node.classList.add('visible'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>node.classList.remove('visible'),6000); }
 async function api(url, options={}) {
@@ -14,32 +14,39 @@ async function api(url, options={}) {
   if(!response.ok)throw Object.assign(new Error(data.message||'Không thể hoàn tất thao tác.'),{code:data.code,status:response.status});
   return data;
 }
-$('.menu-toggle')?.addEventListener('click',event=>{const open=$('#navigation').classList.toggle('open');event.currentTarget.setAttribute('aria-expanded',String(open));});
-// Home hero: auto-rotates every data-interval ms; pauses on hover, focus, hidden tab, the pause button and reduced motion.
+document.documentElement.classList.add('js');
+// Header: dropdowns (Phim, tài khoản) open on click/Enter, close on outside click or Escape; mobile menu sheet; search row.
+const menuToggle=$('.menu-toggle'),siteNav=$('#navigation');
+function closeGroups(except){document.querySelectorAll('.nav-group.open').forEach(g=>{if(g!==except){g.classList.remove('open');g.querySelector('[aria-expanded]')?.setAttribute('aria-expanded','false');}});}
+function setMenu(open){if(!siteNav||!menuToggle)return;siteNav.classList.toggle('open',open);document.body.classList.toggle('menu-open',open);menuToggle.setAttribute('aria-expanded',String(open));menuToggle.setAttribute('aria-label',open?'Đóng menu':'Mở menu');}
+menuToggle?.addEventListener('click',()=>setMenu(!siteNav.classList.contains('open')));
+siteNav?.addEventListener('click',e=>{if(e.target.closest('a'))setMenu(false);});
+matchMedia('(min-width: 851px)').addEventListener('change',e=>{if(e.matches)setMenu(false);});
+document.querySelectorAll('.nav-group>button').forEach(trigger=>trigger.addEventListener('click',()=>{const group=trigger.parentElement,open=!group.classList.contains('open');closeGroups(group);group.classList.toggle('open',open);trigger.setAttribute('aria-expanded',String(open));}));
+document.addEventListener('click',e=>{if(!e.target.closest('.nav-group'))closeGroups();});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const group=$('.nav-group.open');if(group){closeGroups();group.querySelector('button')?.focus();}else if(siteNav?.classList.contains('open')){setMenu(false);menuToggle.focus();}});
+const searchToggle=$('.search-toggle'),searchPanel=$('#site-search');
+searchToggle?.addEventListener('click',e=>{e.preventDefault();const open=!searchPanel.classList.contains('open');searchPanel.classList.toggle('open',open);searchToggle.setAttribute('aria-expanded',String(open));if(open)$('input',searchPanel).focus();});
+document.querySelectorAll('[data-notice-close]').forEach(button=>{const strip=button.closest('[data-notice]'),key='notice-hidden-'+strip.dataset.notice;try{if(sessionStorage.getItem(key))strip.hidden=true;}catch{}button.addEventListener('click',()=>{strip.hidden=true;try{sessionStorage.setItem(key,'1');}catch{}});});
+// Home hero: one slide at a time; auto-rotates every data-interval ms; pauses on hover, focus, hidden tab, the pause button and reduced motion.
 const carousel=$('#hero-carousel');
 if(carousel){
-  const track=$('.hero-track',carousel),slides=[...track.children],count=slides.length,dots=[...carousel.querySelectorAll('.hero-dot')],toggle=$('[data-hero-toggle]',carousel);
+  const track=$('.hero-track',carousel),slides=[...track.children],count=slides.length,dots=[...carousel.querySelectorAll('.hero-dot')],toggle=$('[data-hero-toggle]',carousel),counter=$('[data-hero-count]',carousel);
   const delay=Math.min(10000,Math.max(5000,Number(carousel.dataset.interval)||6000));
   let index=0,timer=null,hovered=false,focused=false,stopped=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // A copy of the last slide sits before the first and a copy of the first after the last, so both peeks always show a neighbour.
-  if(count>1){const copy=slide=>{const c=slide.cloneNode(true);c.classList.remove('is-active');c.classList.add('is-clone');c.setAttribute('aria-hidden','true');c.inert=true;c.querySelectorAll('img').forEach(i=>i.removeAttribute('fetchpriority'));return c;};track.prepend(copy(slides[count-1]));track.append(copy(slides[0]));}
-  function place(position,animate){if(animate){track.classList.remove('no-anim');void track.offsetWidth;}else track.classList.add('no-anim');track.style.setProperty('--pos',String(position));}
-  place(count>1?1:0,false);
-  track.addEventListener('transitionend',e=>{if(e.target===track)place(index+1,false);});
   function show(next){
     if(count<2)return;index=(next%count+count)%count;
-    slides.forEach((s,i)=>{const on=i===index;s.classList.toggle('is-active',on);if(on){s.removeAttribute('aria-hidden');s.removeAttribute('tabindex');}else{s.setAttribute('aria-hidden','true');if(s.tagName==='A')s.tabIndex=-1;}});
+    slides.forEach((s,i)=>{const on=i===index;s.classList.toggle('is-active',on);s.inert=!on;});
     dots.forEach((d,i)=>d.setAttribute('aria-current',String(i===index)));
-    for(const s of [slides[(index+1)%count],slides[(index+count-1)%count]])s.querySelectorAll('img[loading="lazy"]').forEach(img=>img.loading='eager');
-    track.querySelectorAll('.is-clone img[loading="lazy"]').forEach(img=>img.loading='eager');
-    place(next+1,true);
+    if(counter)counter.textContent=(index+1)+' / '+count;
+    slides[(index+1)%count].querySelectorAll('img[loading="lazy"]').forEach(img=>img.loading='eager');
+    slides[index].querySelectorAll('img[loading="lazy"]').forEach(img=>img.loading='eager');
+    track.style.setProperty('--pos',String(index));
   }
-  // Clicking a peeking neighbour brings it to the centre instead of following its link.
-  track.addEventListener('click',e=>{const slide=e.target.closest('.hero-slide');if(!slide||slide.classList.contains('is-active'))return;e.preventDefault();const real=slides.indexOf(slide);show(real>=0?real:(slide===track.firstElementChild?index-1:index+1));schedule();});
   function schedule(){clearTimeout(timer);timer=null;if(slides.length>1&&!stopped&&!hovered&&!focused&&!document.hidden)timer=setTimeout(()=>{show(index+1);schedule();},delay);}
   function syncToggle(){if(toggle){toggle.setAttribute('aria-pressed',String(stopped));toggle.setAttribute('aria-label',stopped?'Tiếp tục tự chuyển banner':'Tạm dừng tự chuyển banner');}}
-  $('[data-hero-prev]',carousel)?.addEventListener('click',()=>{show(index-1);schedule();});
-  $('[data-hero-next]',carousel)?.addEventListener('click',()=>{show(index+1);schedule();});
+  carousel.querySelectorAll('[data-hero-prev]').forEach(b=>b.addEventListener('click',()=>{show(index-1);schedule();}));
+  carousel.querySelectorAll('[data-hero-next]').forEach(b=>b.addEventListener('click',()=>{show(index+1);schedule();}));
   dots.forEach((d,i)=>d.addEventListener('click',()=>{show(i);schedule();}));
   toggle?.addEventListener('click',()=>{stopped=!stopped;syncToggle();schedule();});
   carousel.addEventListener('mouseenter',()=>{hovered=true;schedule();});carousel.addEventListener('mouseleave',()=>{hovered=false;schedule();});
@@ -54,6 +61,7 @@ if(carousel){
 document.querySelectorAll('[data-movie-tab]').forEach(button=>button.addEventListener('click',()=>{
   document.querySelectorAll('[data-movie-tab]').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-selected',String(b===button));});
   ['showing','coming'].forEach(id=>$('#'+id).hidden=id!==button.dataset.movieTab);
+  document.querySelectorAll('[data-heading-for]').forEach(s=>s.hidden=s.dataset.headingFor!==button.dataset.movieTab);
 }));
 (() => {
   const dialog=document.createElement('dialog');dialog.className='cine-dialog';dialog.setAttribute('aria-labelledby','confirm-title');
@@ -96,6 +104,8 @@ if(quick){
     const cinemas=new Map(matches.map(s=>[String(s.cinemaId),s.cinemaName]));cinema.replaceChildren(option('','Chọn rạp'));cinemas.forEach((label,id)=>cinema.append(option(id,label)));if(cinemas.has(oldCinema))cinema.value=oldCinema;cinema.disabled=!film.value;
     const dates=matches.filter(s=>String(s.cinemaId)===cinema.value).map(s=>s.date).sort();if(dates.length){day.min=dates[0];day.max=dates.at(-1);if(!dates.includes(day.value))day.value=dates[0];}day.disabled=!cinema.value;
     const slots=matches.filter(s=>String(s.cinemaId)===cinema.value&&s.date===day.value);show.replaceChildren(option('',slots.length?'Chọn suất':'Chưa có suất phù hợp'));slots.forEach(s=>show.append(option(s.id,s.when)));show.disabled=!slots.length;
+    // The first step still to fill gets the orange number.
+    const next=[film,cinema,day,show].find(n=>!n.value)||show;[film,cinema,day,show].forEach(n=>n.closest('.qb-field').classList.toggle('is-current',n===next));
   }
   api('/catalog/showtimes').then(data=>{options=data;show.hidden=false;show.required=true;update();[film,cinema,day].forEach(n=>n.addEventListener('change',update));quick.addEventListener('submit',e=>{if(show.value){e.preventDefault();location.assign('/booking/'+show.value);}});}).catch(()=>{show.hidden=true;});
 }

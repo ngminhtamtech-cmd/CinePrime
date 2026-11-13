@@ -2,8 +2,21 @@ extends layout
 block admin
   .page-heading
     div
-      h1 Ca bán vé tại quầy
-      p.muted Tiền mặt dự kiến = tiền đầu ca + tiền mặt thu trong ca, đã trừ đơn hủy. Ca đã đóng giữ số liệu lúc đóng.
+      h1 Ca nhân viên tại quầy
+      p.muted Nhân viên tự mở / đóng ca ở màn bán vé. Tiền mặt dự kiến = tiền đầu ca + tiền mặt thu trong ca, đã trừ đơn hủy. Ca đã đóng giữ số liệu lúc đóng.
+  .order-summary.shift-summary-strip(aria-label="Ca đang mở")
+    div
+      small Ca đang mở
+      strong= openShifts.total
+      span Hiện tại · theo phạm vi rạp
+    div
+      small Tiền mặt dự kiến trong két
+      strong= openShifts.totalAmount
+      span Tổng các ca đang mở
+    each s in openShifts.rows
+      div
+        small= s.label
+        strong.shift-detail= s.detail
   form.ops-filters(method="get")
     label Rạp
       select(name="cinemaId")

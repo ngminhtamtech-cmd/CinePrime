@@ -515,6 +515,7 @@ class BookingIntegrationTest {
         assertEquals(302,get(c,"/admin/schedule?cinemaId="+cinema+"&movieId=99999&page=2").statusCode());assertEquals(302,get(c,"/admin/manage/seats?cinemaId="+cinema+"&roomId=99999").statusCode());
         var seats=get(c,"/admin/manage/seats?cinemaId="+cinema);assertEquals(200,seats.statusCode(),seats.body());assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(seats.body()).contains("Chọn phòng trong rạp"),"Room-selection guidance");assertTrue(seats.body().contains("0 kết quả"),seats.body());
         String users=org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/manage/users").body());assertTrue(users.contains("account-tabs"),"Role tabs");assertTrue(users.contains("Khách Một"),"Customer name");assertFalse(users.contains("staff@example.test"),"Default tab must be Customer");var staffTab=get(c,"/admin/manage/users?state=STAFF");assertEquals(200,staffTab.statusCode(),staffTab.body());assertTrue(staffTab.body().contains("staff@example.test"),staffTab.body());
+        String business=org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/manage/vouchers").body());assertTrue(business.contains("hub-tabs"),"Business tabs");assertTrue(business.contains("href=\"/admin/manage/prices\""),"Price tab link");assertTrue(business.contains("+ Thêm voucher"),"Verb add button");assertFalse(business.contains("nav-group"),"No collapsible sidebar groups");assertTrue(users.contains("Nhật ký hoạt động")&&users.contains("hub-tabs"),"System tabs");
         Long administrator=db.first(User.class,"where e.role='ADMIN'").orElseThrow().id;
         String accountToken=csrf(get(c,"/admin/manage/users/edit?id="+administrator).body());
         String accountData="id="+administrator+"&email=admin%40example.test&name=Admin&role=CUSTOMER&enabled=true&_csrf="+URLEncoder.encode(accountToken,java.nio.charset.StandardCharsets.UTF_8);
@@ -562,6 +563,10 @@ class BookingIntegrationTest {
             assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/banners").body()).contains("Thiếu ảnh ngang"));
             assertEquals(302,post(c,"/admin/banners/save","id="+film.id+"&kind=MOVIE&movieId="+movie+"&image="+enc(small)+"&active=true&_csrf="+enc(token)).statusCode());
             home=get(client(),"/").body();assertTrue(home.contains("class=\"hero-banner\" src=\""+small+"\""));assertTrue(home.contains("is-framed"),"A smaller landscape banner is centred, not stretched");assertTrue(home.indexOf("src=\""+url+"\"")<home.indexOf("src=\""+small+"\""),"Promo is first");
+            assertTrue(home.contains("class=\"hero-copy\"")&&home.contains(">Phim kiểm thử tiếng Việt</a>"),"Movie slide carries its own title and buttons");assertTrue(home.contains("class=\"site-header\"")&&!home.contains("class=\"topbar\""),"One-row header, no top strip");
+            String fanToken=csrf(get(customer,"/").body());var liked=post(customer,"/account/favorites/"+movie,"next="+enc("/movies?status=NOW_SHOWING")+"&_csrf="+enc(fanToken));assertEquals(302,liked.statusCode());assertTrue(liked.headers().firstValue("Location").orElse("").endsWith("/movies?status=NOW_SHOWING"),"Heart returns to the page it was pressed on");
+            assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(get(customer,"/").body()).contains("aria-pressed=\"true\" aria-label=\"Bỏ thích Phim kiểm thử tiếng Việt"),"Liked movie shows a filled heart");
+            var offsite=post(customer,"/account/favorites/"+movie,"next="+enc("//evil.example/x")+"&_csrf="+enc(fanToken));assertTrue(offsite.headers().firstValue("Location").orElse("").endsWith("/movies/phim-kiem-thu"),"Off-site next is ignored");assertTrue(db.first(Favorite.class,"where e.movieId=?1",movie).isEmpty(),"Second press removes the favorite");
             assertEquals(302,post(c,"/admin/banners/"+film.id+"/move","direction=up&_csrf="+enc(token)).statusCode());
             home=get(client(),"/").body();assertTrue(home.indexOf("src=\""+small+"\"")<home.indexOf("src=\""+url+"\""),"Movie moved first");
             assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/admin/banners").body()).contains("hiển thị giữa khung"));
@@ -773,7 +778,7 @@ class BookingIntegrationTest {
         clock.advance(300);Shift closed=counter.close(staff,780000L,"Thiếu 10.000 do thối nhầm");assertEquals("CLOSED",closed.status);assertEquals(790000L,closed.expectedCash);assertEquals("EXPIRED",db.get(Order.class,pending.id).status);
         assertEquals("AVAILABLE",db.first(Inventory.class,"where e.seatId=?1",seat3).orElseThrow().status);
         assertThrows(IllegalArgumentException.class,()->counter.hold(staff,show,List.of(seat3)),"Closed shift stops sales");
-        var model=reports.create("day",LocalDate.of(2026,12,1),null).model();assertEquals(290000L,model.get("revenueValue"));assertEquals(db.money(290000),model.get("counterRevenue"));
+        var model=reports.create("day",LocalDate.of(2026,12,1),null).model();assertEquals(290000L,model.get("revenueValue"));assertEquals(db.cash(290000),model.get("counterRevenue"));
     }
     @Test void counterAndOnlineRaceForOneSeatHasOneWinnerAndNewHoldReplacesOld()throws Exception{
         counter.open(staff,0L);var results=race(()->counter.hold(staff,show,List.of(seat1)),()->booking.hold(user1,show,List.of(seat1)));assertEquals(1,results.stream().filter(Boolean::booleanValue).count());
@@ -818,7 +823,7 @@ class BookingIntegrationTest {
     @Test void counterPagesApiPrintAndAdminViews()throws Exception{
         HttpClient c=client();login(c,"staff@example.test");var page=get(c,"/staff/counter");assertEquals(200,page.statusCode());String html=org.springframework.web.util.HtmlUtils.htmlUnescape(page.body());assertTrue(html.contains("Mở ca bán vé"));assertTrue(html.contains("Bán vé tại quầy"));String token=csrf(page.body());
         assertEquals(302,post(c,"/staff/counter/shift/open","openingCash=200000&_csrf="+URLEncoder.encode(token,java.nio.charset.StandardCharsets.UTF_8)).statusCode());
-        html=org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/staff/counter").body());assertTrue(html.contains("CA ĐANG MỞ"),html);assertTrue(html.contains("Phim kiểm thử tiếng Việt"));assertTrue(html.contains("/js/counter.js"));
+        html=org.springframework.web.util.HtmlUtils.htmlUnescape(get(c,"/staff/counter").body());assertTrue(html.contains("đang mở từ"),html);assertTrue(html.contains("Phim kiểm thử tiếng Việt"));assertTrue(html.contains("/js/counter.js"));
         var seats=get(c,"/api/staff/counter/showtimes/"+show+"/seats");assertEquals(200,seats.statusCode());assertTrue(seats.body().contains("\"sellable\":true"));
         var held=staffJson(c,"/api/staff/counter/holds","{\"showtimeId\":"+show+",\"seats\":["+seat1+"]}",token);assertEquals(200,held.statusCode(),held.body());Long id=db.first(Order.class,"where e.channel='COUNTER'").orElseThrow().id;
         var shortCash=staffJson(c,"/api/staff/counter/orders/"+id+"/pay","{\"received\":1000,\"requestKey\":\"abcdef12-key\"}",token);assertEquals(400,shortCash.statusCode());assertTrue(shortCash.body().contains("chưa đủ"));

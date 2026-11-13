@@ -7,18 +7,28 @@ mixin navIcon(id)
       rect(x="14" y="3" width="7" height="5" rx="1.5")
       rect(x="14" y="12" width="7" height="9" rx="1.5")
       rect(x="3" y="16" width="7" height="5" rx="1.5")
-    else if id == 'operations'
-      rect(x="3" y="4.5" width="18" height="16" rx="2")
-      path(d="M3 9.5h18M8 2.5v4M16 2.5v4M8 14h3M8 17h6")
-    else if id == 'business'
-      path(d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z")
-      path(d="M9 8h6M9 12h6M9 16h3")
+    else if id == 'orders'
+      path(d="M6 3h12v18l-3-2-3 2-3-2-3 2z")
+      path(d="M9 8h6M9 12h6M9 16h4")
     else if id == 'movies'
       rect(x="3" y="3" width="18" height="18" rx="2")
       path(d="M7 3v18M17 3v18M3 7.5h4M3 12h18M3 16.5h4M17 7.5h4M17 16.5h4")
+    else if id == 'schedule'
+      rect(x="3" y="4.5" width="18" height="16" rx="2")
+      path(d="M3 9.5h18M8 2.5v4M16 2.5v4M8 14h3M8 17h6")
+    else if id == 'cinemas'
+      path(d="M3 21h18M5 21V8l7-4 7 4v13")
+      path(d="M9 21v-5h6v5M9 11h.01M15 11h.01")
+    else if id == 'shifts'
+      circle(cx="9" cy="8" r="3.5")
+      path(d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c1.8.7 3 2.6 3 5")
+    else if id == 'business'
+      path(d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z")
+      circle(cx="7.5" cy="7.5" r="1.5")
     else if id == 'content'
-      path(d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z")
-      path(d="M14 3v6h6M8 13h8M8 17h5")
+      rect(x="3" y="4" width="18" height="16" rx="2")
+      circle(cx="9" cy="9.5" r="1.8")
+      path(d="M21 15.5l-5-5-9 9.5")
     else
       circle(cx="12" cy="12" r="3")
       path(d="M12 2.5v3M12 18.5v3M4.2 7l2.6 1.5M17.2 15.5l2.6 1.5M4.2 17l2.6-1.5M17.2 8.5l2.6-1.5")
@@ -27,22 +37,43 @@ block content
     button#sidebar-overlay(type="button" aria-label="Đóng điều hướng" hidden)
     aside#ops-sidebar.ops-sidebar(aria-label="Điều hướng quản trị")
       .sidebar-heading
-        span.sidebar-title ĐIỀU HÀNH
         button#close-sidebar.icon-button(type="button" aria-label="Đóng điều hướng") ×
-      .sidebar-nav
-        each group in navGroups
-          details.nav-group(open=group.active data-group-id=group.id data-active=group.active ? 'true' : 'false')
-            summary
-              span.nav-icon
-                +navIcon(group.id)
-              span.nav-label= group.label
-            .nav-links
-              each item in group.items
-                a(href=item.href class=item.active ? 'active' : '' aria-current=item.active ? 'page' : false)= item.label
+      nav.sidebar-nav(aria-label="Quản trị")
+        each item in navItems
+          if item.sectionStart
+            p.nav-section= item.sectionStart
+          a.nav-item(href=item.href class=item.active ? 'active' : '' aria-current=item.active ? 'page' : false data-nav-id=item.id)
+            span.nav-icon
+              +navIcon(item.id)
+            span.nav-label= item.label
+      .sidebar-account
+        if viewer
+          .account-who
+            span.account-avatar(aria-hidden="true")= viewer.name.substring(0, 1)
+            span.account-text
+              strong= viewer.name
+              if operationsRole != viewer.name
+                small= operationsRole
+        form(action="/logout" method="post")
+          input(type="hidden" name=csrfName value=csrfToken)
+          button.nav-item.logout(type="submit")
+            span.nav-icon
+              svg.nav-svg(viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false")
+                path(d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10")
+            span.nav-label Đăng xuất
     main#main.ops-main
       .ops-breadcrumb
         a(href="/admin") Quản trị
-        span / #{resourceLabel ? resourceLabel : title}
+        if hub
+          span / #{hubLabel} / #{resourceLabel}
+        else
+          span / #{resourceLabel ? resourceLabel : title}
+      if hub
+        .hub-head
+          h1= hubLabel
+          nav.hub-tabs(aria-label=hubLabel)
+            each tab in hub.tabs
+              a(href=tab.href class=tab.active ? 'active' : '' aria-current=tab.active ? 'page' : false)= tab.label
       if notice
         p.action-notice(role="status")= notice
       if actionError

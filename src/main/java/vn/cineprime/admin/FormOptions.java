@@ -22,6 +22,17 @@ public class FormOptions {
         Person person=(Person)admin.save(user.id(),"people",null,Map.of("name",name,"biography","","active","true"));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("person",view(person),"created",true));
     }
+    /** Quick-add a genre from the movie form ("+ Khác"): reuse the same name (re-activating a stopped one), otherwise create it through the normal admin save path. */
+    @PostMapping("/genres") @Transactional public ResponseEntity<Map<String,Object>> addGenre(@org.springframework.security.core.annotation.AuthenticationPrincipal vn.cineprime.auth.SecurityConfig.SessionUser user,@RequestBody Map<String,String> body){
+        String name=Objects.toString(body.get("name"),"").trim().replaceAll("\\s+"," ");
+        if(name.isEmpty())return ResponseEntity.badRequest().body(Map.of("message","Nhập tên thể loại."));
+        if(name.length()>100)return ResponseEntity.badRequest().body(Map.of("message","Tên thể loại tối đa 100 ký tự."));
+        var existing=db.entityManager().createQuery("from "+db.entityName(Genre.class)+" g where lower(g.name)=:name order by g.id",Genre.class).setParameter("name",name.toLowerCase(Locale.ROOT)).setMaxResults(1).getResultList();
+        if(!existing.isEmpty()){Genre g=existing.getFirst();if(g.active)return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("genre",view(g),"created",false));
+            Genre revived=(Genre)admin.save(user.id(),"genres",g.id,Map.of("name",g.name,"active","true"));return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("genre",view(revived),"created",false,"reactivated",true));}
+        Genre genre=(Genre)admin.save(user.id(),"genres",null,Map.of("name",name,"active","true"));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of("genre",view(genre),"created",true));
+    }
     @GetMapping public ResponseEntity<Map<String,Object>> options(@RequestParam String kind,@RequestParam(defaultValue="")String q,@RequestParam(defaultValue="0")int page,@RequestParam(defaultValue="")String selected){
         Class<? extends Row> type=switch(kind){case "genres"->Genre.class;case "people"->Person.class;default->throw new AdminFormProblem("Danh mục không hợp lệ.");};
         String entity=db.entityName(type),search=q.trim().toLowerCase(Locale.ROOT);if(search.length()>255)search=search.substring(0,255);
