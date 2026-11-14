@@ -81,6 +81,11 @@ public class AdminService {
             String window=s.status.equals("CANCELLED")?null:MovieLifecycle.windowError(movie,s.startsAt);if(window!=null)throw new AdminFormProblem(window,"startsAt");
             if(protectedShow&&!oldSchedule.equals(s.movieId+"|"+s.roomId+"|"+s.startsAt+"|"+s.status))throw new IllegalArgumentException("Suất có lượt giữ hoặc vé đã bán. Không thể đổi/hủy.");
             if(!s.status.equals("CANCELLED"))for(Showtime other:db.list(Showtime.class,"where e.roomId=?1 and e.status<>'CANCELLED'",s.roomId))if(!Objects.equals(other.id,s.id)&&ShowtimeRules.overlaps(s.startsAt,s.endsAt,other.startsAt,other.endsAt))throw new AdminFormProblem("Trùng lịch phòng, bao gồm 15 phút vệ sinh.","startsAt");
+            // Moving a show to another room drops the old room's free seat rows; seats still tied to an order block the move.
+            if(s.id!=null&&originalRoom!=null&&!originalRoom.equals(s.roomId)){
+                if(db.count(Inventory.class,"where e.showtimeId=?1 and (e.orderId is not null or e.status<>'AVAILABLE')",s.id)>0)throw new AdminFormProblem("Suất còn ghế gắn với đơn hoặc lượt giữ, chưa thể đổi phòng.","roomId");
+                db.entityManager().createNativeQuery("DELETE FROM inventory WHERE showtime_id=:show").setParameter("show",s.id).executeUpdate();
+            }
             if(s.status.equals("OPEN")){
                 db.lock(Cinema.class,db.get(Room.class,s.roomId).cinemaId);
                 var openingErrors=ShowtimeRules.openingErrors(db,s,movie);if(!openingErrors.isEmpty())throw new IllegalArgumentException(String.join(" ",openingErrors));

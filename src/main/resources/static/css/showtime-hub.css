@@ -1,0 +1,105 @@
+/* Lịch chiếu — tabs "Theo ngày" and "Danh sách" (UI-Template.md §3.4, "Thẻ màu nhạt"). Desktop only, ≥1366×768.
+   Every colour is a token from admin-sheet.css; status colours follow the semantic table (Mở bán = info, Nháp = off, Đã huỷ = bad). */
+.admin-compact .hub-head .hub-tabs{margin-bottom:12px}
+.admin-compact .hub-bar{display:flex;align-items:center;gap:16px;margin:-56px 0 16px;justify-content:flex-end;min-height:42px}
+.admin-compact .hub-keys{margin:0;font-size:12px;color:var(--muted)}
+.admin-compact kbd{display:inline-block;min-width:18px;padding:1px 5px;border:1px solid var(--line-strong);border-radius:4px;background:var(--card-head);font:600 11px var(--mono);color:var(--ink-2);text-align:center}
+.admin-compact .hub-context{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;margin:0 0 16px;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+.admin-compact .hub-field{display:flex;flex-direction:column;gap:4px;margin:0;font-size:12px;font-weight:500;color:var(--muted)}
+.admin-compact .hub-field select,.admin-compact .hub-field input{min-height:38px;min-width:128px;max-width:190px;padding:0 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--card);font:14px inherit;font-family:inherit;color:var(--ink)}
+.admin-compact .hub-search input{min-width:140px}
+.admin-compact .hub-sep{align-self:stretch;width:1px;background:var(--line);margin:4px 0}
+.admin-compact .hub-grow{flex:1 1 0}
+.admin-compact .hub-day{display:flex;align-items:center;gap:6px}
+.admin-compact .hub-day .button{min-height:38px;padding:0 12px;text-decoration:none}
+.admin-compact .button.secondary{background:var(--card);border-color:var(--line-strong);color:var(--ink)}
+.admin-compact .button.secondary:hover{background:var(--canvas)}
+.admin-compact .hub-date{position:relative;display:flex;align-items:center;justify-content:center;min-width:176px;min-height:38px;margin:0;padding:0 12px;border:1px solid var(--line-strong);border-radius:6px;background:var(--card);font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
+.admin-compact .hub-date input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.admin-compact .hub-date:focus-within{outline:2px solid var(--brand);outline-offset:2px}
+.admin-compact .hub-apply{min-height:38px}
+.admin-compact .num{font-variant-numeric:tabular-nums}
+
+/* Theo ngày: four small figures, the time axis, what needs attention. */
+.admin-compact .hub-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.admin-compact .hub-kpis .kpi-card{display:flex;flex-direction:column;gap:2px;padding:12px 16px}
+.admin-compact .hub-kpis .kpi-label{margin:0}
+.admin-compact .kpi-value{font-size:26px;font-weight:700;line-height:1.2;color:var(--ink)}
+.admin-compact .kpi-note{font-size:12px;color:var(--muted)}
+.admin-compact .kpi-card.tone-info .kpi-note{color:var(--info-fg)}
+.admin-compact .kpi-card.tone-ok .kpi-note{color:var(--ok-fg)}
+.admin-compact .kpi-card.tone-warn .kpi-note{color:var(--warn-fg)}
+.admin-compact .kpi-card.tone-off{border-top-color:var(--off-bar)}
+.admin-compact a.kpi-note{color:var(--brand);font-weight:600}
+.admin-compact .tl-head{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+.admin-compact .tl-head h2{flex:1;margin:0}
+.admin-compact .tl-legend{display:flex;gap:14px;margin:0;padding:0;list-style:none;font-size:12px;color:var(--ink-2)}
+.admin-compact .tl-legend li{display:flex;align-items:center;gap:6px}
+.admin-compact .sw{display:inline-block;width:14px;height:10px;border-radius:2px;box-sizing:border-box}
+.admin-compact .sw.open{background:var(--info-bg);border:1px solid var(--info-line)}
+.admin-compact .sw.fill{background:var(--brand)}
+.admin-compact .sw.draft{background:var(--off-bg);border:1px dashed var(--faint)}
+.admin-compact .sw.clean{background:var(--line-soft)}
+.admin-compact .sw.now{width:2px;height:14px;background:var(--accent)}
+.admin-compact .tl-grid{position:relative}
+.admin-compact .tl-scale,.admin-compact .tl-row,.admin-compact .tl-nowlabel{display:grid;grid-template-columns:150px minmax(0,1fr)}
+.admin-compact .tl-ruler{position:relative;height:22px}
+.admin-compact .tl-hour{position:absolute;top:2px;transform:translateX(-50%);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.admin-compact .tl-hour:first-child{transform:none}
+.admin-compact .tl-row{min-height:60px;border-bottom:1px solid var(--line-soft)}
+.admin-compact .tl-row.inactive{opacity:.7}
+.admin-compact .tl-room{display:flex;flex-direction:column;justify-content:center;gap:2px;padding-right:12px}
+.admin-compact .tl-room strong{font-size:14px;font-weight:600}
+.admin-compact .tl-room small{font-size:12px;color:var(--muted)}
+.admin-compact .tl-track{position:relative;min-height:60px;cursor:copy}
+.admin-compact .tl-row.inactive .tl-track{cursor:default}
+.admin-compact .tl-track:hover{background:var(--card-head)}
+.admin-compact .tl-line{position:absolute;top:0;bottom:0;width:1px;background:var(--line-soft);pointer-events:none}
+.admin-compact .tl-bar{position:absolute;top:8px;height:44px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:1px;padding:4px 6px;overflow:hidden;border:1px solid var(--info-line);border-radius:6px;background:var(--info-bg);color:var(--info-fg);font-size:12px;line-height:1.25;text-decoration:none;cursor:pointer;z-index:2}
+.admin-compact .tl-bar strong{font-weight:700}
+.admin-compact .tl-bar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.admin-compact .tl-bar:hover{border-color:var(--brand)}
+.admin-compact .tl-bar.draft{background:var(--off-bg);border:1px dashed var(--faint);color:var(--off-fg)}
+.admin-compact .tl-bar.cancelled{background:var(--bad-bg);border-color:var(--bad-line);color:var(--bad-fg);text-decoration:line-through}
+.admin-compact .tl-bar.live{border:2px solid var(--brand);padding:3px 5px}
+.admin-compact .tl-bar.past:not(.live){opacity:.65}
+.admin-compact .tl-fill{position:absolute;left:0;bottom:0;height:4px;background:var(--brand)}
+.admin-compact .tl-tail{position:absolute;top:8px;height:44px;background:var(--line-soft);border-radius:0 3px 3px 0;pointer-events:none}
+.admin-compact .tl-gap{position:absolute;top:8px;height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:1px dashed var(--brand-line);border-radius:6px;background:var(--card);font-size:12px;font-weight:600;color:var(--brand);text-decoration:none;opacity:0;z-index:1}
+.admin-compact .tl-track:hover .tl-gap,.admin-compact .tl-gap:focus-visible{opacity:1}
+.admin-compact .tl-gap:hover{border-style:solid;background:var(--brand-soft)}
+.admin-compact .tl-empty{position:absolute;inset:0;display:flex;align-items:center;padding-left:12px;font-size:13px;color:var(--muted);text-decoration:none}
+.admin-compact a.tl-empty:hover{color:var(--brand)}
+.admin-compact .tl-now{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:3;pointer-events:none}
+.admin-compact .tl-nowlabel .tl-ruler span{position:absolute;top:2px;transform:translateX(-50%);font-size:11px;font-weight:700;color:var(--accent-ink)}
+.admin-compact .tl-hint{margin:10px 0 0;font-size:12px;color:var(--muted)}
+.admin-compact .attention h2{margin:0 0 8px}
+.admin-compact .attention-row{display:flex;align-items:center;gap:10px;margin:0;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px}
+.admin-compact .attention-row:first-of-type{border-top:0}
+.admin-compact .attention-row .grow{flex:1}
+.admin-compact .attention-row a{font-weight:600}
+
+/* Danh sách: bulk bar, room group rows, sales meter. */
+.admin-compact .st-list{padding:0;overflow:hidden}
+.admin-compact .st-list .table-wrap{border:0;border-radius:0}
+.admin-compact .st-bulk{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--brand-soft);border-bottom:1px solid var(--brand-line)}
+.admin-compact .st-bulk[hidden]{display:none}
+.admin-compact .st-count{font-size:14px;color:var(--brand)}
+.admin-compact .st-detail{font-size:12px;color:var(--ink-2)}
+.admin-compact .st-cancel{color:var(--bad-fg)!important;border-color:var(--bad-line)!important}
+.admin-compact .st-message{margin:0;padding:10px 16px;background:var(--info-bg);color:var(--info-fg);font-size:13px}
+.admin-compact .st-message.bad{background:var(--bad-bg);color:var(--bad-fg)}
+.admin-compact .st-table th.st-check,.admin-compact .st-table td.st-check{width:36px}
+.admin-compact .st-table input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--brand);vertical-align:middle}
+.admin-compact .st-group td{background:var(--card-head);font-size:13px}
+.admin-compact .st-group strong{margin-right:10px}
+.admin-compact .st-group small{font-size:12px;color:var(--muted)}
+.admin-compact .st-table tr.st-on td{background:var(--brand-soft)}
+.admin-compact .st-table tr.st-fixed td{color:var(--ink-2)}
+.admin-compact .st-when{font-weight:600;white-space:nowrap}
+.admin-compact .num-col{text-align:right}
+.admin-compact .meter{display:inline-block;width:64px;height:6px;margin-right:8px;border-radius:3px;background:var(--line-soft);vertical-align:middle;overflow:hidden}
+.admin-compact .meter i{display:block;height:6px;background:var(--brand)}
+.admin-compact .st-list .pager{padding:12px 16px;border-top:1px solid var(--line)}
+.admin-compact .st-list .empty{padding:16px}
+.admin-compact .st-note{margin:0;padding:0 16px 12px;font-size:12px;color:var(--muted)}

@@ -1,0 +1,46 @@
+/* Hộp "Sửa suất chiếu", shared by the three Lịch chiếu tabs. Tokens from admin-sheet.css (the dialog is appended to body.admin-compact).
+   Status chips follow the semantic table: Đang bán vé = info, Nháp = off, Có vé / giữ ghế = warn. */
+.show-editor{width:min(700px,calc(100vw - 24px));max-height:90dvh;overflow:auto;padding:22px 24px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--card);box-shadow:var(--shadow)}
+.show-editor::backdrop{background:rgba(20,23,28,.4)}
+.show-editor *{box-sizing:border-box}
+.show-editor [hidden]{display:none!important}
+.se-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin-bottom:12px}
+.show-editor h2{margin:0 4px 0 0;font-size:18px;font-weight:700}
+.se-chips{display:flex;flex-wrap:wrap;gap:6px}
+.se-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid;border-radius:4px;font-size:12px;font-weight:600;white-space:nowrap}
+.se-chip.open{background:var(--info-bg);border-color:var(--info-line);color:var(--info-fg)}
+.se-chip.draft{background:var(--off-bg);border-color:var(--off-line);color:var(--off-fg)}
+.se-chip.locked{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-fg)}
+.se-chip.window{background:var(--card-head);border-color:var(--line);color:var(--ink-2);font-weight:500}
+.se-lock{margin:0 0 12px;padding:8px 10px;border-radius:6px;background:var(--warn-bg);color:var(--warn-fg);font-size:12px}
+.se-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.show-editor label{display:flex;flex-direction:column;gap:4px;margin:0;min-width:0;font-size:12px;font-weight:600;color:var(--ink-2)}
+.show-editor input,.show-editor select{width:100%;min-height:38px;margin:0;padding:0 10px;border:1px solid var(--line-strong);border-radius:6px;background:var(--card);font:inherit;font-size:14px;font-weight:400;color:var(--ink)}
+.show-editor :is(input,select):disabled{background:var(--canvas);color:var(--muted)}
+.show-editor :is(button,input,select,a):focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.se-end{margin:14px 0 10px;font-size:13px;font-weight:600}
+.se-error{margin:10px 0 0;padding:9px 10px;border-radius:6px;background:var(--bad-bg);color:var(--bad-fg);font-size:12px}
+.se-error:empty{display:none}
+/* The room's day: an even grid of time chips. */
+.se-day{border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12px}
+.se-day>header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--card-head);border-bottom:1px solid var(--line)}
+.se-day>header small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.se-day ol{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;margin:0;padding:8px 10px 10px;list-style:none}
+.se-slot{display:flex;flex-direction:column;gap:1px;min-width:0;padding:5px 8px;border:1px solid var(--info-line);border-radius:4px;background:var(--info-bg);color:var(--info-fg)}
+.se-slot b{font-variant-numeric:tabular-nums;font-weight:600}
+.se-slot span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted)}
+.se-slot.draft{border-style:dashed;border-color:var(--accent-ink);background:var(--card);color:var(--ink)}
+.se-slot.self{border:2px solid var(--brand);background:var(--brand-soft);padding:4px 7px}
+.se-slot.self span{color:var(--brand);font-weight:600}
+.se-slot.clash{border-color:var(--bad-fg);background:var(--bad-bg);color:var(--bad-fg)}
+.se-slot.clash span{color:var(--bad-fg)}
+.se-actions,.se-confirm{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px}
+.se-actions .se-save,.se-confirm .se-danger-solid{margin-left:auto}
+.se-confirm{padding:10px 12px;border-radius:8px;background:var(--bad-bg)}
+.se-confirm p{flex:1 1 100%;margin:0;color:var(--bad-fg);font-size:13px}
+.show-editor .button.secondary{background:var(--card);border-color:var(--line-strong);color:var(--ink)}
+.show-editor .button.secondary.se-danger{color:var(--bad-fg);border-color:var(--bad-line)}
+.show-editor .button.secondary.se-danger:hover:not(:disabled){background:var(--bad-bg)}
+.show-editor .button.se-danger-solid{background:var(--bad-fg);border-color:var(--bad-fg);color:var(--card)}
+.se-link{font-size:13px;font-weight:600;color:var(--brand)}
+.se-toast{position:fixed;left:50%;bottom:22px;z-index:60;transform:translateX(-50%);max-width:min(560px,calc(100vw - 24px));padding:10px 16px;border:1px solid var(--ok-line);border-radius:8px;background:var(--ok-bg);color:var(--ok-fg);font-size:13px;box-shadow:var(--shadow)}

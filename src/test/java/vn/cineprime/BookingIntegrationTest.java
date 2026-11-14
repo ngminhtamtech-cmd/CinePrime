@@ -130,7 +130,7 @@ class BookingIntegrationTest {
     }
     @Test void weeklyCalendarQueriesDoNotGrowWithEventCount(){
         tx.executeWithoutResult(s->{Movie m=db.get(Movie.class,db.get(Showtime.class,show).movieId);for(int n=0;n<28;n++){Showtime extra=new Showtime();extra.roomId=room;extra.movieId=m.id;extra.startsAt=LocalDate.of(2026,12,7).plusDays(n/4).atTime(8+(n%4)*3,0).atZone(vn.cineprime.admin.ReportService.ZONE).toInstant();extra.endsAt=extra.startsAt.plusSeconds(6000);db.save(extra);}});
-        var stats=entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();stats.setStatisticsEnabled(true);stats.clear();try{var week=batches.week(cinema,room,LocalDate.of(2026,12,7));assertEquals(28,((List<?>)week.get("events")).size());assertTrue(stats.getPrepareStatementCount()<=5,"Week must load events without N+1");}finally{stats.setStatisticsEnabled(false);}
+        var stats=entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();stats.setStatisticsEnabled(true);stats.clear();try{var week=batches.week(cinema,room,LocalDate.of(2026,12,7));assertEquals(28,((List<?>)week.get("events")).size());assertTrue(stats.getPrepareStatementCount()<=6,"Week must load events and the one locked-show lookup without N+1");}finally{stats.setStatisticsEnabled(false);}
     }
     @Test void manualMultipleMoviesAndMixedExcelShareOneAtomicBatch(){
         Movie second=(Movie)admin.save(5L,"movies",null,movieFields(null));var a=batchLine("manual","2026-12-07","10:00");var b=new vn.cineprime.admin.ShowtimeBatch.Line("excel",2,second.id.toString(),room.toString(),"2026-12-08","11:55","Phụ đề","2D","0");
@@ -258,6 +258,91 @@ class BookingIntegrationTest {
             var row=book.getSheet(vn.cineprime.admin.ShowtimeExcel.REGISTRATION).getRow(1);row.getCell(0).setCellValue("M"+db.get(Showtime.class,show).movieId);row.getCell(1).setCellValue("R"+room);row.getCell(2).setCellValue("02/12/2026");row.getCell(3).setCellValue("10:00");row.getCell(4).setCellFormula("1+1");book.write(bytes);var file=new org.springframework.mock.web.MockMultipartFile("file","test.xlsx","",bytes.toByteArray());assertFalse(batches.preview(showtimeExcel.read(cinema,"DRAFT",file)).canCommit());assertThrows(IllegalArgumentException.class,()->showtimeExcel.read(cinema+1,"DRAFT",file));
         }
         assertThrows(IllegalArgumentException.class,()->showtimeExcel.read(cinema,"DRAFT",new org.springframework.mock.web.MockMultipartFile("file","test.xls","",new byte[1])));assertThrows(IllegalArgumentException.class,()->showtimeExcel.export(cinema,LocalDate.of(2026,12,1),LocalDate.of(2027,1,1),false));
+    }
+    @Autowired vn.cineprime.admin.ShowtimeQuickEdit quick;
+    vn.cineprime.admin.ShowtimeQuickEdit.Change quickChange(Long id,String movie,String roomId,String day,String time,String language,String status){Showtime s=db.get(Showtime.class,id);return new vn.cineprime.admin.ShowtimeQuickEdit.Change(vn.cineprime.admin.ShowtimeQuickEdit.token(s),movie==null?s.movieId.toString():movie,roomId==null?s.roomId.toString():roomId,day,time,language,s.format,Long.toString(s.surcharge),status==null?s.status:status);}
+    Instant at(String local){return LocalDateTime.parse(local).atZone(vn.cineprime.admin.ReportService.ZONE).toInstant();}
+    @Test void quickEditMovesSavedShowAndRecomputesEnd(){
+        Showtime before=db.get(Showtime.class,show);String oldToken=vn.cineprime.admin.ShowtimeQuickEdit.token(before);
+        var moved=quick.update(5L,show,quickChange(show,null,null,"2026-12-02","10:00","Lồng tiếng",null));
+        Showtime s=db.get(Showtime.class,show);assertEquals(at("2026-12-02T10:00"),s.startsAt);assertEquals(at("2026-12-02T11:40"),s.endsAt);assertEquals("Lồng tiếng",s.language);assertEquals("OPEN",s.status);
+        assertEquals("2026-12-02T11:55",moved.get("cleanupUntil"));assertEquals(false,moved.get("locked"));assertEquals(vn.cineprime.admin.ShowtimeQuickEdit.token(s),moved.get("token"));
+        var stale=assertThrows(vn.cineprime.admin.ShowtimeBatch.Failure.class,()->quick.update(5L,show,new vn.cineprime.admin.ShowtimeQuickEdit.Change(oldToken,s.movieId.toString(),room.toString(),"2026-12-03","10:00","Phụ đề","2D","0","OPEN")));
+        assertEquals(409,stale.status);assertEquals("SHOWTIME_STALE",stale.code);assertEquals(at("2026-12-02T10:00"),db.get(Showtime.class,show).startsAt,"A stale token writes nothing");
+        Movie longer=(Movie)admin.save(5L,"movies",null,movieFields(null));tx.executeWithoutResult(t->db.get(Movie.class,longer.id).duration=130);
+        quick.update(5L,show,quickChange(show,longer.id.toString(),null,"2026-12-02","10:00","Phụ đề","DRAFT"));assertEquals(at("2026-12-02T12:10"),db.get(Showtime.class,show).endsAt,"A new movie brings its own duration");assertEquals("DRAFT",db.get(Showtime.class,show).status);
+    }
+    @Test void quickEditRejectsOverlapIncludingCleanupAndPastStarts(){
+        commitBatch(batchInput("DRAFT",batchLine("other","2026-12-02","10:00")),UUID.randomUUID().toString());
+        var overlap=assertThrows(vn.cineprime.admin.AdminFormProblem.class,()->quick.update(5L,show,quickChange(show,null,null,"2026-12-02","11:50",null,null)));assertTrue(overlap.getMessage().contains("15 phút"),overlap.getMessage());
+        var before=assertThrows(vn.cineprime.admin.AdminFormProblem.class,()->quick.update(5L,show,quickChange(show,null,null,"2026-12-02","08:15",null,null)));assertTrue(before.getMessage().contains("15 phút"),"10:00 minus cleanup blocks a show ending at 09:55");
+        assertDoesNotThrow(()->quick.update(5L,show,quickChange(show,null,null,"2026-12-02","11:55",null,null)));assertEquals(at("2026-12-02T11:55"),db.get(Showtime.class,show).startsAt);
+        Long other=tx.execute(t->{Cinema c=new Cinema();c.name="Rạp khác";c.city="Huế";db.save(c);Room r=new Room();r.cinemaId=c.id;r.name="Phòng ngoài";db.save(r);return r.id;});
+        assertThrows(vn.cineprime.admin.AdminFormProblem.class,()->quick.update(5L,show,quickChange(show,null,other.toString(),"2026-12-03","10:00",null,null)),"Shows move only between rooms of one cinema");
+    }
+    @Test void quickEditProtectsShowsWithHoldsAndCancelNeedsNoOrders(){
+        Order o=booking.hold(user1,show,List.of(seat1));Showtime s=db.get(Showtime.class,show);String day=db.local(s.startsAt).substring(0,10),time=db.local(s.startsAt).substring(11);
+        assertEquals(true,((List<?>)batches.week(cinema,null,LocalDate.of(2026,11,30)).get("events")).stream().map(e->((Map<?,?>)e).get("locked")).findFirst().orElseThrow(),"Calendar marks held shows locked");
+        assertThrows(IllegalArgumentException.class,()->quick.update(5L,show,quickChange(show,null,null,"2026-12-02","10:00",null,null)));
+        tx.executeWithoutResult(t->{Showtime x=db.get(Showtime.class,show);x.startsAt=x.startsAt.plusSeconds(37);x.endsAt=x.endsAt.plusSeconds(37);});
+        quick.update(5L,show,quickChange(show,null,null,day,time,"Lồng tiếng",null));Showtime kept=db.get(Showtime.class,show);assertEquals("Lồng tiếng",kept.language);assertEquals(37,kept.startsAt.getEpochSecond()%60,"Same minute keeps the stored seconds on a protected show");
+        assertThrows(IllegalArgumentException.class,()->quick.cancel(5L,show,vn.cineprime.admin.ShowtimeQuickEdit.token(kept)));assertEquals("OPEN",db.get(Showtime.class,show).status);
+        clock.advance(301);assertEquals(false,((Map<?,?>)((List<?>)batches.week(cinema,null,LocalDate.of(2026,11,30)).get("events")).getFirst()).get("locked"),"An expired hold no longer locks");
+        assertEquals("PENDING_PAYMENT",db.get(Order.class,o.id).status);
+        tx.executeWithoutResult(t->db.list(Inventory.class,"where e.orderId=?1",o.id).forEach(i->{i.orderId=null;i.status="AVAILABLE";i.expiresAt=null;}));
+        quick.cancel(5L,show,vn.cineprime.admin.ShowtimeQuickEdit.token(db.get(Showtime.class,show)));assertEquals("CANCELLED",db.get(Showtime.class,show).status);
+        assertTrue(((List<?>)batches.week(cinema,null,LocalDate.of(2026,11,30)).get("events")).isEmpty(),"Cancelled shows leave the calendar");
+        assertThrows(vn.cineprime.admin.ShowtimeBatch.Failure.class,()->quick.cancel(5L,show,vn.cineprime.admin.ShowtimeQuickEdit.token(db.get(Showtime.class,show))));
+    }
+    @Test void quickEditRoomChangeRebuildsInventory(){
+        Long second=tx.execute(t->{Room r=new Room();r.cinemaId=cinema;r.name="Phòng 2";db.save(r);for(int i=1;i<=2;i++){Seat seat=new Seat();seat.roomId=r.id;seat.rowLabel="B";seat.label="B"+i;seat.position=i;db.save(seat);}return r.id;});
+        Showtime s=db.get(Showtime.class,show);quick.update(5L,show,quickChange(show,null,second.toString(),db.local(s.startsAt).substring(0,10),db.local(s.startsAt).substring(11),null,null));
+        var seats=db.list(Inventory.class,"where e.showtimeId=?1",show).stream().map(i->db.get(Seat.class,i.seatId).roomId).toList();assertEquals(List.of(second,second),seats,"Only the new room's seats are sold");
+        assertEquals(second,db.get(Showtime.class,show).roomId);
+    }
+    @Test void quickEditRacesBatchCommitWithOneWinner()throws Exception{
+        var input=batchInput("DRAFT",batchLine("a","2026-12-02","10:00"));var preview=batches.preview(input);var change=quickChange(show,null,null,"2026-12-02","10:30",null,null);
+        var results=race(()->batches.commit(user1,new vn.cineprime.admin.ShowtimeBatch.Commit(input,preview.fingerprint(),UUID.randomUUID().toString())),()->quick.update(5L,show,change));
+        assertEquals(1,results.stream().filter(Boolean::booleanValue).count());assertEquals(1,db.count(Showtime.class,"where e.startsAt>=?1 and e.startsAt<?2",at("2026-12-02T00:00"),at("2026-12-03T00:00")));
+    }
+    @Test void quickEditApiEnforcesAdminCsrfAndReportsProblems()throws Exception{
+        var mapper=new tools.jackson.databind.ObjectMapper();String payload=mapper.writeValueAsString(quickChange(show,null,null,"2026-12-02","10:00",null,null));var url=URI.create("http://localhost:"+port+"/api/admin/showtime-batches/showtimes/"+show);
+        HttpClient customer=client();login(customer,"one@example.test");
+        assertEquals(403,customer.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").PUT(HttpRequest.BodyPublishers.ofString(payload)).build(),HttpResponse.BodyHandlers.ofString()).statusCode());
+        HttpClient administrator=client();login(administrator,"admin@example.test");String token=csrf(get(administrator,"/admin/showtimes/new?cinemaId="+cinema).body());
+        String daily=get(administrator,"/admin/schedule?cinemaId="+cinema+"&date=2026-12-01").body();assertTrue(daily.contains("data-show-edit=\""+show+"\""),"Daily schedule opens the edit popup");assertTrue(daily.contains("data-date=\"2026-12-01\""));assertTrue(daily.contains("/js/showtime-editor.js"));
+        String listing=get(administrator,"/admin/manage/showtimes?cinemaId="+cinema+"&date=2026-12-01").body();assertTrue(listing.contains("data-show-edit=\""+show+"\""),"Showtime list opens the edit popup");
+        assertEquals(403,administrator.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").PUT(HttpRequest.BodyPublishers.ofString(payload)).build(),HttpResponse.BodyHandlers.ofString()).statusCode(),"CSRF is required");
+        var ok=administrator.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").header("X-CSRF-TOKEN",token).PUT(HttpRequest.BodyPublishers.ofString(payload)).build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(200,ok.statusCode(),ok.body());assertTrue(ok.body().contains("\"startsAt\":\"2026-12-02T10:00\""),ok.body());assertEquals(at("2026-12-02T10:00"),db.get(Showtime.class,show).startsAt);
+        var again=administrator.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").header("X-CSRF-TOKEN",token).PUT(HttpRequest.BodyPublishers.ofString(payload)).build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(409,again.statusCode());assertTrue(again.body().contains("SHOWTIME_STALE"));
+        commitBatch(batchInput("DRAFT",batchLine("blocker","2026-12-03","10:00")),UUID.randomUUID().toString());String clash=mapper.writeValueAsString(quickChange(show,null,null,"2026-12-03","10:30",null,null));
+        var bad=administrator.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").header("X-CSRF-TOKEN",token).PUT(HttpRequest.BodyPublishers.ofString(clash)).build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(422,bad.statusCode());assertTrue(bad.body().contains("\"fields\":[\"startsAt\"]"),bad.body());
+        var cancel=administrator.send(HttpRequest.newBuilder(URI.create(url+"/cancel")).header("Content-Type","application/json").header("X-CSRF-TOKEN",token).POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(Map.of("expected",vn.cineprime.admin.ShowtimeQuickEdit.token(db.get(Showtime.class,show)))))).build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(200,cancel.statusCode(),cancel.body());assertEquals("CANCELLED",db.get(Showtime.class,show).status);
+    }
+    @Test void bulkOpenAndCancelAreAllOrNothingAndPastStartsAreRefused()throws Exception{
+        commitBatch(batchInput("DRAFT",batchLine("d1","2026-12-03","09:00"),batchLine("d2","2026-12-03","12:00")),UUID.randomUUID().toString());
+        List<Showtime> drafts=db.list(Showtime.class,"where e.status='DRAFT' order by e.startsAt");assertEquals(2,drafts.size());
+        var items=drafts.stream().map(s->new vn.cineprime.admin.ShowtimeQuickEdit.Item(s.id,vn.cineprime.admin.ShowtimeQuickEdit.token(s))).toList();
+        var stale=List.of(items.get(0),new vn.cineprime.admin.ShowtimeQuickEdit.Item(items.get(1).id(),"stale"));
+        var refused=assertThrows(vn.cineprime.admin.ShowtimeBatch.Failure.class,()->quick.bulk(user1,new vn.cineprime.admin.ShowtimeQuickEdit.Bulk("OPEN",stale)));assertEquals(409,refused.status);
+        assertEquals(2,db.count(Showtime.class,"where e.status='DRAFT'"),"A stale token leaves every show untouched");
+        // HTTP: admin + CSRF only.
+        var mapper=new tools.jackson.databind.ObjectMapper();String body=mapper.writeValueAsString(Map.of("action","OPEN","items",items));var url=URI.create("http://localhost:"+port+"/api/admin/showtime-batches/showtimes/bulk");
+        HttpClient customer=client();login(customer,"one@example.test");assertEquals(403,customer.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build(),HttpResponse.BodyHandlers.ofString()).statusCode());
+        HttpClient administrator=client();login(administrator,"admin@example.test");String token=csrf(get(administrator,"/admin/showtimes/new?cinemaId="+cinema).body());
+        assertEquals(403,administrator.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build(),HttpResponse.BodyHandlers.ofString()).statusCode(),"CSRF is required");
+        var ok=administrator.send(HttpRequest.newBuilder(url).header("Content-Type","application/json").header("X-CSRF-TOKEN",token).POST(HttpRequest.BodyPublishers.ofString(body)).build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(200,ok.statusCode(),ok.body());assertTrue(ok.body().contains("\"count\":2"),ok.body());
+        for(Showtime s:drafts){assertEquals("OPEN",db.get(Showtime.class,s.id).status);assertTrue(db.count(Inventory.class,"where e.showtimeId=?1",s.id)>0,"Opening builds seat inventory");}
+        var opened=drafts.stream().map(s->db.get(Showtime.class,s.id)).map(s->new vn.cineprime.admin.ShowtimeQuickEdit.Item(s.id,vn.cineprime.admin.ShowtimeQuickEdit.token(s))).toList();
+        assertThrows(vn.cineprime.admin.ShowtimeBatch.Failure.class,()->quick.bulk(user1,new vn.cineprime.admin.ShowtimeQuickEdit.Bulk("OPEN",opened)),"Only drafts can be opened");
+        assertEquals(2,quick.bulk(user1,new vn.cineprime.admin.ShowtimeQuickEdit.Bulk("CANCEL",opened)).get("count"));for(Showtime s:drafts)assertEquals("CANCELLED",db.get(Showtime.class,s.id).status);
+        // A show never moves to a start that has already passed, even when the calendar is bypassed.
+        var past=assertThrows(vn.cineprime.admin.AdminFormProblem.class,()->quick.update(user1,show,quickChange(show,null,null,"2026-12-01","08:00",null,null)));assertEquals(List.of("startsAt"),past.fields());
     }
     @Test void batchApiEnforcesAdminCsrfAndRender()throws Exception{
         HttpClient customer=client();login(customer,"one@example.test");assertEquals(403,get(customer,"/api/admin/showtime-batches/calendar?cinemaId="+cinema+"&date=2026-12-02").statusCode());HttpClient administrator=client();login(administrator,"admin@example.test");var page=get(administrator,"/admin/showtimes/new?cinemaId="+cinema+"&date=2026-12-02");assertEquals(200,page.statusCode());assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(page.body()).contains("Thêm suất chiếu"));assertTrue(page.body().contains("/js/showtime-batch.js"));
@@ -676,8 +761,12 @@ class BookingIntegrationTest {
         assertEquals(1L,adminReads.schedule(day,cinema,room,movie,"","OPEN",0).get("total"));
         assertEquals(0L,adminReads.schedule(day,cinema,empty,movie,"","OPEN",0).get("total"));
         HttpClient c=client();login(c,"admin@example.test");String params="cinemaId="+cinema+"&roomId="+room+"&movieId="+movie+"&date="+day+"&q=&state=OPEN";
-        String daily=get(c,"/admin/schedule?"+params).body();assertTrue(daily.contains("Quản lý suất chiếu"));assertTrue(daily.contains(("/admin/manage/showtimes?"+params).replace("&","&amp;")));selectedOption(daily,"schedule-room",room.toString());
-        String shows=get(c,"/admin/manage/showtimes?"+params).body();assertTrue(shows.contains(("/admin/schedule?"+params).replace("&","&amp;")));
+        // The three Lịch chiếu tabs carry the same context (cinema, room, film, day, status).
+        String context="cinemaId="+cinema+"&roomId="+room+"&movieId="+movie+"&date="+day+"&state=OPEN";
+        String daily=get(c,"/admin/schedule?"+params).body();assertTrue(daily.contains(("/admin/manage/showtimes?"+context).replace("&","&amp;")),"Danh sách tab keeps the context");assertTrue(daily.contains(("/admin/showtimes/new?"+context).replace("&","&amp;")),"Xếp lịch tuần tab keeps the context");selectedOption(daily,"schedule-room",room.toString());
+        assertTrue(daily.contains("data-show-edit=\""+show+"\""),"The show is a bar on the time axis");assertTrue(org.springframework.web.util.HtmlUtils.htmlUnescape(daily).contains("Trục giờ theo phòng"));
+        String shows=get(c,"/admin/manage/showtimes?"+params).body();assertTrue(shows.contains(("/admin/schedule?"+context).replace("&","&amp;")));assertTrue(shows.contains("data-token="),"Rows carry the token used by bulk actions");
+        String planner=get(c,"/admin/showtimes/new?"+context).body();assertTrue(planner.contains(("/admin/schedule?"+context).replace("&","&amp;")),"The planner shows the same tabs");
     }
     @Test void setupContextReadinessAndFormContextRespectCinemaAndActualTime()throws Exception{
         Long newRoom=emptyRoom();setup.create(5L,newRoom,List.of(input(null,"A1","A",1,"VIP","",true)));Long movie=db.get(Showtime.class,show).movieId;Instant start=clock.instant().plusSeconds(3600);

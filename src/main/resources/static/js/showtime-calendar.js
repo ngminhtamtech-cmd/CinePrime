@@ -113,6 +113,34 @@
     }
     return { added, skipped };
   }
-  const api = { stamp, iso, addDays, monday, timing, overlaps, available, problem, source, merge, Draft, minutes, clock, roundUp, busy, snap, firstFree, chain, copyDay, fillDay, plan };
+  /* Editable back-to-back list for one day. `slots[i]` may hold {time} (typed by the admin, kept as is) and/or {off} (left out but still
+     holding its place). Every slot without a typed time follows the one before it plus 15 minutes of cleanup, jumping over occupied spans;
+     so changing one time moves every later automatic slot. Slots run until `lastStart`, plus `extra` more added by hand.
+     `pick(i)` names the film of slot i (several films: alternating or one after another); it returns null when the plan has no more slots. */
+  function series(seed, lastStart, slots, extra, durations, events, rows, serverTime, step = 5, pick = null) {
+    const film = i => pick ? pick(i) : seed.movieId, base = stamp(`${seed.date}T00:00`), out = [];
+    if (!Number(durations.get(String(film(0)))) || !Number.isFinite(base) || !seed.roomId || !Number.isFinite(minutes(seed.time))) return out;
+    const spans = busy(seed.date, seed.roomId, durations, events, rows), soon = roundUp((Date.parse(serverTime) + 7 * 3600000 - base) / 60000 + 1, step), made = [];
+    let minute = Math.max(minutes(seed.time), soon), more = Math.max(0, extra || 0);
+    const typed = i => slots?.[i] && Number.isFinite(minutes(slots[i].time)) ? minutes(slots[i].time) : null;
+    const lastTyped = (slots || []).reduce((last, s, i) => typed(i) != null ? i : last, -1);
+    for (let i = 0; i < 96; i++) {
+      const movieId = film(i), duration = Number(durations.get(String(movieId)));
+      if (movieId == null || !duration) break;
+      const length = duration + 15;
+      let at = typed(i);
+      if (at == null) { for (let guard = 0; guard < 96; guard++) { const hit = spans.find(s => s.from < minute + length && s.until > minute); if (!hit) break; minute = roundUp(hit.until, step); } at = minute; }
+      const listed = typed(i) != null || i <= lastTyped || at <= lastStart || (more > 0 && at < 1440);
+      if (!listed || at >= 1440) break;
+      if (typed(i) == null && at > lastStart && i > lastTyped) more--;
+      const row = { ...seed, movieId: String(movieId), rowKey: `series-${seed.date}-${i}`, sourceRow: null, time: clock(at) }, off = !!slots?.[i]?.off, t = timing(row, durations);
+      const reason = off ? '' : rows.length + made.length >= 500 ? 'Đã đạt 500 suất mỗi đợt.' : problem(row, durations, events, [...rows, ...made], serverTime);
+      out.push({ index: i, row, off, typed: typed(i) != null, late: at > lastStart, reason, endsAt: t?.endsAt || '', cleanupUntil: t?.cleanupUntil || '' });
+      if (!off && !reason) { made.push(row); spans.push({ from: at, until: at + length }); }
+      minute = roundUp(at + length, step);
+    }
+    return out;
+  }
+  const api = { stamp, iso, addDays, monday, timing, overlaps, available, problem, source, merge, Draft, minutes, clock, roundUp, busy, snap, firstFree, chain, copyDay, fillDay, plan, series };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.CinePrimeCalendar = api;
 })();

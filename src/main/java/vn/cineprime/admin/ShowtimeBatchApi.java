@@ -12,8 +12,13 @@ import static vn.cineprime.admin.ShowtimeBatch.*;
 
 @RestController @RequestMapping("/api/admin/showtime-batches")
 public class ShowtimeBatchApi {
-    private final ShowtimeBatches batches;private final ShowtimeExcel excel;
-    public ShowtimeBatchApi(ShowtimeBatches batches,ShowtimeExcel excel){this.batches=batches;this.excel=excel;}
+    private final ShowtimeBatches batches;private final ShowtimeExcel excel;private final ShowtimeQuickEdit quick;
+    public ShowtimeBatchApi(ShowtimeBatches batches,ShowtimeExcel excel,ShowtimeQuickEdit quick){this.batches=batches;this.excel=excel;this.quick=quick;}
+    /** Stored shows are edited and cancelled one at a time from the calendar and saved at once. */
+    @PutMapping("/showtimes/{id}") public Map<String,Object> update(@AuthenticationPrincipal SessionUser user,@PathVariable Long id,@RequestBody ShowtimeQuickEdit.Change change){return quick.update(user.id(),id,change);}
+    @PostMapping("/showtimes/bulk") public Map<String,Object> bulk(@AuthenticationPrincipal SessionUser user,@RequestBody ShowtimeQuickEdit.Bulk command){return quick.bulk(user.id(),command);}
+    @PostMapping("/showtimes/{id}/cancel") public Map<String,Object> cancel(@AuthenticationPrincipal SessionUser user,@PathVariable Long id,@RequestBody Map<String,String> body){return quick.cancel(user.id(),id,body==null?null:body.get("expected"));}
+    @ExceptionHandler(AdminFormProblem.class) public ResponseEntity<Map<String,Object>> formProblem(AdminFormProblem problem){return ResponseEntity.status(422).body(Map.of("code","INVALID_SHOWTIME","message",problem.getMessage(),"fields",problem.fields()));}
     @ModelAttribute public void noStore(HttpServletResponse response){response.setHeader("Cache-Control","no-store");}
     @GetMapping("/calendar") public Map<String,Object> calendar(@RequestParam Long cinemaId,@RequestParam(required=false)Long roomId,@RequestParam(required=false)LocalDate weekStart,@RequestParam(required=false)LocalDate date){
         if(weekStart!=null){if(date!=null)throw new IllegalArgumentException("Chọn tuần hoặc ngày, không chọn cả hai.");return batches.week(cinemaId,roomId,weekStart);}
